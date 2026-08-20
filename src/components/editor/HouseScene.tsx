@@ -27,6 +27,7 @@ import { styleDef } from "@/lib/3d/styles";
 import { effectiveColor } from "@/lib/store";
 import {
   Chimney,
+  Deck,
   Drainage,
   Porch,
   Quoins,
@@ -109,13 +110,15 @@ export function HouseScene({
         ) : null,
       )}
 
-      {/* Gable ends fill the triangle between the wall top and the roof. */}
+      {/* The gable triangle continues the wall beneath it, so each end takes
+          its own elevation's material — a wood gable stays wood all the way
+          up, rather than turning into whatever the front is clad in. */}
       {(roofNode?.roof?.shape === "gable" ||
-        roofNode?.roof?.shape === "mansard") &&
-        facades[0].node && (
+        roofNode?.roof?.shape === "mansard") && (
         <GableEnds
           model={model}
-          node={facades[0].node}
+          leftNode={node("node-facade-left")}
+          rightNode={node("node-facade-right")}
           colorOverrides={colorOverrides}
         />
       )}
@@ -171,6 +174,7 @@ export function HouseScene({
       <Quoins model={model} style={style} />
       <Shutters model={model} style={style} openings={model.openings} />
       <Porch model={model} style={style} openings={model.openings} />
+      <Deck model={model} style={style} />
       {roofDims && (
         <>
           <RoofTrim model={model} style={style} dims={roofDims} />
@@ -304,17 +308,17 @@ function FacadeWall({
 /** The wall closing each end of a ridged roof, built up to the roof underside. */
 function GableEnds({
   model,
-  node,
+  leftNode,
+  rightNode,
   colorOverrides,
 }: {
   model: SceneModel;
-  node: SceneNode;
+  leftNode?: SceneNode;
+  rightNode?: SceneNode;
   colorOverrides: Record<string, string>;
 }) {
   const { widthM, depthM, heightM } = model.dimensions;
   const roof = model.nodes.find((n) => n.roof)?.roof;
-  const color = effectiveColor(node, colorOverrides);
-  const map = useSurfaceTexture(textureOf(node), color, depthM, heightM);
 
   const geometry = useMemo(() => {
     if (!roof) return null;
@@ -340,15 +344,50 @@ function GableEnds({
   if (!geometry || !roof) return null;
 
   const t = WALL_THICKNESS_M;
-  // Sits in the same slab of space as the end walls it continues upward.
+  // Each end sits in the same slab of space as the wall it continues upward.
   return (
     <>
-      {[widthM / 2, -widthM / 2 + t].map((x, i) => (
-        <mesh key={i} geometry={geometry} position={[x, heightM, 0]}>
-          <meshStandardMaterial map={map} roughness={0.85} />
-        </mesh>
-      ))}
+      {rightNode && (
+        <GableEndMesh
+          geometry={geometry}
+          node={rightNode}
+          colorOverrides={colorOverrides}
+          position={[widthM / 2, heightM, 0]}
+          surface={[depthM, heightM]}
+        />
+      )}
+      {leftNode && (
+        <GableEndMesh
+          geometry={geometry}
+          node={leftNode}
+          colorOverrides={colorOverrides}
+          position={[-widthM / 2 + t, heightM, 0]}
+          surface={[depthM, heightM]}
+        />
+      )}
     </>
+  );
+}
+
+function GableEndMesh({
+  geometry,
+  node,
+  colorOverrides,
+  position,
+  surface,
+}: {
+  geometry: THREE.BufferGeometry;
+  node: SceneNode;
+  colorOverrides: Record<string, string>;
+  position: [number, number, number];
+  surface: [number, number];
+}) {
+  const color = effectiveColor(node, colorOverrides);
+  const map = useSurfaceTexture(textureOf(node), color, surface[0], surface[1]);
+  return (
+    <mesh geometry={geometry} position={position}>
+      <meshStandardMaterial map={map} roughness={0.85} />
+    </mesh>
   );
 }
 

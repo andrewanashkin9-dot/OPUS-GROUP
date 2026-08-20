@@ -20,7 +20,12 @@ export const FLOOR_COUNTS: FloorCount[] = [1, 2, 3];
 /** Height of one storey, floor to floor. */
 export const FLOOR_HEIGHT_M = 3;
 
-export type HouseStyle = "european" | "scandi" | "hightech" | "classic";
+export type HouseStyle =
+  | "barnhouse"
+  | "european"
+  | "scandi"
+  | "hightech"
+  | "classic";
 
 export interface HouseConfig {
   floors: FloorCount;

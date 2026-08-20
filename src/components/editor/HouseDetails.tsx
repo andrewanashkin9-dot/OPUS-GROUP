@@ -216,12 +216,29 @@ export function Drainage({ model, dims }: DetailProps & { dims: RoofDims }) {
 export function Chimney({ model, style, dims }: DetailProps & { dims: RoofDims }) {
   const roof = model.nodes.find((n) => n.roof)?.roof;
   const { widthM, heightM } = model.dimensions;
-  if (!roof || !style.details.chimney) return null;
+  const kind = style.details.chimney;
+  if (!roof || kind === "none") return null;
 
-  const top = heightM + dims.rise + 0.9;
+  const top = heightM + dims.rise + (kind === "flue" ? 1.3 : 0.9);
   const base = heightM - 0.6;
   const h = top - base;
   const x = widthM * 0.26;
+
+  // A barnhouse vents through a slim insulated flue, not a masonry stack.
+  if (kind === "flue") {
+    return (
+      <group position={[x, 0, 0]}>
+        <mesh position={[0, base + h / 2, 0]}>
+          <cylinderGeometry args={[0.11, 0.11, h, 14]} />
+          <meshStandardMaterial color={METAL} roughness={0.4} metalness={0.5} />
+        </mesh>
+        <mesh position={[0, top + 0.1, 0]}>
+          <cylinderGeometry args={[0.17, 0.13, 0.16, 14]} />
+          <meshStandardMaterial color={METAL} roughness={0.4} metalness={0.5} />
+        </mesh>
+      </group>
+    );
+  }
 
   return (
     <group position={[x, 0, 0]}>
@@ -358,11 +375,53 @@ export function Shutters({
   );
 }
 
+/**
+ * A timber terrace running the length of the entrance elevation — the deck a
+ * barnhouse or a flat-roofed house is built around, rather than a compact
+ * set of front steps.
+ */
+export function Deck({ model, style }: DetailProps) {
+  const { widthM, depthM } = model.dimensions;
+  if (!style.details.deck) return null;
+
+  const z0 = depthM / 2;
+  const boards = 14;
+  const deckDepth = 2.4;
+
+  return (
+    <group>
+      {/* Board-by-board, so the decking reads as laid timber. */}
+      {Array.from({ length: boards }, (_, i) => {
+        const step = deckDepth / boards;
+        return (
+          <mesh
+            key={i}
+            position={[0, 0.5, z0 + 0.1 + step / 2 + i * step]}
+          >
+            <boxGeometry args={[widthM * 0.92, 0.1, step * 0.86]} />
+            <meshStandardMaterial color="#8A5C33" roughness={0.85} />
+          </mesh>
+        );
+      })}
+      {/* Edge beam and a low step down to the ground. */}
+      <mesh position={[0, 0.35, z0 + deckDepth + 0.12]}>
+        <boxGeometry args={[widthM * 0.92, 0.42, 0.12]} />
+        <meshStandardMaterial color="#6F4A29" roughness={0.85} />
+      </mesh>
+      <mesh position={[0, 0.16, z0 + deckDepth + 0.38]}>
+        <boxGeometry args={[widthM * 0.55, 0.16, 0.42]} />
+        <meshStandardMaterial color={style.plinthColor} roughness={0.9} />
+      </mesh>
+    </group>
+  );
+}
+
 /** Entrance platform, steps and a canopy on posts. */
 export function Porch({ model, style, openings }: DetailProps & { openings: Opening[] }) {
   const { depthM } = model.dimensions;
   const door = openings.find((o) => o.kind === "door");
-  if (!door) return null;
+  // A house with a full-width deck does not also get a doorstep porch.
+  if (!door || style.details.deck) return null;
 
   const z0 = depthM / 2;
   const stone = style.plinthColor;

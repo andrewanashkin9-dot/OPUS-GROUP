@@ -38,6 +38,7 @@ interface AppState {
   setRoofPitch: (pitchDeg: number) => void;
   setFloors: (floors: FloorCount) => Promise<void>;
   setStyle: (style: HouseStyle) => Promise<void>;
+  resetProject: () => void;
   showEducationCard: (cardId: string) => void;
   dismissEducationCard: (cardId: string) => void;
   setQuantity: (nodeId: string, quantity: number) => void;
@@ -167,6 +168,16 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           colorOverrides: { ...state.colorOverrides, [nodeId]: hex },
         })),
+
+      resetProject: () =>
+        set({
+          model: null,
+          status: "idle",
+          error: null,
+          selectedNodeId: null,
+          quantityOverrides: {},
+          colorOverrides: {},
+        }),
 
       setFloors: async (floors) => {
         const { model } = get();

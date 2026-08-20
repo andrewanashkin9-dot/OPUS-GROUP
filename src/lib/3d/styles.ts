@@ -1,4 +1,4 @@
-import type { HouseStyle, NodeKind, RoofShape } from "./types";
+import type { FloorCount, HouseStyle, NodeKind, RoofShape } from "./types";
 import { MIN_ROOF_OVERHANG_M } from "./types";
 
 /**
@@ -20,15 +20,31 @@ export interface StyleDef {
     /** Sill height above the floor of the storey the window sits on. */
     sillM: number;
   };
+  /** The storey count this style is normally built in. */
+  defaultFloors: FloorCount;
   /** Ground-floor front glazing runs full height instead of a window pair. */
   panoramicGround: boolean;
+  /**
+   * Full-height glazing in the gable walls. The ridge runs along the width,
+   * so the gables are the left and right elevations.
+   */
+  gableGlazing: boolean;
   details: {
     shutters: boolean;
     quoins: boolean;
     stringCourse: boolean;
-    chimney: boolean;
+    /** Masonry stack, slim metal flue, or nothing at all. */
+    chimney: "masonry" | "flue" | "none";
     porchCanopy: boolean;
+    /** A wide timber terrace instead of a compact entrance porch. */
+    deck: boolean;
   };
+  /**
+   * Per-node overrides, keyed by scene node id. Lets a style clad one
+   * elevation differently from the rest — the wood gable of a barnhouse
+   * against its black metal flanks.
+   */
+  accents?: Record<string, { materialId?: string; colorHex?: string }>;
   plinthColor: string;
   trimColor: string;
 }
@@ -56,13 +72,16 @@ export const STYLES: Record<HouseStyle, StyleDef> = {
       foundation: "#6B6660",
     },
     window: { widthM: 1.2, heightM: 1.5, sillM: 0.9 },
+    defaultFloors: 2,
     panoramicGround: false,
+    gableGlazing: false,
     details: {
       shutters: true,
       quoins: false,
       stringCourse: true,
-      chimney: true,
+      chimney: "masonry",
       porchCanopy: true,
+      deck: false,
     },
     plinthColor: "#5A554F",
     trimColor: "#F2EFE8",
@@ -90,13 +109,16 @@ export const STYLES: Record<HouseStyle, StyleDef> = {
       foundation: "#4A4642",
     },
     window: { widthM: 1.1, heightM: 1.9, sillM: 0.7 },
+    defaultFloors: 2,
     panoramicGround: false,
+    gableGlazing: false,
     details: {
       shutters: false,
       quoins: false,
       stringCourse: false,
-      chimney: true,
+      chimney: "masonry",
       porchCanopy: true,
+      deck: false,
     },
     plinthColor: "#3A3733",
     trimColor: "#2B2B2B",
@@ -126,13 +148,16 @@ export const STYLES: Record<HouseStyle, StyleDef> = {
       foundation: "#55514C",
     },
     window: { widthM: 1.6, heightM: 2.1, sillM: 0.5 },
+    defaultFloors: 2,
     panoramicGround: true,
+    gableGlazing: false,
     details: {
       shutters: false,
       quoins: false,
       stringCourse: false,
-      chimney: false,
+      chimney: "none",
       porchCanopy: false,
+      deck: true,
     },
     plinthColor: "#35383B",
     trimColor: "#7A7F86",
@@ -160,20 +185,76 @@ export const STYLES: Record<HouseStyle, StyleDef> = {
       foundation: "#7A756E",
     },
     window: { widthM: 1.15, heightM: 1.6, sillM: 0.95 },
+    defaultFloors: 2,
     panoramicGround: false,
+    gableGlazing: false,
     details: {
       shutters: false,
       quoins: true,
       stringCourse: true,
-      chimney: true,
+      chimney: "masonry",
       porchCanopy: true,
+      deck: false,
     },
     plinthColor: "#8C7B65",
     trimColor: "#FFFFFF",
   },
+
+  barnhouse: {
+    id: "barnhouse",
+    name: "Барнхаус",
+    tagline: "Чёрный фальц, деревянный фронтон, панорамное остекление.",
+    // A barnhouse deliberately runs its eaves almost flush — the roof metal
+    // wraps the wall and the silhouette stays a single clean prism. This is
+    // the one style that steps outside the one-metre eaves rule, and it is a
+    // stylistic choice rather than a modelling slip.
+    roof: { shape: "gable", pitchDeg: 22, overhangM: 0.25 },
+    materials: {
+      roof: "roof-seam",
+      facade: "facade-metal-seam",
+      window: "window-alu",
+      door: "door-steel",
+      fence: "fence-profnastil",
+      foundation: "foundation-slab",
+    },
+    colors: {
+      roof: "#2A2C2E",
+      facade: "#2A2C2E",
+      window: "#2E3236",
+      door: "#2A2C2E",
+      fence: "#2F3134",
+      foundation: "#55514C",
+    },
+    // The gable elevation is clad in warm timber against the black flanks.
+    accents: {
+      "node-facade-left": {
+        materialId: "facade-imitation-brus",
+        colorHex: "#B5813F",
+      },
+      "node-facade-right": {
+        materialId: "facade-imitation-brus",
+        colorHex: "#B5813F",
+      },
+    },
+    window: { widthM: 1.5, heightM: 2.4, sillM: 0.2 },
+    defaultFloors: 1,
+    panoramicGround: false,
+    gableGlazing: true,
+    details: {
+      shutters: false,
+      quoins: false,
+      stringCourse: false,
+      chimney: "flue",
+      porchCanopy: false,
+      deck: true,
+    },
+    plinthColor: "#4A4642",
+    trimColor: "#2A2C2E",
+  },
 };
 
 export const STYLE_LIST: StyleDef[] = [
+  STYLES.barnhouse,
   STYLES.european,
   STYLES.scandi,
   STYLES.hightech,

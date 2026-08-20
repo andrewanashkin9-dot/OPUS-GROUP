@@ -9,6 +9,7 @@ export function TopBar() {
   const model = useAppStore((s) => s.model);
   const tier = useAppStore((s) => s.tier);
   const setTier = useAppStore((s) => s.setTier);
+  const resetProject = useAppStore((s) => s.resetProject);
   const bom = useBom();
   const total = useCartTotal(bom);
 
@@ -21,6 +22,15 @@ export function TopBar() {
         <span className="truncate text-body-s font-medium text-cream-dim">
           {model?.name ?? "Новый проект"}
         </span>
+        {model && (
+          <button
+            type="button"
+            onClick={resetProject}
+            className="hidden shrink-0 text-body-s font-medium text-cream-dim underline underline-offset-2 transition-colors hover:text-cream-bright md:inline"
+          >
+            Другие фото
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-3 sm:gap-5">

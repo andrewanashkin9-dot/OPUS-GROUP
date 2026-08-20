@@ -53,6 +53,27 @@ export function buildOpenings(
           ? footprint.widthM
           : footprint.depthM;
 
+      // A barnhouse glazes its gable walls almost fully. The ridge runs along
+      // the width, so the gables are the left and right elevations.
+      if (
+        style.gableGlazing &&
+        (facade === "left" || facade === "right") &&
+        floor === 0
+      ) {
+        for (const offset of [-1.9, 0, 1.9]) {
+          openings.push({
+            id: `op-w-${facade}-gable-${offset}`,
+            kind: "window",
+            facade,
+            offsetM: offset,
+            sillM: 0.25,
+            widthM: 1.7,
+            heightM: 2.5,
+          });
+        }
+        continue;
+      }
+
       // High-tech puts a single full-height glazed bay on the ground floor
       // instead of a pair of punched windows.
       if (facade === "front" && floor === 0 && style.panoramicGround) {

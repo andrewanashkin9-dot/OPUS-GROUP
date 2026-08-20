@@ -21,6 +21,7 @@ export const COLOR_OPTIONS: Record<NodeKind, ColorOption[]> = {
     { hex: "#3E5140", name: "Зелёный мох" },
     { hex: "#6B2A2A", name: "Вишня" },
     { hex: "#2F3F4F", name: "Синий сланец" },
+    { hex: "#2A2C2E", name: "Чёрный металл" },
     { hex: "#9CA3AA", name: "Цинк" },
     { hex: "#1C1C1E", name: "Чёрный" },
   ],
@@ -32,6 +33,8 @@ export const COLOR_OPTIONS: Record<NodeKind, ColorOption[]> = {
     { hex: "#8C6A52", name: "Терракотовый кирпич" },
     { hex: "#5A5F63", name: "Тёмно-серый" },
     { hex: "#4A3626", name: "Тёмный дуб" },
+    { hex: "#B5813F", name: "Медовая сосна" },
+    { hex: "#2A2C2E", name: "Чёрный металл" },
     { hex: "#2B2B2B", name: "Антрацит" },
   ],
   fence: [

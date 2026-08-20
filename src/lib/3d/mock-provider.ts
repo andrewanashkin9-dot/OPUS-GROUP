@@ -71,8 +71,10 @@ function buildHouse(
   const openings = buildOpenings(FOOTPRINT, config);
 
   const nodes: SceneNode[] = NODE_SEEDS.map((seed) => {
+    const accent = style.accents?.[seed.id];
     const materialId =
       carryOver?.get(seed.id) ??
+      accent?.materialId ??
       style.materials[seed.kind] ??
       materialsForKind(seed.kind)[0]?.id ??
       "";
@@ -85,7 +87,10 @@ function buildHouse(
       unit: seed.unit,
       quantity: quantityFor(seed, dimensions, openings, config),
       colorHex:
-        style.colors[seed.kind] ?? material?.colorHex ?? "#EDE6D6",
+        accent?.colorHex ??
+        style.colors[seed.kind] ??
+        material?.colorHex ??
+        "#EDE6D6",
       roof:
         seed.kind === "roof"
           ? {

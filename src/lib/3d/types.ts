@@ -12,6 +12,21 @@ export type Tier = "free" | "pro";
 
 export type RoofShape = "gable" | "hip" | "flat" | "mansard";
 
+/** Private houses are built in whole storeys, so the model offers only these. */
+export type FloorCount = 1 | 2 | 3;
+
+export const FLOOR_COUNTS: FloorCount[] = [1, 2, 3];
+
+/** Height of one storey, floor to floor. */
+export const FLOOR_HEIGHT_M = 3;
+
+export type HouseStyle = "european" | "scandi" | "hightech" | "classic";
+
+export interface HouseConfig {
+  floors: FloorCount;
+  style: HouseStyle;
+}
+
 /**
  * Real roofs overhang the walls — the eaves throw rainwater clear of the
  * facade instead of down it. Anything less than this reads as a modelling
@@ -57,8 +72,10 @@ export interface SceneModel {
   name: string;
   createdAt: string;
   sourcePhotoCount: number;
-  /** `heightM` is the wall height to the eaves; the roof sits on top of it. */
+  /** `heightM` is the wall height to the eaves — always floors × FLOOR_HEIGHT_M. */
   dimensions: { widthM: number; depthM: number; heightM: number };
+  floors: FloorCount;
+  style: HouseStyle;
   nodes: SceneNode[];
   openings: Opening[];
 }

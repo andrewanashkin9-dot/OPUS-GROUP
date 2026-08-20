@@ -23,7 +23,18 @@ import type {
   SceneNode,
   TextureId,
 } from "@/lib/3d/types";
+import { styleDef } from "@/lib/3d/styles";
 import { effectiveColor } from "@/lib/store";
+import {
+  Chimney,
+  Drainage,
+  Porch,
+  Quoins,
+  RoofTrim,
+  Shutters,
+  StringCourses,
+  useRoofDims,
+} from "./HouseDetails";
 
 const SELECTED = "#f4e4c2";
 
@@ -46,6 +57,8 @@ export function HouseScene({
   onSelect,
 }: HouseSceneProps) {
   const { widthM, depthM } = model.dimensions;
+  const style = styleDef(model.style);
+  const roofDims = useRoofDims(model);
   const node = (id: string) => model.nodes.find((n) => n.id === id);
 
   const handle =
@@ -76,9 +89,9 @@ export function HouseScene({
           colorOverrides={colorOverrides}
           selected={selectedNodeId === foundation.id}
           onClick={handle(foundation.id)}
-          position={[0, -0.25, 0]}
-          size={[widthM + 0.3, 0.5, depthM + 0.3]}
-          surface={[widthM, 0.5]}
+          position={[0, 0.3, 0]}
+          size={[widthM + 0.34, 0.8, depthM + 0.34]}
+          surface={[widthM, 0.8]}
         />
       )}
 
@@ -154,6 +167,17 @@ export function HouseScene({
         />
       )}
 
+      <StringCourses model={model} style={style} />
+      <Quoins model={model} style={style} />
+      <Shutters model={model} style={style} openings={model.openings} />
+      <Porch model={model} style={style} openings={model.openings} />
+      {roofDims && (
+        <>
+          <RoofTrim model={model} style={style} dims={roofDims} />
+          <Drainage model={model} style={style} dims={roofDims} />
+          <Chimney model={model} style={style} dims={roofDims} />
+        </>
+      )}
     </group>
   );
 }
@@ -245,10 +269,22 @@ function FacadeWall({
     Facade,
     { position: [number, number, number]; size: [number, number, number] }
   > = {
-    front: { position: [0, heightM / 2, depthM / 2], size: [widthM, heightM, t] },
-    back: { position: [0, heightM / 2, -depthM / 2], size: [widthM, heightM, t] },
-    left: { position: [-widthM / 2, heightM / 2, 0], size: [t, heightM, depthM] },
-    right: { position: [widthM / 2, heightM / 2, 0], size: [t, heightM, depthM] },
+    front: {
+      position: [0, heightM / 2, depthM / 2 - t / 2],
+      size: [widthM, heightM, t],
+    },
+    back: {
+      position: [0, heightM / 2, -depthM / 2 + t / 2],
+      size: [widthM, heightM, t],
+    },
+    left: {
+      position: [-widthM / 2 + t / 2, heightM / 2, 0],
+      size: [t, heightM, depthM],
+    },
+    right: {
+      position: [widthM / 2 - t / 2, heightM / 2, 0],
+      size: [t, heightM, depthM],
+    },
   };
 
   const { position, size } = placement[facade];
@@ -307,7 +343,7 @@ function GableEnds({
   // Sits in the same slab of space as the end walls it continues upward.
   return (
     <>
-      {[widthM / 2 + t / 2, -widthM / 2 + t / 2].map((x, i) => (
+      {[widthM / 2, -widthM / 2 + t].map((x, i) => (
         <mesh key={i} geometry={geometry} position={[x, heightM, 0]}>
           <meshStandardMaterial map={map} roughness={0.85} />
         </mesh>
@@ -375,7 +411,7 @@ function Roof({
 function openingTransform(model: SceneModel, opening: Opening) {
   const { widthM, depthM } = model.dimensions;
   const y = opening.sillM + opening.heightM / 2;
-  const out = WALL_THICKNESS_M / 2;
+  const out = 0.02;
   switch (opening.facade) {
     case "front":
       return {

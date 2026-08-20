@@ -5,6 +5,9 @@ import { getModel3DProvider } from "./3d";
 import { withRecalculatedQuantities } from "./3d/metrics";
 import type {
   BomLine,
+  FloorCount,
+  HouseConfig,
+  HouseStyle,
   NodeKind,
   RoofShape,
   SceneModel,
@@ -23,6 +26,8 @@ interface AppState {
   quantityOverrides: Record<string, number>;
   /** Per-node colour picked by the user, overriding the material's default. */
   colorOverrides: Record<string, string>;
+  /** True while the model is being rebuilt for new floors or a new style. */
+  rebuilding: boolean;
 
   setTier: (tier: Tier) => void;
   generateFromPhotos: (photos: File[]) => Promise<void>;
@@ -31,6 +36,8 @@ interface AppState {
   setColor: (nodeId: string, hex: string) => void;
   setRoofShape: (shape: RoofShape) => void;
   setRoofPitch: (pitchDeg: number) => void;
+  setFloors: (floors: FloorCount) => Promise<void>;
+  setStyle: (style: HouseStyle) => Promise<void>;
   showEducationCard: (cardId: string) => void;
   dismissEducationCard: (cardId: string) => void;
   setQuantity: (nodeId: string, quantity: number) => void;
@@ -57,6 +64,47 @@ function updateRoof(
   };
 }
 
+type SetState = (
+  partial: Partial<AppState> | ((state: AppState) => Partial<AppState>),
+) => void;
+
+/**
+ * Rebuilds the model for a new storey count or style. Both change the
+ * building itself, so manual quantity edits are dropped — they described a
+ * house that no longer exists — and the geometry-derived numbers take over
+ * again.
+ */
+async function reconfigure(
+  set: SetState,
+  config: HouseConfig,
+  resetColors = false,
+) {
+  const provider = getModel3DProvider();
+  if (!provider.reconfigure) {
+    set({ error: "Этот способ построения не поддерживает смену этажности." });
+    return;
+  }
+  set({ rebuilding: true, error: null });
+  try {
+    const model = await provider.reconfigure(config);
+    set((state) => ({
+      model,
+      rebuilding: false,
+      quantityOverrides: {},
+      colorOverrides: resetColors ? {} : state.colorOverrides,
+      selectedNodeId: model.nodes.some((n) => n.id === state.selectedNodeId)
+        ? state.selectedNodeId
+        : (model.nodes[0]?.id ?? null),
+    }));
+  } catch (err) {
+    set({
+      rebuilding: false,
+      error:
+        err instanceof Error ? err.message : "Не удалось перестроить модель.",
+    });
+  }
+}
+
 /** The colour actually rendered: the user's pick, else the material default. */
 export function effectiveColor(
   node: SceneNode,
@@ -77,6 +125,7 @@ export const useAppStore = create<AppState>()(
       dismissedEducationCardIds: [],
       quantityOverrides: {},
       colorOverrides: {},
+      rebuilding: false,
 
       setTier: (tier) => set({ tier }),
 
@@ -119,6 +168,20 @@ export const useAppStore = create<AppState>()(
           colorOverrides: { ...state.colorOverrides, [nodeId]: hex },
         })),
 
+      setFloors: async (floors) => {
+        const { model } = get();
+        if (!model || model.floors === floors) return;
+        await reconfigure(set, { floors, style: model.style });
+      },
+
+      setStyle: async (style) => {
+        const { model } = get();
+        if (!model || model.style === style) return;
+        // A style carries its own materials and colours, so any colour the
+        // user had pinned on top of the previous style is cleared with it.
+        await reconfigure(set, { floors: model.floors, style }, true);
+      },
+
       setRoofShape: (shape) => set(updateRoof((roof) => ({ ...roof, shape }))),
 
       setRoofPitch: (pitchDeg) =>
@@ -154,6 +217,18 @@ export const useAppStore = create<AppState>()(
     {
       name: "opus-group-project",
       storage: createJSONStorage(() => localStorage),
+      // Bumped when the saved model's shape changes. A project saved before
+      // storeys and styles existed has no floors to render and would restore
+      // as a half-built house, so it is dropped rather than half-migrated.
+      version: 2,
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<AppState> | undefined;
+        if (!state) return state;
+        if (version < 2) {
+          return { ...state, model: null, selectedNodeId: null, status: "idle" };
+        }
+        return state;
+      },
       // Hydration is deferred to useStoreHydration (below) so the server and
       // the first client render agree. Reading localStorage during store
       // creation would make them disagree and break hydration.

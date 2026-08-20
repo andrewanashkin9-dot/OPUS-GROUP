@@ -115,7 +115,41 @@ swaps it for a static three-frame illustration.
 
 ## 5. The house model
 
-The demo house is 9.5 × 8.2 m with 6 m walls (two storeys).
+The demo house is 9.5 × 8.2 m. `widthM`/`depthM` are the **outer** dimensions:
+walls sit inside them, so the geometry measures what the estimate prices.
+
+**Storeys.** Only 1, 2 or 3 — private houses are built in whole storeys, and
+a free-form height slider invites nonsense. Wall height is always
+`floors × FLOOR_HEIGHT_M` (3 m). Window rows are generated per storey and
+line up vertically; the camera re-frames on height change so a three-storey
+house isn't cut off.
+
+**Styles** (`src/lib/3d/styles.ts`) are not skins. Each sets the roof form
+and pitch, the starting material and colour of every surface, window
+proportions, and which details the house carries:
+
+| Style | Roof | Facade | Signature |
+|---|---|---|---|
+| Европейский | Вальмовая 35° | Кирпич | Ставни, карнизы |
+| Скандинавский | Двускатная 42° | Планкен | Высокие окна |
+| Хай-тек | Плоская | HPL-панели | Панорамный первый этаж |
+| Классический | Двускатная 30° | Штукатурка | Рустованные углы |
+
+Changing style replaces materials and colours (that *is* the choice);
+changing storeys keeps the user's material picks. Both rebuild the model
+through `Model3DProvider.reconfigure`, since they change the building rather
+than its finishes.
+
+High-tech's palette is graphite, not black: the canvas background is `#000`,
+and a near-black facade on it reads as a silhouette rather than a building.
+The scene lighting carries a hemisphere plus a rim light for the same reason.
+
+**Details** (`HouseDetails.tsx`) are what make it read as built rather than
+massed: eaves fascia and rake boards, ridge cap, gutters with downpipes
+elbowed back to the wall, chimney, plinth band, entrance porch with steps and
+canopy, shutters, string courses, and rusticated quoins. Quoins are a pair of
+shallow plates wrapping each corner — a single block centred on the corner
+reads as a tab bolted to the outside.
 
 **The roof always overhangs the walls.** `MIN_ROOF_OVERHANG_M = 1` metre on
 every side, so the roof footprint is 11.5 × 10.2 m. A facade that projects

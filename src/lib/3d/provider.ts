@@ -1,4 +1,4 @@
-import type { BomLine, SceneModel } from "./types";
+import type { BomLine, HouseConfig, SceneModel } from "./types";
 
 /**
  * The one seam between the app and the 3D vendor. Neural4D's API isn't
@@ -22,4 +22,12 @@ export interface Model3DProvider {
    * Optional: a provider that keeps no per-session state can omit it.
    */
   adoptModel?(model: SceneModel): void;
+
+  /**
+   * Rebuild the model for a new storey count or architectural style. These
+   * change the building rather than its finishes, so they cannot be expressed
+   * as material swaps. Optional: a provider that only ever reconstructs from
+   * photographs can omit it.
+   */
+  reconfigure?(config: HouseConfig): Promise<SceneModel>;
 }

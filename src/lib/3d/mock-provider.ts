@@ -1,3 +1,4 @@
+import { buildOpenings, wallHeightM } from "./layout";
 import { materialById, materialsForKind } from "./materials";
 import {
   facadeAreaM2,
@@ -7,142 +8,133 @@ import {
   withRecalculatedQuantities,
 } from "./metrics";
 import type { Model3DProvider } from "./provider";
-import type { BomLine, Opening, SceneModel } from "./types";
-import { MIN_ROOF_OVERHANG_M } from "./types";
+import { styleDef } from "./styles";
+import type {
+  BomLine,
+  HouseConfig,
+  NodeKind,
+  Opening,
+  SceneModel,
+  SceneNode,
+} from "./types";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const DIMENSIONS = { widthM: 9.5, depthM: 8.2, heightM: 6 };
+const FOOTPRINT = { widthM: 9.5, depthM: 8.2 };
 
-const WINDOW_W = 1.2;
-const WINDOW_H = 1.5;
-const GROUND_SILL = 0.9;
-const UPPER_SILL = 3.6;
+const DEFAULT_CONFIG: HouseConfig = { floors: 2, style: "european" };
 
-/**
- * Nine windows and a front door, laid out the way a two-storey house
- * actually reads: paired ground-floor windows either side of the entrance,
- * a rhythm of three above it, and single openings on the flanks.
- */
-const OPENINGS: Opening[] = [
-  { id: "op-door", kind: "door", facade: "front", offsetM: 0, sillM: 0, widthM: 1.1, heightM: 2.1 },
+interface NodeSeed {
+  id: string;
+  label: string;
+  kind: NodeKind;
+  unit: SceneNode["unit"];
+}
 
-  { id: "op-w-f1", kind: "window", facade: "front", offsetM: -2.6, sillM: GROUND_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
-  { id: "op-w-f2", kind: "window", facade: "front", offsetM: 2.6, sillM: GROUND_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
-  { id: "op-w-f3", kind: "window", facade: "front", offsetM: -2.6, sillM: UPPER_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
-  { id: "op-w-f4", kind: "window", facade: "front", offsetM: 0, sillM: UPPER_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
-  { id: "op-w-f5", kind: "window", facade: "front", offsetM: 2.6, sillM: UPPER_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
-
-  { id: "op-w-b1", kind: "window", facade: "back", offsetM: 0, sillM: GROUND_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
-  { id: "op-w-b2", kind: "window", facade: "back", offsetM: 0, sillM: UPPER_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
-
-  { id: "op-w-l1", kind: "window", facade: "left", offsetM: 0, sillM: UPPER_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
-  { id: "op-w-r1", kind: "window", facade: "right", offsetM: 0, sillM: UPPER_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
+const NODE_SEEDS: NodeSeed[] = [
+  { id: "node-roof", label: "Крыша", kind: "roof", unit: "m2" },
+  { id: "node-facade-front", label: "Фасад — главный", kind: "facade", unit: "m2" },
+  { id: "node-facade-back", label: "Фасад — задний", kind: "facade", unit: "m2" },
+  { id: "node-facade-left", label: "Фасад — левый", kind: "facade", unit: "m2" },
+  { id: "node-facade-right", label: "Фасад — правый", kind: "facade", unit: "m2" },
+  { id: "node-foundation", label: "Фундамент", kind: "foundation", unit: "m2" },
+  { id: "node-fence", label: "Ограждение участка", kind: "fence", unit: "m" },
+  { id: "node-windows", label: "Окна", kind: "window", unit: "pcs" },
+  { id: "node-door", label: "Входная дверь", kind: "door", unit: "pcs" },
 ];
 
-function demoHouse(photoCount: number): SceneModel {
-  const roof = {
-    shape: "gable" as const,
-    pitchDeg: 32,
-    overhangM: MIN_ROOF_OVERHANG_M,
-  };
+const FACADE_OF: Record<string, "front" | "back" | "left" | "right"> = {
+  "node-facade-front": "front",
+  "node-facade-back": "back",
+  "node-facade-left": "left",
+  "node-facade-right": "right",
+};
 
-  const model: SceneModel = {
+/**
+ * Builds the house for a given storey count and style. `carryOver` keeps the
+ * user's own material picks across a change of floors — only a change of
+ * style is allowed to reset them, since choosing a style *is* choosing its
+ * materials.
+ */
+function buildHouse(
+  config: HouseConfig,
+  photoCount: number,
+  carryOver?: Map<string, string>,
+): SceneModel {
+  const style = styleDef(config.style);
+  const dimensions = {
+    ...FOOTPRINT,
+    heightM: wallHeightM(config.floors),
+  };
+  const openings = buildOpenings(FOOTPRINT, config);
+
+  const nodes: SceneNode[] = NODE_SEEDS.map((seed) => {
+    const materialId =
+      carryOver?.get(seed.id) ??
+      style.materials[seed.kind] ??
+      materialsForKind(seed.kind)[0]?.id ??
+      "";
+    const material = materialById(materialId);
+    return {
+      id: seed.id,
+      label: seed.label,
+      kind: seed.kind,
+      materialId,
+      unit: seed.unit,
+      quantity: quantityFor(seed, dimensions, openings, config),
+      colorHex:
+        style.colors[seed.kind] ?? material?.colorHex ?? "#EDE6D6",
+      roof:
+        seed.kind === "roof"
+          ? {
+              shape: style.roof.shape,
+              pitchDeg: style.roof.pitchDeg,
+              overhangM: style.roof.overhangM,
+            }
+          : undefined,
+    };
+  });
+
+  return withRecalculatedQuantities({
     id: "house-demo-1",
     name: "Дом на ул. Садовая, 12",
     createdAt: new Date().toISOString(),
     sourcePhotoCount: photoCount,
-    dimensions: DIMENSIONS,
-    openings: OPENINGS,
-    nodes: [
-      {
-        id: "node-roof",
-        label: "Крыша",
-        kind: "roof",
-        materialId: "roof-metal-tile",
-        quantity: roofAreaM2(DIMENSIONS, roof),
-        unit: "m2",
-        colorHex: "#8A4A32",
-        roof,
-      },
-      {
-        id: "node-facade-front",
-        label: "Фасад — главный",
-        kind: "facade",
-        materialId: "facade-plaster",
-        quantity: facadeAreaM2(DIMENSIONS, OPENINGS, "front"),
-        unit: "m2",
-        colorHex: "#EDE6D6",
-      },
-      {
-        id: "node-facade-back",
-        label: "Фасад — задний",
-        kind: "facade",
-        materialId: "facade-plaster",
-        quantity: facadeAreaM2(DIMENSIONS, OPENINGS, "back"),
-        unit: "m2",
-        colorHex: "#EDE6D6",
-      },
-      {
-        id: "node-facade-left",
-        label: "Фасад — левый",
-        kind: "facade",
-        materialId: "facade-plaster",
-        quantity: facadeAreaM2(DIMENSIONS, OPENINGS, "left"),
-        unit: "m2",
-        colorHex: "#EDE6D6",
-      },
-      {
-        id: "node-facade-right",
-        label: "Фасад — правый",
-        kind: "facade",
-        materialId: "facade-plaster",
-        quantity: facadeAreaM2(DIMENSIONS, OPENINGS, "right"),
-        unit: "m2",
-        colorHex: "#EDE6D6",
-      },
-      {
-        id: "node-foundation",
-        label: "Фундамент",
-        kind: "foundation",
-        materialId: "foundation-strip",
-        quantity: foundationAreaM2(DIMENSIONS),
-        unit: "m2",
-        colorHex: "#6B6660",
-      },
-      {
-        id: "node-fence",
-        label: "Ограждение участка",
-        kind: "fence",
-        materialId: "fence-profnastil",
-        quantity: fenceLengthM(DIMENSIONS),
-        unit: "m",
-        colorHex: "#3E2A1F",
-      },
-      {
-        id: "node-windows",
-        label: "Окна",
-        kind: "window",
-        materialId: "window-pvc",
-        quantity: OPENINGS.filter((o) => o.kind === "window").length,
-        unit: "pcs",
-        colorHex: "#F2EFE8",
-      },
-      {
-        id: "node-door",
-        label: "Входная дверь",
-        kind: "door",
-        materialId: "door-steel",
-        quantity: OPENINGS.filter((o) => o.kind === "door").length,
-        unit: "pcs",
-        colorHex: "#2B2B2B",
-      },
-    ],
-  };
+    dimensions,
+    floors: config.floors,
+    style: config.style,
+    nodes,
+    openings,
+  });
+}
 
-  return withRecalculatedQuantities(model);
+function quantityFor(
+  seed: NodeSeed,
+  dimensions: { widthM: number; depthM: number; heightM: number },
+  openings: Opening[],
+  config: HouseConfig,
+): number {
+  const style = styleDef(config.style);
+  switch (seed.kind) {
+    case "roof":
+      return roofAreaM2(dimensions, {
+        shape: style.roof.shape,
+        pitchDeg: style.roof.pitchDeg,
+        overhangM: style.roof.overhangM,
+      });
+    case "facade":
+      return facadeAreaM2(dimensions, openings, FACADE_OF[seed.id] ?? "front");
+    case "foundation":
+      return foundationAreaM2(dimensions);
+    case "fence":
+      return fenceLengthM(dimensions);
+    case "window":
+      return openings.filter((o) => o.kind === "window").length;
+    case "door":
+      return openings.filter((o) => o.kind === "door").length;
+  }
 }
 
 /**
@@ -156,13 +148,37 @@ export class MockModel3DProvider implements Model3DProvider {
 
   async generateFromPhotos(photos: File[]): Promise<SceneModel> {
     await delay(2600);
-    const model = demoHouse(photos.length || 4);
+    const model = buildHouse(DEFAULT_CONFIG, photos.length || 4);
     this.currentModel = model;
     return model;
   }
 
   adoptModel(model: SceneModel): void {
     this.currentModel = model;
+  }
+
+  /**
+   * Storey count and style change the building itself, so the model is rebuilt
+   * rather than patched. A real vendor would re-request a model for the new
+   * parameters; here it is regenerated locally at the same cost.
+   */
+  async reconfigure(config: HouseConfig): Promise<SceneModel> {
+    await delay(450);
+    const previous = this.currentModel;
+    const styleChanged = previous?.style !== config.style;
+    // Keep the user's material choices when only the storey count moves.
+    const carryOver =
+      previous && !styleChanged
+        ? new Map(previous.nodes.map((n) => [n.id, n.materialId]))
+        : undefined;
+
+    const model = buildHouse(
+      config,
+      previous?.sourcePhotoCount ?? 4,
+      carryOver,
+    );
+    this.currentModel = model;
+    return model;
   }
 
   async applyMaterial(nodeId: string, materialId: string): Promise<SceneModel> {

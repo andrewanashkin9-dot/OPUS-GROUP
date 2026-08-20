@@ -6,6 +6,7 @@ import { BomPanel } from "./BomPanel";
 import { ColorPicker } from "./ColorPicker";
 import { EditorCanvas } from "./EditorCanvas";
 import { EducationCardPanel } from "./EducationCardPanel";
+import { HouseControls } from "./HouseControls";
 import { MaterialsPalette } from "./MaterialsPalette";
 import { RoofControls } from "./RoofControls";
 import { Toolbar } from "./Toolbar";
@@ -42,6 +43,7 @@ export function EditorShell() {
 
         {/* Desktop rail */}
         <aside className="hidden w-96 shrink-0 flex-col gap-8 overflow-y-auto border-l border-line p-6 lg:flex">
+          <HouseControls model={model} />
           <MaterialsPalette node={selectedNode} />
           <ColorPicker node={selectedNode} />
           {selectedNode.roof && <RoofControls node={selectedNode} />}

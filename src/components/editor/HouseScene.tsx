@@ -1,189 +1,591 @@
 "use client";
 
-import { Edges } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
-import type { SceneModel, SceneNode } from "@/lib/3d/types";
+import { useEffect, useMemo } from "react";
+import * as THREE from "three";
+import {
+  FENCE_HEIGHT_M,
+  PLOT_SCALE,
+  WALL_THICKNESS_M,
+  facadeSpanM,
+} from "@/lib/3d/metrics";
+import {
+  createRoofGeometry,
+  endWallProfile,
+  roofDimensions,
+} from "@/lib/3d/roof-geometry";
+import { createSurfaceTexture } from "@/lib/3d/textures";
+import { materialById } from "@/lib/3d/materials";
+import type {
+  Facade,
+  Opening,
+  SceneModel,
+  SceneNode,
+  TextureId,
+} from "@/lib/3d/types";
+import { effectiveColor } from "@/lib/store";
+
+const SELECTED = "#f4e4c2";
 
 interface HouseSceneProps {
   model: SceneModel;
   selectedNodeId: string | null;
+  colorOverrides: Record<string, string>;
   onSelect: (nodeId: string) => void;
 }
 
 /**
- * Renders the mock demo house geometrically from SceneModel node ids.
- * This layout is coupled to the ids MockModel3DProvider produces — a real
- * vendor scene would carry its own mesh/BOM data and this component would
- * read that instead of switching on id.
+ * Builds the demo house from the SceneModel. The node ids it reads are the
+ * ones MockModel3DProvider emits; a real vendor scene would arrive with its
+ * own meshes and this component would render those instead.
  */
-export function HouseScene({ model, selectedNodeId, onSelect }: HouseSceneProps) {
-  const { widthM, depthM, heightM } = model.dimensions;
-  const wallHeight = heightM * 0.62;
-  const nodeById = (id: string) => model.nodes.find((n) => n.id === id);
+export function HouseScene({
+  model,
+  selectedNodeId,
+  colorOverrides,
+  onSelect,
+}: HouseSceneProps) {
+  const { widthM, depthM } = model.dimensions;
+  const node = (id: string) => model.nodes.find((n) => n.id === id);
 
-  function handleClick(nodeId: string) {
-    return (e: ThreeEvent<MouseEvent>) => {
+  const handle =
+    (nodeId: string) =>
+    (e: ThreeEvent<MouseEvent>) => {
       e.stopPropagation();
       onSelect(nodeId);
     };
-  }
 
-  const facadeFront = nodeById("node-facade-front");
-  const facadeBack = nodeById("node-facade-back");
-  const facadeLeft = nodeById("node-facade-left");
-  const facadeRight = nodeById("node-facade-right");
-  const roof = nodeById("node-roof");
-  const foundation = nodeById("node-foundation");
-  const fence = nodeById("node-fence");
-  const windows = nodeById("node-windows");
+  const roofNode = node("node-roof");
+  const foundation = node("node-foundation");
+  const fence = node("node-fence");
+  const windowNode = node("node-windows");
+  const doorNode = node("node-door");
+
+  const facades: { facade: Facade; node?: SceneNode }[] = [
+    { facade: "front", node: node("node-facade-front") },
+    { facade: "back", node: node("node-facade-back") },
+    { facade: "left", node: node("node-facade-left") },
+    { facade: "right", node: node("node-facade-right") },
+  ];
 
   return (
     <group>
       {foundation && (
-        <WallMesh
+        <TexturedBox
           node={foundation}
+          colorOverrides={colorOverrides}
           selected={selectedNodeId === foundation.id}
-          onClick={handleClick(foundation.id)}
-          position={[0, -0.2, 0]}
-          args={[widthM * 1.02, 0.4, depthM * 1.02]}
+          onClick={handle(foundation.id)}
+          position={[0, -0.25, 0]}
+          size={[widthM + 0.3, 0.5, depthM + 0.3]}
+          surface={[widthM, 0.5]}
         />
       )}
 
-      {facadeFront && (
-        <WallMesh
-          node={facadeFront}
-          selected={selectedNodeId === facadeFront.id}
-          onClick={handleClick(facadeFront.id)}
-          position={[0, wallHeight / 2, depthM / 2]}
-          args={[widthM, wallHeight, 0.2]}
-        />
+      {facades.map(({ facade, node: facadeNode }) =>
+        facadeNode ? (
+          <FacadeWall
+            key={facade}
+            facade={facade}
+            node={facadeNode}
+            model={model}
+            colorOverrides={colorOverrides}
+            selected={selectedNodeId === facadeNode.id}
+            onClick={handle(facadeNode.id)}
+          />
+        ) : null,
       )}
-      {facadeBack && (
-        <WallMesh
-          node={facadeBack}
-          selected={selectedNodeId === facadeBack.id}
-          onClick={handleClick(facadeBack.id)}
-          position={[0, wallHeight / 2, -depthM / 2]}
-          args={[widthM, wallHeight, 0.2]}
-        />
-      )}
-      {facadeLeft && (
-        <WallMesh
-          node={facadeLeft}
-          selected={selectedNodeId === facadeLeft.id}
-          onClick={handleClick(facadeLeft.id)}
-          position={[-widthM / 2, wallHeight / 2, 0]}
-          args={[0.2, wallHeight, depthM]}
-        />
-      )}
-      {facadeRight && (
-        <WallMesh
-          node={facadeRight}
-          selected={selectedNodeId === facadeRight.id}
-          onClick={handleClick(facadeRight.id)}
-          position={[widthM / 2, wallHeight / 2, 0]}
-          args={[0.2, wallHeight, depthM]}
+
+      {/* Gable ends fill the triangle between the wall top and the roof. */}
+      {(roofNode?.roof?.shape === "gable" ||
+        roofNode?.roof?.shape === "mansard") &&
+        facades[0].node && (
+        <GableEnds
+          model={model}
+          node={facades[0].node}
+          colorOverrides={colorOverrides}
         />
       )}
 
-      {roof && (
-        <mesh
-          position={[0, wallHeight + 0.9, 0]}
-          rotation={[0, Math.PI / 4, 0]}
-          onClick={handleClick(roof.id)}
-        >
-          <coneGeometry args={[Math.max(widthM, depthM) * 0.42, 1.8, 4]} />
-          <meshStandardMaterial color={roof.colorHex} roughness={0.7} />
-          <Edges color={selectedNodeId === roof.id ? "#f4e4c2" : "#2a2620"} />
-        </mesh>
+      {roofNode?.roof && (
+        <Roof
+          node={roofNode}
+          model={model}
+          colorOverrides={colorOverrides}
+          selected={selectedNodeId === roofNode.id}
+          onClick={handle(roofNode.id)}
+        />
+      )}
+
+      {model.openings.map((opening) =>
+        opening.kind === "window"
+          ? windowNode && (
+              <WindowUnit
+                key={opening.id}
+                opening={opening}
+                node={windowNode}
+                model={model}
+                colorOverrides={colorOverrides}
+                selected={selectedNodeId === windowNode.id}
+                onClick={handle(windowNode.id)}
+              />
+            )
+          : doorNode && (
+              <DoorUnit
+                key={opening.id}
+                opening={opening}
+                node={doorNode}
+                model={model}
+                colorOverrides={colorOverrides}
+                selected={selectedNodeId === doorNode.id}
+                onClick={handle(doorNode.id)}
+              />
+            ),
       )}
 
       {fence && (
         <FenceRing
           node={fence}
+          colorOverrides={colorOverrides}
           selected={selectedNodeId === fence.id}
-          onClick={handleClick(fence.id)}
-          width={widthM * 1.8}
-          depth={depthM * 1.8}
+          onClick={handle(fence.id)}
+          width={widthM * PLOT_SCALE}
+          depth={depthM * PLOT_SCALE}
         />
       )}
 
-      {windows &&
-        [-1, 0, 1].map((col) => (
-          <mesh
-            key={col}
-            position={[col * (widthM / 4), wallHeight / 2, depthM / 2 + 0.02]}
-            onClick={handleClick(windows.id)}
-          >
-            <boxGeometry args={[0.9, 1.1, 0.05]} />
-            <meshStandardMaterial
-              color={windows.colorHex}
-              roughness={0.2}
-              metalness={0.1}
-            />
-            <Edges color={selectedNodeId === windows.id ? "#f4e4c2" : "#2a2620"} />
-          </mesh>
-        ))}
     </group>
   );
 }
 
-function WallMesh({
+/** Builds and disposes a canvas texture sized to the surface it covers. */
+function useSurfaceTexture(
+  textureId: TextureId,
+  color: string,
+  widthM: number,
+  heightM: number,
+) {
+  const texture = useMemo(
+    () => createSurfaceTexture(textureId, color, widthM, heightM),
+    [textureId, color, widthM, heightM],
+  );
+  useEffect(() => () => texture.dispose(), [texture]);
+  return texture;
+}
+
+function textureOf(node: SceneNode): TextureId {
+  return materialById(node.materialId)?.textureId ?? "plaster";
+}
+
+function TexturedBox({
   node,
+  colorOverrides,
   selected,
   onClick,
   position,
-  args,
+  size,
+  surface,
+  rotation,
 }: {
   node: SceneNode;
+  colorOverrides: Record<string, string>;
   selected: boolean;
   onClick: (e: ThreeEvent<MouseEvent>) => void;
   position: [number, number, number];
-  args: [number, number, number];
+  size: [number, number, number];
+  surface: [number, number];
+  rotation?: [number, number, number];
 }) {
+  const color = effectiveColor(node, colorOverrides);
+  const map = useSurfaceTexture(textureOf(node), color, surface[0], surface[1]);
   return (
-    <mesh position={position} onClick={onClick}>
-      <boxGeometry args={args} />
-      <meshStandardMaterial color={node.colorHex} roughness={0.85} />
-      <Edges color={selected ? "#f4e4c2" : "#2a2620"} />
+    <mesh position={position} rotation={rotation} onClick={onClick}>
+      <boxGeometry args={size} />
+      <meshStandardMaterial map={map} roughness={0.85} />
+      {selected && <SelectionEdges size={size} />}
     </mesh>
+  );
+}
+
+/** Outlines a box of the given size — must match the mesh it sits inside. */
+function SelectionEdges({ size }: { size: [number, number, number] }) {
+  const geometry = useMemo(
+    () => new THREE.BoxGeometry(size[0], size[1], size[2]),
+    [size],
+  );
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return (
+    <lineSegments>
+      <edgesGeometry args={[geometry]} />
+      <lineBasicMaterial color={SELECTED} />
+    </lineSegments>
+  );
+}
+
+function FacadeWall({
+  facade,
+  node,
+  model,
+  colorOverrides,
+  selected,
+  onClick,
+}: {
+  facade: Facade;
+  node: SceneNode;
+  model: SceneModel;
+  colorOverrides: Record<string, string>;
+  selected: boolean;
+  onClick: (e: ThreeEvent<MouseEvent>) => void;
+}) {
+  const { widthM, depthM, heightM } = model.dimensions;
+  const span = facadeSpanM(model.dimensions, facade);
+  const t = WALL_THICKNESS_M;
+
+  const placement: Record<
+    Facade,
+    { position: [number, number, number]; size: [number, number, number] }
+  > = {
+    front: { position: [0, heightM / 2, depthM / 2], size: [widthM, heightM, t] },
+    back: { position: [0, heightM / 2, -depthM / 2], size: [widthM, heightM, t] },
+    left: { position: [-widthM / 2, heightM / 2, 0], size: [t, heightM, depthM] },
+    right: { position: [widthM / 2, heightM / 2, 0], size: [t, heightM, depthM] },
+  };
+
+  const { position, size } = placement[facade];
+  return (
+    <TexturedBox
+      node={node}
+      colorOverrides={colorOverrides}
+      selected={selected}
+      onClick={onClick}
+      position={position}
+      size={size}
+      surface={[span, heightM]}
+    />
+  );
+}
+
+/** The wall closing each end of a ridged roof, built up to the roof underside. */
+function GableEnds({
+  model,
+  node,
+  colorOverrides,
+}: {
+  model: SceneModel;
+  node: SceneNode;
+  colorOverrides: Record<string, string>;
+}) {
+  const { widthM, depthM, heightM } = model.dimensions;
+  const roof = model.nodes.find((n) => n.roof)?.roof;
+  const color = effectiveColor(node, colorOverrides);
+  const map = useSurfaceTexture(textureOf(node), color, depthM, heightM);
+
+  const geometry = useMemo(() => {
+    if (!roof) return null;
+    const dims = roofDimensions(
+      widthM,
+      depthM,
+      roof.overhangM,
+      roof.pitchDeg,
+      roof.shape,
+    );
+    const shape = new THREE.Shape(
+      endWallProfile(roof.shape, dims, depthM / 2),
+    );
+    const geo = new THREE.ExtrudeGeometry(shape, {
+      depth: WALL_THICKNESS_M,
+      bevelEnabled: false,
+    });
+    geo.rotateY(-Math.PI / 2);
+    return geo;
+  }, [widthM, depthM, roof]);
+
+  useEffect(() => () => geometry?.dispose(), [geometry]);
+  if (!geometry || !roof) return null;
+
+  const t = WALL_THICKNESS_M;
+  // Sits in the same slab of space as the end walls it continues upward.
+  return (
+    <>
+      {[widthM / 2 + t / 2, -widthM / 2 + t / 2].map((x, i) => (
+        <mesh key={i} geometry={geometry} position={[x, heightM, 0]}>
+          <meshStandardMaterial map={map} roughness={0.85} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+function Roof({
+  node,
+  model,
+  colorOverrides,
+  selected,
+  onClick,
+}: {
+  node: SceneNode;
+  model: SceneModel;
+  colorOverrides: Record<string, string>;
+  selected: boolean;
+  onClick: (e: ThreeEvent<MouseEvent>) => void;
+}) {
+  const { widthM, depthM, heightM } = model.dimensions;
+  const roof = node.roof!;
+  const dims = useMemo(
+    () =>
+      roofDimensions(widthM, depthM, roof.overhangM, roof.pitchDeg, roof.shape),
+    [widthM, depthM, roof.overhangM, roof.pitchDeg, roof.shape],
+  );
+
+  const geometry = useMemo(
+    () => createRoofGeometry(roof.shape, dims),
+    [roof.shape, dims],
+  );
+  useEffect(() => () => geometry.dispose(), [geometry]);
+
+  const color = effectiveColor(node, colorOverrides);
+  const slopeLength = Math.hypot(dims.halfDepth, dims.rise) * 2;
+  const map = useSurfaceTexture(
+    textureOf(node),
+    color,
+    dims.halfWidth * 2,
+    slopeLength,
+  );
+
+  return (
+    <group position={[0, heightM, 0]}>
+      <mesh geometry={geometry} onClick={onClick}>
+        <meshStandardMaterial
+          map={map}
+          roughness={0.7}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      {selected && (
+        <lineSegments>
+          <edgesGeometry args={[geometry]} />
+          <lineBasicMaterial color={SELECTED} />
+        </lineSegments>
+      )}
+    </group>
+  );
+}
+
+/** Where an opening sits in world space, and which way it faces. */
+function openingTransform(model: SceneModel, opening: Opening) {
+  const { widthM, depthM } = model.dimensions;
+  const y = opening.sillM + opening.heightM / 2;
+  const out = WALL_THICKNESS_M / 2;
+  switch (opening.facade) {
+    case "front":
+      return {
+        position: [opening.offsetM, y, depthM / 2 + out] as [number, number, number],
+        rotation: [0, 0, 0] as [number, number, number],
+      };
+    case "back":
+      return {
+        position: [opening.offsetM, y, -depthM / 2 - out] as [number, number, number],
+        rotation: [0, Math.PI, 0] as [number, number, number],
+      };
+    case "left":
+      return {
+        position: [-widthM / 2 - out, y, opening.offsetM] as [number, number, number],
+        rotation: [0, -Math.PI / 2, 0] as [number, number, number],
+      };
+    case "right":
+      return {
+        position: [widthM / 2 + out, y, opening.offsetM] as [number, number, number],
+        rotation: [0, Math.PI / 2, 0] as [number, number, number],
+      };
+  }
+}
+
+function WindowUnit({
+  opening,
+  node,
+  model,
+  colorOverrides,
+  selected,
+  onClick,
+}: {
+  opening: Opening;
+  node: SceneNode;
+  model: SceneModel;
+  colorOverrides: Record<string, string>;
+  selected: boolean;
+  onClick: (e: ThreeEvent<MouseEvent>) => void;
+}) {
+  const { position, rotation } = openingTransform(model, opening);
+  const frameColor = effectiveColor(node, colorOverrides);
+  const { widthM: w, heightM: h } = opening;
+  const frame = 0.09;
+
+  return (
+    <group position={position} rotation={rotation} onClick={onClick}>
+      {/* Reveal: the dark opening behind the glass. */}
+      <mesh position={[0, 0, -0.06]}>
+        <boxGeometry args={[w, h, 0.02]} />
+        <meshStandardMaterial color="#0a0a0a" roughness={1} />
+      </mesh>
+
+      {/* Glass, tinted and slightly reflective. */}
+      <mesh position={[0, 0, -0.02]}>
+        <planeGeometry args={[w - frame * 2, h - frame * 2]} />
+        <meshStandardMaterial
+          color="#7f95a3"
+          roughness={0.08}
+          metalness={0.55}
+          transparent
+          opacity={0.85}
+        />
+      </mesh>
+
+      {/* Frame: four bars plus a central mullion. */}
+      <FrameBars w={w} h={h} thickness={frame} color={frameColor} />
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[frame * 0.7, h - frame * 2, 0.05]} />
+        <meshStandardMaterial color={frameColor} roughness={0.5} />
+      </mesh>
+
+      {/* Sill */}
+      <mesh position={[0, -h / 2 - 0.04, 0.04]}>
+        <boxGeometry args={[w + 0.16, 0.06, 0.16]} />
+        <meshStandardMaterial color={frameColor} roughness={0.6} />
+      </mesh>
+
+      {selected && (
+        <lineSegments position={[0, 0, 0.03]}>
+          <edgesGeometry args={[new THREE.PlaneGeometry(w + 0.12, h + 0.12)]} />
+          <lineBasicMaterial color={SELECTED} />
+        </lineSegments>
+      )}
+    </group>
+  );
+}
+
+function FrameBars({
+  w,
+  h,
+  thickness,
+  color,
+}: {
+  w: number;
+  h: number;
+  thickness: number;
+  color: string;
+}) {
+  const bars: { pos: [number, number, number]; size: [number, number, number] }[] =
+    [
+      { pos: [0, h / 2 - thickness / 2, 0], size: [w, thickness, 0.07] },
+      { pos: [0, -h / 2 + thickness / 2, 0], size: [w, thickness, 0.07] },
+      { pos: [-w / 2 + thickness / 2, 0, 0], size: [thickness, h, 0.07] },
+      { pos: [w / 2 - thickness / 2, 0, 0], size: [thickness, h, 0.07] },
+    ];
+  return (
+    <>
+      {bars.map((bar, i) => (
+        <mesh key={i} position={bar.pos}>
+          <boxGeometry args={bar.size} />
+          <meshStandardMaterial color={color} roughness={0.5} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+function DoorUnit({
+  opening,
+  node,
+  model,
+  colorOverrides,
+  selected,
+  onClick,
+}: {
+  opening: Opening;
+  node: SceneNode;
+  model: SceneModel;
+  colorOverrides: Record<string, string>;
+  selected: boolean;
+  onClick: (e: ThreeEvent<MouseEvent>) => void;
+}) {
+  const { position, rotation } = openingTransform(model, opening);
+  const color = effectiveColor(node, colorOverrides);
+  const { widthM: w, heightM: h } = opening;
+  const map = useSurfaceTexture(textureOf(node), color, w, h);
+
+  return (
+    <group position={position} rotation={rotation} onClick={onClick}>
+      {/* Door leaf */}
+      <mesh position={[0, 0, -0.02]}>
+        <boxGeometry args={[w, h, 0.09]} />
+        <meshStandardMaterial map={map} roughness={0.6} />
+      </mesh>
+
+      {/* Surround */}
+      <mesh position={[0, 0, -0.06]}>
+        <boxGeometry args={[w + 0.16, h + 0.1, 0.06]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.9} />
+      </mesh>
+
+      {/* Handle */}
+      <mesh position={[w / 2 - 0.16, 0, 0.05]}>
+        <boxGeometry args={[0.05, 0.28, 0.05]} />
+        <meshStandardMaterial color="#C9C4BA" roughness={0.3} metalness={0.7} />
+      </mesh>
+
+      {/* Threshold step */}
+      <mesh position={[0, -h / 2 - 0.09, 0.22]}>
+        <boxGeometry args={[w + 0.7, 0.18, 0.6]} />
+        <meshStandardMaterial color="#6B6660" roughness={0.9} />
+      </mesh>
+
+      {selected && (
+        <lineSegments position={[0, 0, 0.06]}>
+          <edgesGeometry args={[new THREE.PlaneGeometry(w + 0.2, h + 0.16)]} />
+          <lineBasicMaterial color={SELECTED} />
+        </lineSegments>
+      )}
+    </group>
   );
 }
 
 function FenceRing({
   node,
+  colorOverrides,
   selected,
   onClick,
   width,
   depth,
 }: {
   node: SceneNode;
+  colorOverrides: Record<string, string>;
   selected: boolean;
   onClick: (e: ThreeEvent<MouseEvent>) => void;
   width: number;
   depth: number;
 }) {
-  const h = 1.1;
-  const segments: [number, number, number][] = [
-    [0, h / 2, depth / 2],
-    [0, h / 2, -depth / 2],
-  ];
+  const color = effectiveColor(node, colorOverrides);
+  const h = FENCE_HEIGHT_M;
+  const long = useSurfaceTexture(textureOf(node), color, width, h);
+  const short = useSurfaceTexture(textureOf(node), color, depth, h);
+
   return (
     <group>
-      {segments.map((pos, i) => (
-        <mesh key={`h-${i}`} position={pos} onClick={onClick}>
-          <boxGeometry args={[width, h, 0.06]} />
-          <meshStandardMaterial color={node.colorHex} roughness={0.9} />
-          <Edges color={selected ? "#f4e4c2" : "#2a2620"} />
+      {[depth / 2, -depth / 2].map((z, i) => (
+        <mesh key={`h-${i}`} position={[0, h / 2 - 0.5, z]} onClick={onClick}>
+          <boxGeometry args={[width, h, 0.08]} />
+          <meshStandardMaterial map={long} roughness={0.9} />
+          {selected && <SelectionEdges size={[width, h, 0.08]} />}
         </mesh>
       ))}
       {[width / 2, -width / 2].map((x, i) => (
-        <mesh key={`v-${i}`} position={[x, h / 2, 0]} onClick={onClick}>
-          <boxGeometry args={[0.06, h, depth]} />
-          <meshStandardMaterial color={node.colorHex} roughness={0.9} />
-          <Edges color={selected ? "#f4e4c2" : "#2a2620"} />
+        <mesh key={`v-${i}`} position={[x, h / 2 - 0.5, 0]} onClick={onClick}>
+          <boxGeometry args={[0.08, h, depth]} />
+          <meshStandardMaterial map={short} roughness={0.9} />
+          {selected && <SelectionEdges size={[0.08, h, depth]} />}
         </mesh>
       ))}
     </group>
   );
 }
+

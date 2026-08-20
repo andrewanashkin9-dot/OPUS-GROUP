@@ -2,7 +2,15 @@ import { useEffect, useMemo } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { getModel3DProvider } from "./3d";
-import type { BomLine, NodeKind, SceneModel, Tier } from "./3d/types";
+import { withRecalculatedQuantities } from "./3d/metrics";
+import type {
+  BomLine,
+  NodeKind,
+  RoofShape,
+  SceneModel,
+  SceneNode,
+  Tier,
+} from "./3d/types";
 
 interface AppState {
   tier: Tier;
@@ -13,14 +21,48 @@ interface AppState {
   activeEducationCardId: string | null;
   dismissedEducationCardIds: string[];
   quantityOverrides: Record<string, number>;
+  /** Per-node colour picked by the user, overriding the material's default. */
+  colorOverrides: Record<string, string>;
 
   setTier: (tier: Tier) => void;
   generateFromPhotos: (photos: File[]) => Promise<void>;
   selectNode: (nodeId: string | null) => void;
   applyMaterial: (nodeId: string, materialId: string) => Promise<void>;
+  setColor: (nodeId: string, hex: string) => void;
+  setRoofShape: (shape: RoofShape) => void;
+  setRoofPitch: (pitchDeg: number) => void;
   showEducationCard: (cardId: string) => void;
   dismissEducationCard: (cardId: string) => void;
   setQuantity: (nodeId: string, quantity: number) => void;
+}
+
+/**
+ * Roof edits change how much roof there is, so the geometry-derived
+ * quantities are recomputed and the provider is re-seeded in the same step —
+ * otherwise the estimate would keep quoting the previous roof.
+ */
+function updateRoof(
+  mutate: (roof: NonNullable<SceneNode["roof"]>) => NonNullable<SceneNode["roof"]>,
+) {
+  return (state: AppState): Partial<AppState> => {
+    if (!state.model) return {};
+    const next = withRecalculatedQuantities({
+      ...state.model,
+      nodes: state.model.nodes.map((node) =>
+        node.roof ? { ...node, roof: mutate(node.roof) } : node,
+      ),
+    });
+    getModel3DProvider().adoptModel?.(next);
+    return { model: next };
+  };
+}
+
+/** The colour actually rendered: the user's pick, else the material default. */
+export function effectiveColor(
+  node: SceneNode,
+  overrides: Record<string, string>,
+): string {
+  return overrides[node.id] ?? node.colorHex;
 }
 
 export const useAppStore = create<AppState>()(
@@ -34,6 +76,7 @@ export const useAppStore = create<AppState>()(
       activeEducationCardId: null,
       dismissedEducationCardIds: [],
       quantityOverrides: {},
+      colorOverrides: {},
 
       setTier: (tier) => set({ tier }),
 
@@ -71,6 +114,21 @@ export const useAppStore = create<AppState>()(
         }
       },
 
+      setColor: (nodeId, hex) =>
+        set((state) => ({
+          colorOverrides: { ...state.colorOverrides, [nodeId]: hex },
+        })),
+
+      setRoofShape: (shape) => set(updateRoof((roof) => ({ ...roof, shape }))),
+
+      setRoofPitch: (pitchDeg) =>
+        set(
+          updateRoof((roof) => ({
+            ...roof,
+            pitchDeg: Math.min(60, Math.max(5, Math.round(pitchDeg))),
+          })),
+        ),
+
       showEducationCard: (cardId) => {
         if (get().dismissedEducationCardIds.includes(cardId)) return;
         set({ activeEducationCardId: cardId });
@@ -106,6 +164,7 @@ export const useAppStore = create<AppState>()(
         status: state.status,
         selectedNodeId: state.selectedNodeId,
         quantityOverrides: state.quantityOverrides,
+        colorOverrides: state.colorOverrides,
         dismissedEducationCardIds: state.dismissedEducationCardIds,
       }),
       onRehydrateStorage: () => (state) => {
@@ -178,5 +237,7 @@ export function nodeKindLabel(kind: NodeKind): string {
       return "Фундамент";
     case "window":
       return "Окна";
+    case "door":
+      return "Дверь";
   }
 }

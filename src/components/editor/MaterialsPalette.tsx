@@ -6,7 +6,8 @@ import { educationCardForKind } from "@/lib/3d/education";
 import { materialsForKind } from "@/lib/3d/materials";
 import type { SceneNode } from "@/lib/3d/types";
 import { formatRub, formatUnit } from "@/lib/format";
-import { useAppStore } from "@/lib/store";
+import { effectiveColor, useAppStore } from "@/lib/store";
+import { TextureSwatch } from "./TextureSwatch";
 
 interface MaterialsPaletteProps {
   node: SceneNode;
@@ -18,7 +19,10 @@ export function MaterialsPalette({ node, compact = false }: MaterialsPaletteProp
   const applyMaterial = useAppStore((s) => s.applyMaterial);
   const showEducationCard = useAppStore((s) => s.showEducationCard);
   const error = useAppStore((s) => s.error);
+  const colorOverrides = useAppStore((s) => s.colorOverrides);
   const [lockedAttemptId, setLockedAttemptId] = useState<string | null>(null);
+  // Swatches preview each texture in the colour the surface is wearing now.
+  const previewColor = effectiveColor(node, colorOverrides);
 
   const options = materialsForKind(node.kind);
 
@@ -51,10 +55,10 @@ export function MaterialsPalette({ node, compact = false }: MaterialsPaletteProp
                   : "border-line hover:border-cream-dim"
               } ${locked ? "opacity-70" : ""}`}
             >
-              <span
-                className="h-8 w-8 rounded-full border border-line"
-                style={{ background: material.colorHex }}
-                aria-hidden="true"
+              <TextureSwatch
+                textureId={material.textureId}
+                color={previewColor}
+                size={compact ? 34 : 40}
               />
               {!compact && (
                 <>

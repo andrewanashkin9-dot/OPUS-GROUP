@@ -8,6 +8,7 @@ import { HouseScene } from "./HouseScene";
 interface EditorCanvasProps {
   model: SceneModel;
   selectedNodeId: string | null;
+  colorOverrides: Record<string, string>;
   onSelect: (nodeId: string) => void;
   interactive: boolean;
 }
@@ -15,12 +16,14 @@ interface EditorCanvasProps {
 export function EditorCanvas({
   model,
   selectedNodeId,
+  colorOverrides,
   onSelect,
   interactive,
 }: EditorCanvasProps) {
-  const wallHeight = model.dimensions.heightM * 0.62;
-  const target: [number, number, number] = [0, wallHeight * 0.3, 0];
-  const span = Math.max(model.dimensions.widthM, model.dimensions.depthM);
+  const { widthM, depthM, heightM } = model.dimensions;
+  // Frame the whole house including the roof, not just the walls.
+  const target: [number, number, number] = [0, heightM * 0.55, 0];
+  const span = Math.max(widthM, depthM);
 
   return (
     <Canvas
@@ -29,24 +32,29 @@ export function EditorCanvas({
       className="!touch-none"
     >
       <color attach="background" args={["#000000"]} />
-      <ambientLight intensity={0.65} />
-      <directionalLight position={[6, 10, 4]} intensity={0.9} />
-      <directionalLight position={[-6, 4, -4]} intensity={0.3} />
+      <ambientLight intensity={0.75} />
+      <directionalLight position={[12, 18, 10]} intensity={1.1} />
+      <directionalLight position={[-10, 8, -8]} intensity={0.35} />
       <Grid
         infiniteGrid
         cellColor="#2a2620"
         sectionColor="#2a2620"
-        fadeDistance={28}
+        fadeDistance={70}
         fadeStrength={2}
-        position={[0, -0.4, 0]}
+        position={[0, -0.52, 0]}
       />
-      <HouseScene model={model} selectedNodeId={selectedNodeId} onSelect={onSelect} />
+      <HouseScene
+        model={model}
+        selectedNodeId={selectedNodeId}
+        colorOverrides={colorOverrides}
+        onSelect={onSelect}
+      />
       <OrbitControls
         enablePan={false}
         enableRotate={interactive}
         target={target}
         minDistance={span * 1.1}
-        maxDistance={span * 3.5}
+        maxDistance={span * 4}
         maxPolarAngle={Math.PI / 2.1}
       />
     </Canvas>

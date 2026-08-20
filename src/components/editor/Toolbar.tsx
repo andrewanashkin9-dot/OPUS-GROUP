@@ -3,7 +3,14 @@
 import type { NodeKind, SceneModel } from "@/lib/3d/types";
 import { nodeKindLabel } from "@/lib/store";
 
-const KIND_ORDER: NodeKind[] = ["roof", "facade", "fence", "foundation", "window"];
+const KIND_ORDER: NodeKind[] = [
+  "roof",
+  "facade",
+  "window",
+  "door",
+  "fence",
+  "foundation",
+];
 
 interface ToolbarProps {
   model: SceneModel;

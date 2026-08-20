@@ -113,7 +113,53 @@ orchestrated motion moment in the app; every other transition is a plain
 for the final wireframe rotation, gated behind a reduced-motion check that
 swaps it for a static three-frame illustration.
 
-## 5. Implementation notes
+## 5. The house model
+
+The demo house is 9.5 × 8.2 m with 6 m walls (two storeys).
+
+**The roof always overhangs the walls.** `MIN_ROOF_OVERHANG_M = 1` metre on
+every side, so the roof footprint is 11.5 × 10.2 m. A facade that projects
+past its eaves is the fastest way for the model to read as fake to anyone
+who has built a house, and real eaves exist to throw rainwater clear of the
+wall. Four roof forms are built from this rule in
+`src/lib/3d/roof-geometry.ts`:
+
+| Form | Notes |
+|---|---|
+| Двускатная (gable) | Ridge along the long axis; end walls close the ends |
+| Вальмовая (hip) | Ridge inset by the short half-span, so hips run at 45° |
+| Мансардная (mansard) | Steep lower pitch breaking to a shallow upper one |
+| Плоская (flat) | Slab with the same overhang |
+
+Ridged roofs are **open shells**, not solid prisms — a solid would occupy
+the same space as the gable wall and the two would z-fight along every
+slope. The gable wall is built from the roof's own underside curve
+(`roofUndersideAt`) so it meets the roof exactly, held 5 cm clear to avoid
+coplanar flicker. It cannot use the wall's own pitch: the roof starts
+sloping out at the overhanging eaves, so by the time it crosses the wall it
+is already higher.
+
+Areas are derived from this geometry in `src/lib/3d/metrics.ts` and feed the
+estimate directly, so changing the roof form changes the price
+(gable/hip 138.3 m², mansard 172.9 m², flat 117.3 m²). Every plane of a
+pitched roof sits at the same angle, so the surface is the footprint over
+the cosine of the pitch — exact for gable and hip alike.
+
+**Openings.** Nine windows and a front door, positioned in metres on named
+facades (`Opening[]`). Window areas are deducted from the facade quantities,
+so the estimate never charges for cladding behind glass.
+
+**Textures** are drawn procedurally onto a canvas
+(`src/lib/3d/textures.ts`) rather than shipped as images: every pattern has
+to re-tint whenever the user picks a colour, and a bitmap per
+colour-per-material would be hundreds of assets. Colour and texture compose
+freely, and each pattern declares the real-world size of one tile so brick
+courses stay brick-sized on a 9 m wall and on a 2 m one.
+
+**Tier split** follows the brief: colour and roof form are free (Duplo);
+exact pitch, and the premium brick/tile/facade materials, are Technic.
+
+## 6. Implementation notes
 
 - Fonts: Unbounded 500/800 and Manrope 400/500/700, Cyrillic + Latin
   subsets, self-hosted as `.woff2` under `public/fonts/`, declared in

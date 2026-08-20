@@ -1,35 +1,78 @@
 import { materialById, materialsForKind } from "./materials";
+import {
+  facadeAreaM2,
+  fenceLengthM,
+  foundationAreaM2,
+  roofAreaM2,
+  withRecalculatedQuantities,
+} from "./metrics";
 import type { Model3DProvider } from "./provider";
-import type { BomLine, SceneModel } from "./types";
+import type { BomLine, Opening, SceneModel } from "./types";
+import { MIN_ROOF_OVERHANG_M } from "./types";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const DIMENSIONS = { widthM: 9.5, depthM: 8.2, heightM: 6 };
+
+const WINDOW_W = 1.2;
+const WINDOW_H = 1.5;
+const GROUND_SILL = 0.9;
+const UPPER_SILL = 3.6;
+
+/**
+ * Nine windows and a front door, laid out the way a two-storey house
+ * actually reads: paired ground-floor windows either side of the entrance,
+ * a rhythm of three above it, and single openings on the flanks.
+ */
+const OPENINGS: Opening[] = [
+  { id: "op-door", kind: "door", facade: "front", offsetM: 0, sillM: 0, widthM: 1.1, heightM: 2.1 },
+
+  { id: "op-w-f1", kind: "window", facade: "front", offsetM: -2.6, sillM: GROUND_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
+  { id: "op-w-f2", kind: "window", facade: "front", offsetM: 2.6, sillM: GROUND_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
+  { id: "op-w-f3", kind: "window", facade: "front", offsetM: -2.6, sillM: UPPER_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
+  { id: "op-w-f4", kind: "window", facade: "front", offsetM: 0, sillM: UPPER_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
+  { id: "op-w-f5", kind: "window", facade: "front", offsetM: 2.6, sillM: UPPER_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
+
+  { id: "op-w-b1", kind: "window", facade: "back", offsetM: 0, sillM: GROUND_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
+  { id: "op-w-b2", kind: "window", facade: "back", offsetM: 0, sillM: UPPER_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
+
+  { id: "op-w-l1", kind: "window", facade: "left", offsetM: 0, sillM: UPPER_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
+  { id: "op-w-r1", kind: "window", facade: "right", offsetM: 0, sillM: UPPER_SILL, widthM: WINDOW_W, heightM: WINDOW_H },
+];
+
 function demoHouse(photoCount: number): SceneModel {
-  return {
+  const roof = {
+    shape: "gable" as const,
+    pitchDeg: 32,
+    overhangM: MIN_ROOF_OVERHANG_M,
+  };
+
+  const model: SceneModel = {
     id: "house-demo-1",
     name: "Дом на ул. Садовая, 12",
     createdAt: new Date().toISOString(),
     sourcePhotoCount: photoCount,
-    dimensions: { widthM: 9.5, depthM: 8.2, heightM: 6.4 },
+    dimensions: DIMENSIONS,
+    openings: OPENINGS,
     nodes: [
       {
         id: "node-roof",
         label: "Крыша",
         kind: "roof",
-        materialId: "roof-metal-tile-terracotta",
-        quantity: 96,
+        materialId: "roof-metal-tile",
+        quantity: roofAreaM2(DIMENSIONS, roof),
         unit: "m2",
         colorHex: "#8A4A32",
-        roof: { shape: "gable", pitchDeg: 30 },
+        roof,
       },
       {
         id: "node-facade-front",
         label: "Фасад — главный",
         kind: "facade",
-        materialId: "facade-plaster-warm-white",
-        quantity: 62,
+        materialId: "facade-plaster",
+        quantity: facadeAreaM2(DIMENSIONS, OPENINGS, "front"),
         unit: "m2",
         colorHex: "#EDE6D6",
       },
@@ -37,8 +80,8 @@ function demoHouse(photoCount: number): SceneModel {
         id: "node-facade-back",
         label: "Фасад — задний",
         kind: "facade",
-        materialId: "facade-plaster-warm-white",
-        quantity: 58,
+        materialId: "facade-plaster",
+        quantity: facadeAreaM2(DIMENSIONS, OPENINGS, "back"),
         unit: "m2",
         colorHex: "#EDE6D6",
       },
@@ -46,8 +89,8 @@ function demoHouse(photoCount: number): SceneModel {
         id: "node-facade-left",
         label: "Фасад — левый",
         kind: "facade",
-        materialId: "facade-plaster-warm-white",
-        quantity: 44,
+        materialId: "facade-plaster",
+        quantity: facadeAreaM2(DIMENSIONS, OPENINGS, "left"),
         unit: "m2",
         colorHex: "#EDE6D6",
       },
@@ -55,8 +98,8 @@ function demoHouse(photoCount: number): SceneModel {
         id: "node-facade-right",
         label: "Фасад — правый",
         kind: "facade",
-        materialId: "facade-plaster-warm-white",
-        quantity: 44,
+        materialId: "facade-plaster",
+        quantity: facadeAreaM2(DIMENSIONS, OPENINGS, "right"),
         unit: "m2",
         colorHex: "#EDE6D6",
       },
@@ -65,7 +108,7 @@ function demoHouse(photoCount: number): SceneModel {
         label: "Фундамент",
         kind: "foundation",
         materialId: "foundation-strip",
-        quantity: 78,
+        quantity: foundationAreaM2(DIMENSIONS),
         unit: "m2",
         colorHex: "#6B6660",
       },
@@ -73,8 +116,8 @@ function demoHouse(photoCount: number): SceneModel {
         id: "node-fence",
         label: "Ограждение участка",
         kind: "fence",
-        materialId: "fence-profnastil-brown",
-        quantity: 46,
+        materialId: "fence-profnastil",
+        quantity: fenceLengthM(DIMENSIONS),
         unit: "m",
         colorHex: "#3E2A1F",
       },
@@ -82,13 +125,24 @@ function demoHouse(photoCount: number): SceneModel {
         id: "node-windows",
         label: "Окна",
         kind: "window",
-        materialId: "window-pvc-white",
-        quantity: 9,
+        materialId: "window-pvc",
+        quantity: OPENINGS.filter((o) => o.kind === "window").length,
         unit: "pcs",
         colorHex: "#F2EFE8",
       },
+      {
+        id: "node-door",
+        label: "Входная дверь",
+        kind: "door",
+        materialId: "door-steel",
+        quantity: OPENINGS.filter((o) => o.kind === "door").length,
+        unit: "pcs",
+        colorHex: "#2B2B2B",
+      },
     ],
   };
+
+  return withRecalculatedQuantities(model);
 }
 
 /**

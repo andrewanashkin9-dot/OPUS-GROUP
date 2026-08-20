@@ -107,6 +107,10 @@ export class MockModel3DProvider implements Model3DProvider {
     return model;
   }
 
+  adoptModel(model: SceneModel): void {
+    this.currentModel = model;
+  }
+
   async applyMaterial(nodeId: string, materialId: string): Promise<SceneModel> {
     await delay(350);
     if (!this.currentModel) {

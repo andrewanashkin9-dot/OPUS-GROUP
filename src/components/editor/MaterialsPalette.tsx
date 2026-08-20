@@ -17,6 +17,7 @@ export function MaterialsPalette({ node, compact = false }: MaterialsPaletteProp
   const tier = useAppStore((s) => s.tier);
   const applyMaterial = useAppStore((s) => s.applyMaterial);
   const showEducationCard = useAppStore((s) => s.showEducationCard);
+  const error = useAppStore((s) => s.error);
   const [lockedAttemptId, setLockedAttemptId] = useState<string | null>(null);
 
   const options = materialsForKind(node.kind);
@@ -74,6 +75,12 @@ export function MaterialsPalette({ node, compact = false }: MaterialsPaletteProp
           );
         })}
       </div>
+
+      {error && (
+        <p className="mt-4 text-body-s text-error" role="alert">
+          {error} Попробуйте выбрать материал ещё раз.
+        </p>
+      )}
 
       {lockedAttemptId && (
         <div className="mt-4 rounded-xl border border-line bg-bg p-4">

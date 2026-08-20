@@ -15,4 +15,11 @@ export interface Model3DProvider {
   generateFromPhotos(photos: File[]): Promise<SceneModel>;
   applyMaterial(nodeId: string, materialId: string): Promise<SceneModel>;
   getBillOfMaterials(model: SceneModel): BomLine[];
+
+  /**
+   * Re-seed the provider with a model the app restored from storage after a
+   * page reload, so editing can continue without regenerating from photos.
+   * Optional: a provider that keeps no per-session state can omit it.
+   */
+  adoptModel?(model: SceneModel): void;
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { StoreHydrator } from "@/components/StoreHydrator";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -9,8 +10,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ru" className="h-full antialiased">
+    <html lang="ru" data-scroll-behavior="smooth" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-bg text-cream font-body">
+        <StoreHydrator />
         {children}
       </body>
     </html>

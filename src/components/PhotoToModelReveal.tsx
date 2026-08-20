@@ -2,8 +2,20 @@
 
 import { Canvas, useFrame } from "@react-three/fiber";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import * as THREE from "three";
+
+/** Never emits; the snapshot pair alone distinguishes server from client. */
+const noopSubscribe = () => () => {};
+
+/** False while rendering on the server and during hydration, true after. */
+function useHydrated() {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
+}
 
 const PHOTOS = [
   { id: "front", label: "Главный фасад" },
@@ -55,7 +67,9 @@ function WireHouse() {
   });
 
   return (
-    <group ref={group}>
+    // The house spans roughly y -0.7…1.65, so it is nudged down to sit
+    // centred on the camera target rather than riding high in the frame.
+    <group ref={group} position={[0, -0.45, 0]}>
       <lineSegments geometry={wallsEdges}>
         <lineBasicMaterial color="#e4d2ac" />
       </lineSegments>
@@ -100,31 +114,44 @@ function PhotosStack({ swept }: { swept: boolean }) {
   );
 }
 
+/**
+ * The motionless form of the reveal. Shown to anyone who prefers reduced
+ * motion, and — because it is also the server-rendered tree — briefly to
+ * everyone before hydration, so it has to stand on its own as a finished
+ * image rather than read as a fallback.
+ */
 function StaticReveal() {
   return (
-    <div className="grid h-full w-full grid-cols-[1fr_auto_1fr] items-center gap-4 px-4">
-      <div className="grid grid-cols-2 gap-2">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-6 p-8 sm:gap-8">
+      <div className="grid w-full max-w-xs grid-cols-2 gap-3">
         {PHOTOS.map((photo) => (
           <div
             key={photo.id}
-            className="flex h-16 items-end rounded-md border border-line bg-surface p-2"
+            className="flex aspect-[4/3] items-end rounded-lg border border-line bg-surface p-3"
           >
-            <span className="text-caption uppercase text-cream-dim">
+            <span className="text-caption uppercase leading-tight text-cream-dim">
               {photo.label}
             </span>
           </div>
         ))}
       </div>
-      <span aria-hidden="true" className="text-h2 text-cream-dim">
-        →
+
+      <span aria-hidden="true" className="text-h3 leading-none text-cream-dim">
+        ↓
       </span>
-      <svg viewBox="0 0 120 100" className="h-24 w-full text-cream" aria-hidden="true">
-        <g fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M20 30 60 8 100 30" />
-          <path d="M20 30v40h80V30" />
-          <path d="M20 30 100 30" />
-          <path d="M20 70h80" />
-          <path d="M45 70V50h20v20" />
+
+      <svg
+        viewBox="0 0 120 80"
+        className="w-full max-w-[15rem] text-cream"
+        aria-hidden="true"
+      >
+        <g fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round">
+          <path d="M14 30 60 6 106 30" />
+          <path d="M22 30v44h76V30" />
+          <path d="M22 30h76" />
+          <path d="M22 74h76" />
+          <path d="M52 74V54h16v20" />
+          <path d="M33 42h12v12H33zM75 42h12v12H75z" />
         </g>
       </svg>
     </div>
@@ -133,7 +160,16 @@ function StaticReveal() {
 
 export function PhotoToModelReveal() {
   const reducedMotion = useReducedMotion();
-  const phase = useRevealCycle(!!reducedMotion);
+  // `useReducedMotion` can only read the media query in the browser, so the
+  // server and the first client render must agree on something else. The
+  // static reveal is that shared starting point: it is the accessible,
+  // no-JS-safe default, and we upgrade to the animated version only once
+  // mounted and only when motion is welcome. Rendering the animation first
+  // would both break hydration and flash motion at reduced-motion users.
+  const hydrated = useHydrated();
+
+  const animated = hydrated && !reducedMotion;
+  const phase = useRevealCycle(!animated);
 
   return (
     <div
@@ -146,7 +182,7 @@ export function PhotoToModelReveal() {
         backgroundSize: "28px 28px",
       }}
     >
-      {reducedMotion ? (
+      {!animated ? (
         <StaticReveal />
       ) : (
         <AnimatePresence mode="wait">
@@ -159,7 +195,7 @@ export function PhotoToModelReveal() {
               transition={{ duration: 0.5 }}
               className="h-full w-full"
             >
-              <Canvas camera={{ position: [3.2, 2.2, 3.2], fov: 40 }}>
+              <Canvas camera={{ position: [4.6, 3.1, 4.6], fov: 34 }}>
                 <WireHouse />
               </Canvas>
             </motion.div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Footer } from "@/components/Footer";
 import { NavBar } from "@/components/NavBar";
+import { StageApproach } from "@/components/stage/StageApproach";
 import { ButtonLink } from "@/components/Button";
 import { formatRub, formatUnit } from "@/lib/format";
 import { useAppStore, useBom, useCartTotal } from "@/lib/store";
@@ -18,6 +19,7 @@ export default function CartPage() {
 
   return (
     <>
+      <StageApproach stage="estimate" />
       <NavBar />
       <main className="mx-auto min-h-[60vh] max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
         <h1 className="font-display text-h1 font-extrabold text-cream-bright">Смета</h1>

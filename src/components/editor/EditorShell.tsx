@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { StageApproach } from "@/components/stage/StageApproach";
 import { useAppStore } from "@/lib/store";
 import { BomPanel } from "./BomPanel";
 import { ColorPicker } from "./ColorPicker";
@@ -28,6 +29,7 @@ export function EditorShell() {
 
   return (
     <div className="flex h-[100dvh] flex-col">
+      <StageApproach stage="design" />
       <TopBar />
       <div className="relative flex min-h-0 flex-1">
         <div className="relative min-w-0 flex-1">

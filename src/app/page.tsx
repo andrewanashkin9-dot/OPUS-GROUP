@@ -90,11 +90,11 @@ export default function Home() {
                   Начать бесплатно
                 </ButtonLink>
               </div>
-              <div className="rounded-2xl border border-cream-dim bg-surface p-8">
+              <div className="ingot-edge rounded-2xl border bg-surface p-8">
                 <span className="text-caption font-medium uppercase text-cream-bright">
                   Подписка
                 </span>
-                <p className="font-display mt-2 text-h1 font-extrabold text-cream-bright">
+                <p className="font-display ingot-text mt-2 text-h1 font-extrabold">
                   700 ₽<span className="text-body-l text-cream-dim"> / мес.</span>
                 </p>
                 <p className="mt-3 text-body-s text-cream-dim">
@@ -107,7 +107,7 @@ export default function Home() {
                   <FeatureRow>Расширенная библиотека материалов</FeatureRow>
                   <FeatureRow>Приоритетные заявки бригадам</FeatureRow>
                 </ul>
-                <ButtonLink href="/editor" className="mt-8 w-full">
+                <ButtonLink href="/editor" variant="ingot" className="mt-8 w-full">
                   Оформить подписку
                 </ButtonLink>
               </div>

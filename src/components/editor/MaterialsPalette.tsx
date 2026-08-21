@@ -71,7 +71,7 @@ export function MaterialsPalette({ node, compact = false }: MaterialsPaletteProp
                 </>
               )}
               {locked && (
-                <span className="absolute right-2 top-2 rounded-full border border-line bg-bg px-2 py-0.5 text-caption font-medium uppercase text-cream-dim">
+                <span className="ingot absolute right-2 top-2 rounded-full px-2 py-0.5 text-caption font-bold uppercase">
                   Technic
                 </span>
               )}
@@ -94,7 +94,7 @@ export function MaterialsPalette({ node, compact = false }: MaterialsPaletteProp
           </p>
           <Link
             href="/#pricing"
-            className="mt-3 inline-flex items-center text-body-s font-bold text-cream-bright underline underline-offset-2"
+            className="ingot mt-3 inline-flex items-center rounded-full px-4 py-2 text-body-s font-bold"
           >
             Оформить подписку за 700 ₽/мес
           </Link>

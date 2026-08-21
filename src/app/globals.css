@@ -106,6 +106,171 @@ h3,
 }
 
 /* ---------------------------------------------------------------------------
+   Stage approach.
+
+   Moving to a new stage travels to the object on the table that stage happens
+   on: the drawing under a pencil and rule, then the phone the order continues
+   on, then the notebook inside it. The object rushes toward the viewer and
+   passes the camera, which reads as arriving rather than as a slide change.
+--------------------------------------------------------------------------- */
+
+@keyframes stage-scrim {
+  0% {
+    opacity: 0;
+  }
+  16% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes stage-approach {
+  0% {
+    transform: scale(0.52) translate3d(0, 3%, 0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.15) translate3d(0, -2%, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes stage-caption {
+  0%,
+  12% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  34%,
+  68% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+/* Entries land one after another, as if being written down the page. */
+@keyframes stage-entry {
+  from {
+    opacity: 0;
+    transform: translate3d(-6px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Reduced motion skips the journey entirely and lands on the content. Doing
+   this in CSS rather than in a render branch keeps the server and the client
+   agreeing on the markup. */
+@media (prefers-reduced-motion: reduce) {
+  .stage-approach {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Subscription surface — "ingot".
+
+   The paid tier is the one place the interface is allowed to look precious.
+   Rather than a third brand colour, it stays inside the cream family and
+   borrows the *behaviour* of metal: a dark-to-light-to-dark ramp across the
+   face, a narrow specular band, and a bevel. Cream already sits where gold
+   does in hue, so a metal ramp built from the existing tokens reads as a
+   bar of bullion rather than as a new palette.
+--------------------------------------------------------------------------- */
+
+.ingot {
+  /* The darkest stop is --cream-dim rather than anything deeper: black label
+     text rides this surface, and the sheen sweeps the dark band under it. At
+     #6f6553 that moment measured 3.6:1, under the floor for small text;
+     #8a7f6a holds 5.2:1 across the whole cycle. */
+  background-image: linear-gradient(
+    100deg,
+    #8a7f6a 0%,
+    #e4d2ac 22%,
+    #fff7e6 38%,
+    #f4e4c2 50%,
+    #8a7f6a 72%,
+    #e4d2ac 88%,
+    #8a7f6a 100%
+  );
+  background-size: 260% 100%;
+  background-position: 0% 0%;
+  color: var(--bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+  animation: ingot-sheen 7s linear infinite;
+}
+
+.ingot:hover {
+  animation-duration: 2.6s;
+}
+
+@keyframes ingot-sheen {
+  to {
+    background-position: -260% 0%;
+  }
+}
+
+/* Metal as type, for figures that should read as the paid tier. */
+.ingot-text {
+  background-image: linear-gradient(
+    100deg,
+    #8a7f6a 0%,
+    #e4d2ac 20%,
+    #fff7e6 36%,
+    #f4e4c2 48%,
+    #8a7f6a 68%,
+    #e4d2ac 86%,
+    #8a7f6a 100%
+  );
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ingot-sheen 7s linear infinite;
+}
+
+/* A hairline of the same metal, for cards and badges that mark paid features. */
+.ingot-edge {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(
+        100deg,
+        #6f6553 0%,
+        #e4d2ac 22%,
+        #fff7e6 38%,
+        #f4e4c2 50%,
+        #8a7f6a 72%,
+        #e4d2ac 88%,
+        #6f6553 100%
+      )
+      border-box;
+  background-size:
+    auto,
+    260% 100%;
+  animation: ingot-sheen 7s linear infinite;
+}
+
+/* ---------------------------------------------------------------------------
    Scroll-scrubbed hero.
 
    Every motion/no-motion difference is expressed in CSS rather than in a JS

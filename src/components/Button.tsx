@@ -1,13 +1,15 @@
 import Link from "next/link";
 import type { ButtonHTMLAttributes } from "react";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "ghost" | "ingot";
 
 const variantClasses: Record<Variant, string> = {
   primary: "bg-cream text-bg hover:bg-cream-bright",
   secondary:
     "border border-line text-cream hover:border-cream-dim hover:text-cream-bright",
   ghost: "text-cream-dim hover:text-cream-bright",
+  // Paid tier. The metal is carried by the .ingot class in globals.css.
+  ingot: "ingot font-bold",
 };
 
 const base =

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Footer } from "@/components/Footer";
 import { NavBar } from "@/components/NavBar";
+import { StageApproach } from "@/components/stage/StageApproach";
 import { CREWS } from "@/lib/crews";
 import { nodeKindLabel, useAppStore } from "@/lib/store";
 import type { NodeKind } from "@/lib/3d/types";
@@ -27,6 +28,7 @@ export default function ServicesPage() {
 
   return (
     <>
+      <StageApproach stage="services" />
       <NavBar />
       <main className="mx-auto min-h-[60vh] max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
         <h1 className="font-display text-h1 font-extrabold text-cream-bright">

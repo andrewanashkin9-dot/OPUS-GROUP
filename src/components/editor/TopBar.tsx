@@ -37,13 +37,19 @@ export function TopBar() {
         <button
           type="button"
           onClick={() => setTier(tier === "free" ? "pro" : "free")}
-          className="hidden items-center gap-2 rounded-full border border-line px-3 py-1.5 text-caption font-medium uppercase text-cream-dim transition-colors hover:border-cream-dim sm:inline-flex"
+          className={
+            tier === "pro"
+              ? "ingot hidden items-center gap-2 rounded-full px-3 py-1.5 text-caption font-bold uppercase sm:inline-flex"
+              : "hidden items-center gap-2 rounded-full border border-line px-3 py-1.5 text-caption font-medium uppercase text-cream-dim transition-colors hover:border-cream-dim sm:inline-flex"
+          }
         >
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ background: tier === "pro" ? "var(--success)" : "var(--cream-dim)" }}
-            aria-hidden="true"
-          />
+          {tier === "free" && (
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ background: "var(--cream-dim)" }}
+              aria-hidden="true"
+            />
+          )}
           {tier === "pro" ? "Подписка активна" : "Тариф: Бесплатно"}
         </button>
         <div className="text-right">

@@ -15,6 +15,7 @@ import type { SceneModel } from "@/lib/3d/types";
  */
 export function CameraRig({ model }: { model: SceneModel }) {
   const camera = useThree((s) => s.camera);
+  const invalidate = useThree((s) => s.invalidate);
   const controls = useThree((s) => s.controls) as
     | { target: { set: (x: number, y: number, z: number) => void }; update: () => void }
     | null;
@@ -29,16 +30,19 @@ export function CameraRig({ model }: { model: SceneModel }) {
 
   useEffect(() => {
     const span = Math.max(widthM, depthM, totalHeight);
-    const distance = span * 1.55;
+    const distance = span * 1.72;
     camera.position.set(distance, totalHeight * 0.6 + distance * 0.42, distance);
     camera.updateProjectionMatrix();
     if (controls) {
       controls.target.set(0, totalHeight * 0.42, 0);
       controls.update();
     }
+    // On-demand rendering: moving the camera imperatively has to request the
+    // frame that shows it.
+    invalidate();
     // Only height drives re-framing; see the note above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalHeight, camera, controls]);
+  }, [totalHeight, camera, controls, invalidate]);
 
   return null;
 }

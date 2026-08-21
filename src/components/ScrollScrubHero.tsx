@@ -116,8 +116,12 @@ export function ScrollScrubHero() {
   }, []);
 
   return (
-    <section ref={trackRef} className="hero-track relative">
-      <div className="sticky top-0 h-svh w-full overflow-hidden bg-bg">
+    // Pulled up under the sticky nav so the pinned frame is exactly one
+    // viewport tall. Left in normal flow it starts below the nav, and its
+    // bottom band — where the scroll hint lives — hangs off the fold at rest,
+    // hiding the hint at the only moment it is meant to be visible.
+    <section ref={trackRef} className="hero-track relative -mt-16">
+      <div className="sticky top-0 z-0 h-svh w-full overflow-hidden bg-bg">
         <video
           ref={videoRef}
           className="hero-video absolute inset-0 h-full w-full object-cover"
@@ -155,7 +159,10 @@ export function ScrollScrubHero() {
             ref={contentRef}
             className="hero-content mx-auto max-w-4xl px-4 text-center will-change-[opacity,transform]"
           >
-            <p className="text-caption font-medium uppercase text-cream-dim">
+            {/* Full cream, not the dim tone used elsewhere: the scrim is
+                thinnest at this height, and dim cream over the blueprint
+                falls to roughly 3.4:1 — under the floor for small text. */}
+            <p className="text-caption font-medium uppercase text-cream">
               Фото → 3D-модель → смета → бригада
             </p>
             <h1 className="font-display mt-4 text-display font-extrabold tracking-tight text-cream-bright">

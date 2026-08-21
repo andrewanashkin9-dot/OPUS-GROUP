@@ -1,6 +1,6 @@
 import { Footer } from "@/components/Footer";
 import { NavBar } from "@/components/NavBar";
-import { PhotoToModelReveal } from "@/components/PhotoToModelReveal";
+import { ScrollScrubHero } from "@/components/ScrollScrubHero";
 import { ButtonLink } from "@/components/Button";
 
 const STEPS = [
@@ -37,32 +37,7 @@ export default function Home() {
     <>
       <NavBar />
       <main>
-        {/* Hero */}
-        <section className="mx-auto max-w-7xl px-4 pb-20 pt-16 sm:px-6 lg:px-8 lg:pb-28 lg:pt-24">
-          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-            <div>
-              <p className="text-caption font-medium uppercase text-cream-dim">
-                Фото → 3D-модель → смета → бригада
-              </p>
-              <h1 className="font-display mt-4 text-display font-extrabold tracking-tight text-cream-bright">
-                Ваш дом в 3D — из четырёх фотографий
-              </h1>
-              <p className="prose-measure mt-6 text-body-l text-cream-dim">
-                Загрузите фото дома, участка или комнаты — и настройте крышу,
-                фасад и забор прямо в модели. Материалы и стоимость
-                считаются сами, а бригаду для монтажа можно найти не выходя
-                с сайта.
-              </p>
-              <div className="mt-10 flex flex-wrap gap-4">
-                <ButtonLink href="/editor">Загрузить фото дома</ButtonLink>
-                <ButtonLink href="/#how-it-works" variant="secondary">
-                  Как это работает
-                </ButtonLink>
-              </div>
-            </div>
-            <PhotoToModelReveal />
-          </div>
-        </section>
+        <ScrollScrubHero />
 
         {/* 4-step flow */}
         <section id="how-it-works" className="border-t border-line">

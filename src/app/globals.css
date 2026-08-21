@@ -104,3 +104,71 @@ h3,
   outline: 2px solid var(--cream-bright);
   outline-offset: 2px;
 }
+
+/* ---------------------------------------------------------------------------
+   Scroll-scrubbed hero.
+
+   Every motion/no-motion difference is expressed in CSS rather than in a JS
+   render branch. `prefers-reduced-motion` can only be read in the browser, so
+   branching on it during render makes the server and the client disagree and
+   breaks hydration. CSS applies identically to both, which also means the
+   track never changes height after mount — no layout shift either way.
+--------------------------------------------------------------------------- */
+
+.hero-track {
+  /* Scroll distance the camera move is spread across. */
+  height: 300svh;
+}
+
+/* The wide 16:9 shot loses its subject on a phone, and a long track would eat
+   most of a phone's scroll before any content appears. */
+@media (max-width: 767px) {
+  .hero-track {
+    height: 200svh;
+  }
+}
+
+/* No scrub, no track: the hero collapses to a single screen already arrived. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-track {
+    height: 100svh;
+  }
+}
+
+/* The still is the reduced-motion presentation; the video is everyone else's. */
+.hero-still {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-video {
+    display: none;
+  }
+  .hero-still {
+    display: block;
+  }
+}
+
+/* Headline and CTA fade in over the last stretch of the scrub, so JS starts
+   them hidden. With reduced motion there is nothing to wait for — they are
+   visible from the first paint, with no flash of hidden content either way. */
+@media not (prefers-reduced-motion: reduce) {
+  .hero-content {
+    opacity: 0;
+  }
+  .hero-hint {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-hint {
+    display: none;
+  }
+}
+
+
+:focus-visible {
+  outline: 2px solid var(--cream-bright);
+  outline-offset: 2px;
+}

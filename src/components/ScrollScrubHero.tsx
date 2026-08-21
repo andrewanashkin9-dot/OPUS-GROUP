@@ -28,8 +28,12 @@ import { ButtonLink } from "./Button";
 
 const VIDEO_SRC = "/assets/hero-zoom.mp4";
 
-/** Source frame rate. Seeks are snapped to this grid. */
-const FPS = 30;
+/**
+ * Source frame rate. Seeks are snapped to this grid, so it must match the
+ * asset: the clip is 60fps, and snapping to 30 would throw away half the
+ * frames the file carries.
+ */
+const FPS = 60;
 
 /** Fraction of the scrub reserved for the headline to arrive. */
 const CONTENT_FADE_START = 0.8;

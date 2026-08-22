@@ -1,16 +1,20 @@
-import { MockModel3DProvider } from "./mock-provider";
+import { Neural4DModel3DProvider } from "./neural4d-provider";
 import type { Model3DProvider } from "./provider";
 
 let provider: Model3DProvider | null = null;
 
 /**
- * Single factory seam for the vendor swap: once Neural4D's API is live,
- * add a `Neural4DModel3DProvider` next to the mock and return it here
- * (e.g. behind an env flag). No other file needs to change.
+ * Единственная точка выбора провайдера.
+ *
+ * Приложение всегда работает через Neural4DModel3DProvider, который ходит в
+ * наш собственный backend-маршрут. Пока ключ не вписан, маршрут отвечает
+ * "not_configured", и провайдер сам продолжает на демо-модели — поэтому здесь
+ * нет ни флага окружения, ни публичной переменной, по которой можно было бы
+ * догадаться о состоянии ключа.
  */
 export function getModel3DProvider(): Model3DProvider {
   if (!provider) {
-    provider = new MockModel3DProvider();
+    provider = new Neural4DModel3DProvider();
   }
   return provider;
 }

@@ -46,11 +46,39 @@ npm run build   # production build
 npm run lint    # eslint
 ```
 
+## Где вписать ключ Neural4D
+
+**Локально:** в файле `.env` в корне проекта, строка `NEURAL4D_API_KEY=` —
+впишите значение сразу после `=`, без кавычек и пробелов. Файл в git не
+попадает. После правки перезапустите dev-сервер: `.env` читается при старте.
+
+**На Vercel:** Settings → Environment Variables → `NEURAL4D_API_KEY`.
+Никакого префикса `NEXT_PUBLIC_` — с ним Next подставит значение в
+браузерный бандл, и ключ увидит любой посетитель.
+
+Пока ключ пуст, `/api/neural4d/generate` отвечает `{ configured: false }`, и
+приложение работает на демо-модели — то есть пустой `.env` ничего не ломает.
+
+### Как устроена защита
+
+- `NEURAL4D_API_KEY` читает единственный модуль — `src/lib/server/neural4d-config.ts`.
+  Он импортирует `server-only`, поэтому сборка **падает**, если его случайно
+  импортировать из клиентского компонента.
+- Браузер никогда не обращается к вендору. Фотографии уходят на наш маршрут
+  `POST /api/neural4d/generate`, и ключ добавляется там, на сервере.
+- Ключ не логируется. В лог пишется только статус ответа вендора; наружу
+  уходит обобщённое сообщение, а не тело чужого ответа.
+- Адрес вендора задаётся только через окружение и никогда клиентом — иначе
+  маршрут стал бы открытым прокси (SSRF).
+
+Проверено «канарейкой»: со подставленным тестовым значением сборка не
+содержит его ни в одном файле `.next/static`, а ответы и логи чисты.
+
 ## Deploying to Vercel (free Hobby tier)
 
-Nothing needs configuring: every route prerenders as static, there are no
-server functions, and no environment variables are required while the 3D
-provider is the mock. `npm ci && npm run build` is verified green against
+Pages prerender as static; the one server function is the Neural4D proxy at
+`/api/neural4d/generate`. No environment variables are required to deploy —
+without a key the app runs on the demo model. `npm ci && npm run build` is verified green against
 the committed lockfile, which is exactly what Vercel runs.
 
 **Through the dashboard (easiest):**
@@ -75,7 +103,4 @@ vercel login
 vercel --prod
 ```
 
-**When the real Neural4D API replaces the mock**, add its key in Vercel
-under Settings → Environment Variables and read it only from server-side
-code (a route handler or server action). It must never reach the browser
-bundle — do not prefix it with `NEXT_PUBLIC_`.
+For the API key, see **Где вписать ключ Neural4D** above.

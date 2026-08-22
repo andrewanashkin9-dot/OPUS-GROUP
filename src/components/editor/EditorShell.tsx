@@ -31,6 +31,19 @@ export function EditorShell() {
     <div className="flex h-[100dvh] flex-col">
       <StageApproach stage="design" />
       <TopBar />
+      {/* Образец показывается, только если ключ вендора не задан. Без явной
+          пометки человек, загрузивший свои фото, принял бы типовой дом за
+          свой и заказал по нему смету. */}
+      {model.source === "demo" && (
+        <div
+          role="status"
+          className="flex shrink-0 items-center justify-center gap-2 border-b border-line px-4 py-2 text-center text-body-s"
+          style={{ background: "rgba(194,160,90,0.12)", color: "var(--warning)" }}
+        >
+          <span aria-hidden="true">▲</span>
+          Это образец, а не ваш дом: сервис 3D-реконструкции ещё не подключён.
+        </div>
+      )}
       <div className="relative flex min-h-0 flex-1">
         <div className="relative min-w-0 flex-1">
           <EditorCanvas

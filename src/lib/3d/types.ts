@@ -72,10 +72,21 @@ export interface SceneNode {
   roof?: RoofGeometry;
 }
 
+/**
+ * Откуда взялась модель.
+ *
+ * "photos" — реконструкция дома пользователя. "demo" — образец, который
+ * показывается только когда ключ вендора не задан. Различать обязательно:
+ * без этого человек, загрузивший свои фото, может принять типовой дом за
+ * свой и заказать по нему смету.
+ */
+export type ModelSource = "photos" | "demo";
+
 export interface SceneModel {
   id: string;
   name: string;
   createdAt: string;
+  source: ModelSource;
   sourcePhotoCount: number;
   /** `heightM` is the wall height to the eaves — always floors × FLOOR_HEIGHT_M. */
   dimensions: { widthM: number; depthM: number; heightM: number };

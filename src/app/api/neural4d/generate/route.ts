@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validateSceneModel } from "@/lib/3d/scene-model-schema";
 import {
   getNeural4DConfig,
   neural4dAuthHeaders,
@@ -21,7 +22,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_PHOTOS = 4;
+const REQUIRED_PHOTOS = 4;
 const MAX_BYTES_PER_PHOTO = 20 * 1024 * 1024; // 20 МБ, как обещает интерфейс
 const VENDOR_TIMEOUT_MS = 120_000;
 
@@ -52,15 +53,13 @@ export async function POST(request: Request) {
 
   const photos = form.getAll("photos").filter((v): v is File => v instanceof File);
 
-  if (photos.length === 0) {
+  // Ровно четыре стороны. По двум-трём снимкам реконструкция достроит
+  // недостающие стены догадкой, а смета посчитает их как настоящие.
+  if (photos.length !== REQUIRED_PHOTOS) {
     return NextResponse.json(
-      { error: "Добавьте фотографии дома — без них модель не построить." },
-      { status: 400 },
-    );
-  }
-  if (photos.length > MAX_PHOTOS) {
-    return NextResponse.json(
-      { error: `Нужно не больше ${MAX_PHOTOS} фотографий.` },
+      {
+        error: `Нужно ровно ${REQUIRED_PHOTOS} фотографии — по одной с каждой стороны дома. Сейчас: ${photos.length}.`,
+      },
       { status: 400 },
     );
   }
@@ -100,11 +99,37 @@ export async function POST(request: Request) {
       );
     }
 
-    // TODO: привести ответ вендора к SceneModel, когда будет известен его
-    // формат. Схема ответа Neural4D пока недоступна, поэтому здесь нет
-    // выдуманного маппинга — он молча ломал бы смету.
-    const payload = await response.json();
-    return NextResponse.json(payload, {
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      console.error("[neural4d] ответ вендора не является JSON");
+      return NextResponse.json(
+        { error: "Сервис вернул неожиданный ответ. Мы уже разбираемся." },
+        { status: 502 },
+      );
+    }
+
+    // Ответ вендора приводится к нашей модели и проверяется, а не берётся на
+    // веру: расхождение формата иначе доехало бы до сметы в виде NaN и
+    // несуществующих поверхностей.
+    const result = validateSceneModel(mapVendorPayload(payload), "photos");
+    if (!result.ok) {
+      // Список полей — в лог, наружу общее сообщение: он описывает наш
+      // внутренний формат, и посетителю от него пользы нет.
+      console.error(
+        `[neural4d] ответ не соответствует модели: ${result.problems.join("; ")}`,
+      );
+      return NextResponse.json(
+        {
+          error:
+            "Модель пришла в неожиданном формате, мы не смогли её принять. Попробуйте ещё раз позже.",
+        },
+        { status: 502 },
+      );
+    }
+
+    return NextResponse.json(result.model, {
       status: 200,
       headers: { "Cache-Control": "no-store" },
     });
@@ -122,4 +147,20 @@ export async function POST(request: Request) {
       { status: 504 },
     );
   }
+}
+
+/**
+ * Единственное место, где формат Neural4D превращается в наш.
+ *
+ * Схема ответа вендора пока не подтверждена, поэтому здесь нет выдуманного
+ * маппинга: payload передаётся как есть и проходит проверку. Если реальный
+ * ответ окажется вложенным (например, `{ model: {...} }`) или назовёт поля
+ * иначе, правка нужна ровно здесь — остальной код трогать не придётся, а до
+ * правки запрос честно завершится ошибкой, а не тихо испорченной сметой.
+ */
+function mapVendorPayload(payload: unknown): unknown {
+  if (payload && typeof payload === "object" && "model" in payload) {
+    return (payload as { model: unknown }).model;
+  }
+  return payload;
 }

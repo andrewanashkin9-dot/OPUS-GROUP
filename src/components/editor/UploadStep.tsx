@@ -5,6 +5,10 @@ import { useAppStore } from "@/lib/store";
 
 const SIDES = ["Главный фасад", "Задний фасад", "Левый фасад", "Правый фасад"];
 
+/** Ровно четыре стороны: по двум-трём снимкам недостающие стены достраиваются
+ *  догадкой, а смета считает их как настоящие. */
+const REQUIRED_PHOTOS = 4;
+
 export function UploadStep() {
   const status = useAppStore((s) => s.status);
   const error = useAppStore((s) => s.error);
@@ -59,9 +63,11 @@ export function UploadStep() {
           disabled={isGenerating}
         />
         <span className="font-display text-h3 font-medium text-cream-bright">
-          {files.length > 0
-            ? `Выбрано фото: ${files.length}`
-            : "Нажмите, чтобы выбрать фотографии"}
+          {files.length === 0
+            ? "Нажмите, чтобы выбрать фотографии"
+            : files.length === REQUIRED_PHOTOS
+              ? "Все четыре стороны загружены"
+              : `Выбрано ${files.length} из ${REQUIRED_PHOTOS} — добавьте ещё ${REQUIRED_PHOTOS - files.length}`}
         </span>
         <span className="text-body-s text-cream-dim">
           JPG, PNG — до 20 МБ на файл
@@ -111,7 +117,7 @@ export function UploadStep() {
 
       <button
         type="button"
-        disabled={files.length === 0 || isGenerating}
+        disabled={files.length !== REQUIRED_PHOTOS || isGenerating}
         onClick={() => generateFromPhotos(files)}
         className="mt-8 inline-flex items-center justify-center self-center rounded-full bg-cream px-8 py-3.5 text-ui font-bold text-bg transition-colors hover:bg-cream-bright disabled:opacity-40"
       >
@@ -124,24 +130,6 @@ export function UploadStep() {
         </p>
       )}
 
-      <p className="mt-8 text-body-s text-cream-dim">
-        Нет фото под рукой?{" "}
-        <button
-          type="button"
-          className="font-medium text-cream underline underline-offset-2 hover:text-cream-bright"
-          onClick={() =>
-            generateFromPhotos([
-              new File([], "demo-1.jpg"),
-              new File([], "demo-2.jpg"),
-              new File([], "demo-3.jpg"),
-              new File([], "demo-4.jpg"),
-            ])
-          }
-          disabled={isGenerating}
-        >
-          Посмотреть на демо-доме
-        </button>
-      </p>
     </div>
   );
 }

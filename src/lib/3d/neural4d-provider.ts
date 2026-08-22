@@ -1,5 +1,6 @@
 import { MockModel3DProvider } from "./mock-provider";
 import type { Model3DProvider } from "./provider";
+import { validateSceneModel } from "./scene-model-schema";
 import type { BomLine, HouseConfig, SceneModel } from "./types";
 
 /**
@@ -46,19 +47,30 @@ export class Neural4DModel3DProvider implements Model3DProvider {
       );
     }
 
-    const payload = (await response.json()) as
-      | SceneModel
-      | { configured: false; reason: string };
+    const payload: unknown = await response.json();
 
-    // Ключ ещё не вписан — работаем на демо-модели. Приходит как обычный
-    // успешный ответ, поэтому в консоли нет ложной ошибки.
-    if ("configured" in payload && payload.configured === false) {
+    // Ключ ещё не вписан — показываем помеченный образец. Приходит как
+    // обычный успешный ответ, поэтому в консоли нет ложной ошибки.
+    if (
+      payload &&
+      typeof payload === "object" &&
+      "configured" in payload &&
+      (payload as { configured: unknown }).configured === false
+    ) {
       return this.local.generateFromPhotos(photos);
     }
 
-    const model = payload as SceneModel;
-    this.local.adoptModel(model);
-    return model;
+    // Проверяем и здесь, а не только на сервере: между ними стоит сеть, и
+    // приводить чужой JSON к SceneModel вслепую нельзя.
+    const result = validateSceneModel(payload, "photos");
+    if (!result.ok) {
+      throw new Error(
+        "Модель пришла в неожиданном формате. Попробуйте ещё раз или напишите нам.",
+      );
+    }
+
+    this.local.adoptModel(result.model);
+    return result.model;
   }
 
   adoptModel(model: SceneModel): void {

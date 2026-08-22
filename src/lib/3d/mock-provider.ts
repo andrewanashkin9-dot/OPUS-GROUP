@@ -104,8 +104,9 @@ function buildHouse(
 
   return withRecalculatedQuantities({
     id: "house-demo-1",
-    name: "Дом на ул. Садовая, 12",
+    name: "Демо-дом (образец)",
     createdAt: new Date().toISOString(),
+    source: "demo",
     sourcePhotoCount: photoCount,
     dimensions,
     floors: config.floors,

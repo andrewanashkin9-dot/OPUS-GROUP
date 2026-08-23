@@ -1,20 +1,19 @@
-import { Neural4DModel3DProvider } from "./neural4d-provider";
+import { BackendModel3DProvider } from "./backend-provider";
 import type { Model3DProvider } from "./provider";
 
 let provider: Model3DProvider | null = null;
 
 /**
- * Единственная точка выбора провайдера.
+ * Единственная точка выбора провайдера на клиенте.
  *
- * Приложение всегда работает через Neural4DModel3DProvider, который ходит в
- * наш собственный backend-маршрут. Пока ключ не вписан, маршрут отвечает
- * "not_configured", и провайдер сам продолжает на демо-модели — поэтому здесь
- * нет ни флага окружения, ни публичной переменной, по которой можно было бы
- * догадаться о состоянии ключа.
+ * Клиент всегда ходит в наш backend и не выбирает вендора: какой из них
+ * работает — Neural4D или GenAPI — решает ACTIVE_3D_PROVIDER на сервере.
+ * Поэтому здесь нет ни публичной переменной, ни флага, по которому можно
+ * было бы догадаться о состоянии ключей.
  */
 export function getModel3DProvider(): Model3DProvider {
   if (!provider) {
-    provider = new Neural4DModel3DProvider();
+    provider = new BackendModel3DProvider();
   }
   return provider;
 }

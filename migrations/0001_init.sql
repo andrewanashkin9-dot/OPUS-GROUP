@@ -312,6 +312,10 @@ create table transactions (
   -- Сумма сделки, наша доля и остаток исполнителю. Все три хранятся, а не
   -- считаются на лету: ставка комиссии со временем меняется, и пересчёт
   -- старых сделок по новой ставке испортил бы прошлые отчёты.
+  --
+  -- Размер ставки схемой не задан и по умолчанию нулевой — сколько брать,
+  -- решает приложение в момент записи. Значение по умолчанию здесь означало
+  -- бы, что база молча проставит комиссию строке, которую забыли посчитать.
   gross_amount      numeric(14, 2) not null,
   commission_rate   numeric(5, 4)  not null default 0,
   commission_amount numeric(14, 2) not null default 0,
@@ -355,5 +359,5 @@ create trigger transactions_set_updated_at before update on transactions
   for each row execute function set_updated_at();
 
 comment on table transactions is 'Финансовые события: оплата подписок, комиссия со сделок, выплаты, возвраты.';
-comment on column transactions.commission_rate is 'Доля, а не проценты: 0.0700 — это 7%.';
+comment on column transactions.commission_rate is 'Доля от суммы сделки, а не проценты. Ставку задаёт приложение при записи.';
 comment on column transactions.gross_amount is 'Сумма сделки целиком. net_amount = gross_amount - commission_amount.';

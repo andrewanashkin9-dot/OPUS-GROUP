@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { StageApproach } from "@/components/stage/StageApproach";
+import { SectionTransition } from "@/components/stage/SectionTransition";
 import { useAppStore } from "@/lib/store";
 import { BomPanel } from "./BomPanel";
 import { ColorPicker } from "./ColorPicker";
@@ -29,7 +29,9 @@ export function EditorShell() {
 
   return (
     <div className="flex h-[100dvh] flex-col">
-      <StageApproach stage="design" />
+      {/* Entering the model: the drafting table, once per session. The
+          clip for the next stage is warmed while the browser is idle. */}
+      <SectionTransition id="design" preloadNext="estimate" />
       <TopBar />
       {/* Образец показывается, только если ключ вендора не задан. Без явной
           пометки человек, загрузивший свои фото, принял бы типовой дом за

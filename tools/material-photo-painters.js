@@ -11,7 +11,7 @@
  * material is added or its look changes.
  */
 
-/* eslint-env browser */
+/* global window, document */
 (() => {
   // ---------------------------------------------------------------- colour
 

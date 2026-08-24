@@ -3,9 +3,10 @@ import { Logo } from "./Logo";
 
 const links = [
   { href: "/#how-it-works", label: "Как это работает" },
-  { href: "/#pricing", label: "Тарифы" },
+  { href: "/market", label: "Магазин" },
   { href: "/services", label: "Услуги" },
   { href: "/education", label: "База знаний" },
+  { href: "/#pricing", label: "Тарифы" },
 ];
 
 export function NavBar() {

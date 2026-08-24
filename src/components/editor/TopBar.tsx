@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { formatRub } from "@/lib/format";
+import { armTransition } from "@/lib/transitions";
 import { useAppStore, useBom, useCartTotal } from "@/lib/store";
 
 export function TopBar() {
@@ -60,6 +61,9 @@ export function TopBar() {
         </div>
         <Link
           href="/cart"
+          // This is the move the second clip belongs to; arming it here is
+          // what keeps it from playing on every other arrival at the cart.
+          onClick={() => armTransition("estimate")}
           className="inline-flex items-center rounded-full bg-cream px-4 py-2 text-body-s font-bold text-bg transition-colors hover:bg-cream-bright"
         >
           В корзину

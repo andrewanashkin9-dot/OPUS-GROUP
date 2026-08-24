@@ -19,6 +19,7 @@ export function Footer() {
             title="Продукт"
             links={[
               { href: "/editor", label: "Конструктор" },
+              { href: "/market", label: "Магазин материалов" },
               { href: "/cart", label: "Смета" },
               { href: "/services", label: "Бригады" },
               { href: "/education", label: "База знаний" },

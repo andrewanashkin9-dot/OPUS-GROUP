@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { getModel3DProvider } from "./3d";
 import { withRecalculatedQuantities } from "./3d/metrics";
+import { productById, type MarketUnit, type Product } from "./marketplace";
 import type {
   BomLine,
   FloorCount,
@@ -28,6 +29,12 @@ interface AppState {
   colorOverrides: Record<string, string>;
   /** True while the model is being rebuilt for new floors or a new style. */
   rebuilding: boolean;
+  /**
+   * Products added from the market, by id. They share the cart with the
+   * model's own bill of materials: one basket, one total, one delivery — the
+   * reader is buying for one building, not shopping in two places.
+   */
+  marketItems: Record<string, number>;
 
   setTier: (tier: Tier) => void;
   generateFromPhotos: (photos: File[]) => Promise<void>;
@@ -42,6 +49,9 @@ interface AppState {
   showEducationCard: (cardId: string) => void;
   dismissEducationCard: (cardId: string) => void;
   setQuantity: (nodeId: string, quantity: number) => void;
+  addMarketItem: (productId: string, quantity: number) => void;
+  setMarketQuantity: (productId: string, quantity: number) => void;
+  removeMarketItem: (productId: string) => void;
 }
 
 /**
@@ -106,6 +116,16 @@ async function reconfigure(
   }
 }
 
+/** A copy of `items` without `key`. */
+function without(
+  items: Record<string, number>,
+  key: string,
+): Record<string, number> {
+  const next = { ...items };
+  delete next[key];
+  return next;
+}
+
 /** The colour actually rendered: the user's pick, else the material default. */
 export function effectiveColor(
   node: SceneNode,
@@ -127,6 +147,7 @@ export const useAppStore = create<AppState>()(
       quantityOverrides: {},
       colorOverrides: {},
       rebuilding: false,
+      marketItems: {},
 
       setTier: (tier) => set({ tier }),
 
@@ -224,6 +245,29 @@ export const useAppStore = create<AppState>()(
             [nodeId]: Math.max(0, quantity),
           },
         })),
+
+      addMarketItem: (productId, quantity) =>
+        set((state) => ({
+          marketItems: {
+            ...state.marketItems,
+            [productId]: (state.marketItems[productId] ?? 0) + Math.max(1, quantity),
+          },
+        })),
+
+      setMarketQuantity: (productId, quantity) =>
+        set((state) => {
+          // Counting a line down to zero removes it. Leaving a 0 × line in
+          // the cart is a row the reader has to tidy up by hand.
+          if (quantity <= 0) {
+            return { marketItems: without(state.marketItems, productId) };
+          }
+          return {
+            marketItems: { ...state.marketItems, [productId]: quantity },
+          };
+        }),
+
+      removeMarketItem: (productId) =>
+        set((state) => ({ marketItems: without(state.marketItems, productId) })),
     }),
     {
       name: "opus-group-project",
@@ -252,6 +296,7 @@ export const useAppStore = create<AppState>()(
         quantityOverrides: state.quantityOverrides,
         colorOverrides: state.colorOverrides,
         dismissedEducationCardIds: state.dismissedEducationCardIds,
+        marketItems: state.marketItems,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
@@ -309,6 +354,46 @@ export function useBom(): BomLine[] {
 
 export function useCartTotal(bom: BomLine[]): number {
   return useMemo(() => bom.reduce((sum, line) => sum + line.total, 0), [bom]);
+}
+
+/** One line of the market half of the cart. */
+export interface MarketLine {
+  product: Product;
+  quantity: number;
+  unit: MarketUnit;
+  total: number;
+}
+
+/**
+ * Market lines, memoized for the same reason as useBom: derived from state
+ * rather than held in it, so computing them inline as a selector would hand
+ * zustand a new array on every render.
+ */
+export function useMarketLines(): MarketLine[] {
+  const marketItems = useAppStore((s) => s.marketItems);
+
+  return useMemo(
+    () =>
+      Object.entries(marketItems)
+        .map(([id, quantity]) => {
+          const product = productById(id);
+          // A product can disappear from the catalogue between visits; a
+          // stale id in a restored cart must not crash the page.
+          if (!product) return null;
+          return {
+            product,
+            quantity,
+            unit: product.unit,
+            total: Math.round(product.price * quantity),
+          };
+        })
+        .filter((line): line is MarketLine => line !== null),
+    [marketItems],
+  );
+}
+
+export function useMarketTotal(lines: MarketLine[]): number {
+  return useMemo(() => lines.reduce((sum, line) => sum + line.total, 0), [lines]);
 }
 
 export function nodeKindLabel(kind: NodeKind): string {

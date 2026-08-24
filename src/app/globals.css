@@ -104,7 +104,11 @@
 
   /* Display sizes are Unbounded; nothing below h3 (22px) ever is, which keeps
      the 20px floor from being approached at all. */
-  --text-display: clamp(2.5rem, 5vw, 4.5rem);
+  /* The floor was 2.5rem, which on a 390px screen set a wide display face at
+     40px and ran the longest Russian word almost into the plate's padding.
+     6vw lets it scale down with the viewport while staying far above the 20px
+     Unbounded floor. */
+  --text-display: clamp(2rem, 6vw, 4.5rem);
   --text-display--line-height: 1.04;
   --text-display--letter-spacing: -0.025em;
   --text-h1: clamp(2rem, 3.2vw, 3rem);
@@ -159,10 +163,18 @@ h3,
   color: var(--deep);
 }
 
+/* Tailwind's `transition-colors` lists outline-color among the properties it
+   animates, so a focus ring inherits the site's 280ms fade — it drifts up from
+   the element's own colour instead of appearing. A keyboard user needs to see
+   where focus landed at the moment it lands, so transitions are switched off
+   for the focused element and the cream ring is simply there. */
 :focus-visible {
-  outline: 2px solid var(--cream);
+  outline-width: 2px;
+  outline-style: solid;
+  outline-color: var(--cream);
   outline-offset: 3px;
   border-radius: 4px;
+  transition-property: none;
 }
 
 /* ---------------------------------------------------------------------------

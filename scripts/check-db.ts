@@ -44,8 +44,15 @@ main().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
   console.error(`\n❌ Подключиться не удалось: ${message}`);
   // Частые причины — сразу с подсказкой, что делать.
-  if (/ENOTFOUND|EAI_AGAIN/.test(message)) {
-    console.error("   Похоже, неверный DB_HOST или нет доступа к DNS.");
+  if (/ENOTFOUND/.test(message)) {
+    console.error("   Такого имени нет в публичном DNS. Две обычные причины:");
+    console.error("     1) опечатка в DB_HOST — нужен голый FQDN хоста из консоли");
+    console.error("        Yandex Cloud, без https:// и без слэша на конце;");
+    console.error("     2) у хоста выключен публичный доступ — тогда имя видно");
+    console.error("        только изнутри облачной сети. Кластер → Хосты →");
+    console.error("        Изменить → «Публичный доступ».");
+  } else if (/EAI_AGAIN/.test(message)) {
+    console.error("   DNS временно недоступен — проверьте сеть и повторите.");
   } else if (/ETIMEDOUT|timeout/i.test(message)) {
     console.error("   Хост не отвечает: проверьте DB_PORT и правила группы безопасности в Yandex Cloud.");
   } else if (/password authentication failed|SASL/i.test(message)) {

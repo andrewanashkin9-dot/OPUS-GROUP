@@ -37,6 +37,25 @@ function env(name: string): string {
 }
 
 /**
+ * Приводит DB_HOST к чистому имени хоста.
+ *
+ * В консоли Yandex Cloud имя хоста удобно скопировать вместе с `https://` и
+ * завершающим слэшем, а `postgres` ждёт голый FQDN и на `https://host/`
+ * отвечает невнятным ENOTFOUND. Дешевле молча срезать лишнее, чем каждый раз
+ * разбираться, почему «хост правильный, а не подключается».
+ *
+ * Порт из строки вида `host:6432` тоже срезается: за порт отвечает DB_PORT,
+ * и два источника одного значения рано или поздно разойдутся.
+ */
+export function normalizeHost(raw: string): string {
+  return raw
+    .replace(/^[a-z][a-z0-9+.-]*:\/\//i, "") // схема: https://, postgres:// ...
+    .replace(/\/.*$/, "") // путь и завершающий слэш
+    .replace(/:\d+$/, "") // порт — он задаётся через DB_PORT
+    .trim();
+}
+
+/**
  * Собирает настройки TLS.
  *
  * Managed PostgreSQL в Yandex Cloud принимает только шифрованные соединения,
@@ -83,7 +102,7 @@ export function getDbConfig(): DbConfig {
   }
 
   return {
-    host: env("DB_HOST"),
+    host: normalizeHost(env("DB_HOST")),
     port,
     database: env("DB_NAME"),
     user: env("DB_USER"),

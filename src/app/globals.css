@@ -6,8 +6,43 @@
   --cream: #e4d2ac;
   --cream-bright: #f4e4c2;
   --cream-dim: #8a7f6a;
-  --line: #2a2620;
+  /* Hairlines are cream at low alpha, never a solid line colour: over the
+     radial background below they stay a hairline instead of turning into a
+     visible bar wherever the surface behind them lightens. */
+  --line: rgba(228, 210, 172, 0.1);
+  /* One step up, for rules that separate whole sections rather than rows. */
+  --line-strong: rgba(228, 210, 172, 0.2);
   --surface: #0d0c0a;
+
+  /* One easing curve for the whole product. Everything that moves —
+     hover, reveal, sheet, transition — decelerates on the same curve, so
+     unrelated animations still feel like one hand made them. */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 180ms;
+  --dur: 280ms;
+  --dur-slow: 620ms;
+  /* Delay between neighbouring elements in a staggered group. */
+  --stagger: 50ms;
+
+  /* Elevation is stacked, not a single blur: a contact shadow that keeps the
+     edge crisp, a mid shadow for the body, and a wide ambient one. On a black
+     ground a drop shadow alone is invisible, so each level also carries an
+     inset cream hairline along its top edge — that highlight is what actually
+     reads as "lifted" here. */
+  --shadow-1:
+    inset 0 1px 0 rgba(228, 210, 172, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.7),
+    0 6px 16px rgba(0, 0, 0, 0.45);
+  --shadow-2:
+    inset 0 1px 0 rgba(228, 210, 172, 0.08),
+    0 2px 4px rgba(0, 0, 0, 0.75),
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 32px 64px rgba(0, 0, 0, 0.35);
+  --shadow-3:
+    inset 0 1px 0 rgba(228, 210, 172, 0.12),
+    0 4px 8px rgba(0, 0, 0, 0.8),
+    0 20px 44px rgba(0, 0, 0, 0.6),
+    0 48px 96px rgba(0, 0, 0, 0.45);
 
   --success: #7fa37a;
   --error: #b4685c;
@@ -23,7 +58,18 @@
   --color-cream-bright: var(--cream-bright);
   --color-cream-dim: var(--cream-dim);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-surface: var(--surface);
+
+  --ease-brand: var(--ease);
+  /* Every Tailwind `transition-*` utility inherits the one brand curve and a
+     single default duration, so standardising easing needs no per-element
+     class and nothing can drift back to the framework default. */
+  --default-transition-timing-function: var(--ease);
+  --default-transition-duration: var(--dur);
+  --shadow-e1: var(--shadow-1);
+  --shadow-e2: var(--shadow-2);
+  --shadow-e3: var(--shadow-3);
   --color-success: var(--success);
   --color-error: var(--error);
   --color-warning: var(--warning);
@@ -79,7 +125,19 @@ html {
 }
 
 body {
-  background: var(--bg);
+  /* Flat #000 makes every surface above it read as a sticker. A wide radial
+     lifting toward --surface gives the page a light source, so cards sit in
+     the scene instead of on it. Fixed attachment keeps the light where the
+     window is, not where the scroll happens to be. */
+  background:
+    radial-gradient(
+      140% 100% at 50% 0%,
+      var(--surface) 0%,
+      #070706 42%,
+      var(--bg) 100%
+    )
+    var(--bg);
+  background-attachment: fixed;
   color: var(--cream);
   font-family: var(--font-body);
 }
@@ -332,8 +390,201 @@ h3,
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Material — surfaces, elevation, grain.
 
-:focus-visible {
-  outline: 2px solid var(--cream-bright);
-  outline-offset: 2px;
+   Three things separate a surface that looks printed from one that looks
+   physical: it is lit unevenly, it is lifted off its ground by more than one
+   shadow, and the whole image carries a little noise. All three are applied
+   here, once, so no screen has to remember to do it.
+--------------------------------------------------------------------------- */
+
+/* A panel: lit from its top edge, falling to near-black at the bottom. */
+.surface-1 {
+  background-image: radial-gradient(
+    130% 110% at 50% 0%,
+    #15130f 0%,
+    var(--surface) 46%,
+    #070706 100%
+  );
+  box-shadow: var(--shadow-1);
+}
+
+.surface-2 {
+  background-image: radial-gradient(
+    130% 110% at 50% 0%,
+    #191610 0%,
+    #100e0b 48%,
+    #080807 100%
+  );
+  box-shadow: var(--shadow-2);
+}
+
+.surface-3 {
+  background-image: radial-gradient(
+    130% 110% at 50% 0%,
+    #1d1a13 0%,
+    #131109 48%,
+    #090908 100%
+  );
+  box-shadow: var(--shadow-3);
+}
+
+/* Cards that answer to the pointer. The lift is small on purpose — a card
+   that jumps reads as a toy; a card that rises a hair reads as weight. */
+.card-lift {
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+  will-change: transform;
+}
+
+.card-lift:hover,
+.card-lift:focus-within {
+  transform: translate3d(0, -3px, 0);
+  box-shadow: var(--shadow-3);
+  border-color: var(--line-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-lift:hover,
+  .card-lift:focus-within {
+    transform: none;
+  }
+}
+
+/* Film grain over the whole viewport.
+
+   Flat gradients on a dark screen band visibly, and a perfectly clean black
+   is the one thing no photographed surface ever is. A few per cent of static
+   monochrome noise in `overlay` hides the banding and gives every gradient a
+   physical tooth. Generated as an SVG data URI rather than a bitmap: it costs
+   under a kilobyte, never blocks paint, and never has a 2x version to ship.
+   Static, not animated — an animated grain repaints the entire viewport every
+   frame for an effect nobody consciously sees. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* ---------------------------------------------------------------------------
+   Reveal on scroll.
+
+   Content arrives on the same curve as everything else, one element after the
+   next. The hidden start state lives in CSS and the class that plays it is
+   added by an IntersectionObserver, so nothing animates until it is actually
+   on screen. Without scripting the <noscript> rule in the document head
+   cancels the hidden state, so the page is never blank for a reader who has
+   JavaScript off.
+--------------------------------------------------------------------------- */
+
+.reveal {
+  opacity: 0;
+}
+
+.reveal-in {
+  animation: reveal var(--dur-slow) var(--ease) var(--reveal-delay, 0ms) both;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Reduced motion still needs the content to appear — it just appears at once. */
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+  }
+  .reveal-in {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Section transition clips.
+
+   Two short pre-rendered shots stand in for the move between stages: the
+   drafting table as the model is opened, and the pan into the phone as the
+   order moves to materials. They play once each per session and are never
+   scrubbed, so unlike the hero they need no buffering machinery — only a
+   poster to hold the final frame and a fade that hands off to the real UI.
+--------------------------------------------------------------------------- */
+
+.clip-layer {
+  animation: clip-in 220ms var(--ease) both;
+}
+
+.clip-layer[data-leaving="true"] {
+  animation: clip-out var(--clip-out, 520ms) var(--ease) both;
+}
+
+@keyframes clip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes clip-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* The bloom that carries the phone screen's light into the page background,
+   so the last frame dissolves instead of cutting to black. */
+.clip-bloom {
+  background: radial-gradient(
+    68% 52% at 50% 56%,
+    rgba(244, 228, 194, 0.9) 0%,
+    rgba(228, 210, 172, 0.55) 34%,
+    rgba(13, 12, 10, 0.35) 68%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  animation: clip-bloom var(--clip-out, 520ms) var(--ease) both;
+}
+
+@keyframes clip-bloom {
+  0% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  45% {
+    opacity: 0.34;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+/* Reduced motion never sees a clip: the overlay is a still that fades out over
+   200ms, which is the whole transition. */
+@media (prefers-reduced-motion: reduce) {
+  .clip-layer,
+  .clip-layer[data-leaving="true"] {
+    animation-duration: 200ms !important;
+  }
+  .clip-bloom {
+    display: none;
+  }
 }

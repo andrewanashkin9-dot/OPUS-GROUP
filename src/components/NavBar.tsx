@@ -19,15 +19,15 @@ export function NavBar() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-[var(--plate-edge)] bg-[rgba(7,18,41,0.72)] backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
           className="flex shrink-0 items-center gap-2"
           onClick={() => setOpen(false)}
         >
-          <Logo className="h-8 w-8 text-cream" />
-          <span className="font-display text-[20px] font-medium tracking-tight">
+          <Logo className="h-8 w-8 text-accent" />
+          <span className="font-display text-[20px] font-semibold tracking-tight text-white">
             OPUS GROUP
           </span>
         </Link>
@@ -37,7 +37,7 @@ export function NavBar() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-body-s font-medium text-cream-dim transition-colors hover:text-cream-bright"
+              className="text-body-s font-medium text-dim transition-colors hover:text-white"
             >
               {link.label}
             </Link>
@@ -47,7 +47,7 @@ export function NavBar() {
         <div className="flex items-center gap-3">
           <Link
             href="/editor"
-            className="hidden items-center rounded-full bg-cream px-5 py-2.5 text-ui font-bold text-bg transition-colors hover:bg-cream-bright sm:inline-flex"
+            className="hidden items-center rounded-full bg-accent px-5 py-2.5 text-ui font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 sm:inline-flex"
           >
             Начать бесплатно
           </Link>
@@ -57,7 +57,7 @@ export function NavBar() {
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
             aria-controls="mobile-nav"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-line text-cream transition-colors hover:border-cream-dim md:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)] md:hidden"
           >
             <span className="sr-only">{open ? "Закрыть меню" : "Открыть меню"}</span>
             <svg
@@ -82,15 +82,15 @@ export function NavBar() {
       {open && (
         <nav
           id="mobile-nav"
-          className="border-t border-line px-4 pb-4 pt-2 md:hidden"
+          className="border-t border-[var(--plate-edge)] px-4 pb-4 pt-2 md:hidden"
         >
           <ul>
             {links.map((link) => (
-              <li key={link.href} className="border-b border-line last:border-b-0">
+              <li key={link.href} className="border-b border-[var(--plate-edge)] last:border-b-0">
                 <Link
                   href={link.href}
                   onClick={() => setOpen(false)}
-                  className="block py-3 text-body font-medium text-cream transition-colors hover:text-cream-bright"
+                  className="block py-3 text-body font-medium text-white transition-colors hover:text-accent"
                 >
                   {link.label}
                 </Link>
@@ -100,14 +100,14 @@ export function NavBar() {
           <Link
             href="/editor"
             onClick={() => setOpen(false)}
-            className="mt-4 flex items-center justify-center rounded-full bg-cream px-5 py-3 text-ui font-bold text-bg transition-colors hover:bg-cream-bright"
+            className="mt-4 flex items-center justify-center rounded-full bg-accent px-5 py-3 text-ui font-bold text-deep"
           >
             Начать бесплатно
           </Link>
           <Link
             href="/cart"
             onClick={() => setOpen(false)}
-            className="mt-2 flex items-center justify-center rounded-full border border-line px-5 py-3 text-ui font-bold text-cream transition-colors hover:border-cream-dim"
+            className="mt-2 flex items-center justify-center rounded-full border border-[var(--plate-edge)] px-5 py-3 text-ui font-bold text-white transition-colors hover:border-[var(--plate-edge-hi)]"
           >
             Смета
           </Link>

@@ -1,19 +1,27 @@
 import Link from "next/link";
 import type { ButtonHTMLAttributes } from "react";
 
-type Variant = "primary" | "secondary" | "ghost" | "ingot";
+/**
+ * Buttons are objects on the sheet, so they carry the same edge and lift as
+ * plates do.
+ *
+ * Cream is the one accent and it is rationed — `primary` is the only variant
+ * that may use it, which is what keeps the accent meaning "act here" rather
+ * than becoming decoration. There is deliberately no metallic/animated
+ * variant: nothing on this site loops.
+ */
+type Variant = "primary" | "secondary" | "ghost";
 
 const variantClasses: Record<Variant, string> = {
-  primary: "bg-cream text-bg hover:bg-cream-bright",
+  primary:
+    "bg-accent text-deep shadow-[var(--lift-1)] hover:brightness-108 active:brightness-95",
   secondary:
-    "border border-line text-cream hover:border-cream-dim hover:text-cream-bright",
-  ghost: "text-cream-dim hover:text-cream-bright",
-  // Paid tier. The metal is carried by the .ingot class in globals.css.
-  ingot: "ingot font-bold",
+    "plate text-white hover:border-[var(--plate-edge-hi)] hover:bg-[var(--blue-lift)]",
+  ghost: "text-dim hover:text-white",
 };
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-ui font-bold transition-colors disabled:opacity-40 disabled:pointer-events-none";
+  "inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-ui font-bold transition-[background-color,border-color,color,filter,transform,box-shadow] disabled:opacity-40 disabled:pointer-events-none";
 
 interface CommonProps {
   variant?: Variant;

@@ -1,75 +1,95 @@
 @import "tailwindcss";
 @import "./fonts.css";
 
-:root {
-  --bg: #000000;
-  --cream: #e4d2ac;
-  --cream-bright: #f4e4c2;
-  --cream-dim: #8a7f6a;
-  /* Hairlines are cream at low alpha, never a solid line colour: over the
-     radial background below they stay a hairline instead of turning into a
-     visible bar wherever the surface behind them lightens. */
-  --line: rgba(228, 210, 172, 0.1);
-  /* One step up, for rules that separate whole sections rather than rows. */
-  --line-strong: rgba(228, 210, 172, 0.2);
-  --surface: #0d0c0a;
+/* ===========================================================================
+   OPUS GROUP — blueprint space.
 
-  /* One easing curve for the whole product. Everything that moves —
-     hover, reveal, sheet, transition — decelerates on the same curve, so
-     unrelated animations still feel like one hand made them. */
+   The whole site is one sheet of blueprint paper. The grid is the world; every
+   card, panel and button is an object placed on it. Two fixed layers build the
+   sheet (field + grid), one fixed layer adds tooth (grain), and everything
+   else is a plate sitting above them.
+
+   Restraint is the constraint: nothing here loops, pulses or scans. The only
+   motion is caused by the reader — entering the viewport, or a pointer.
+=========================================================================== */
+
+:root {
+  --deep: #071229;
+  --blue: #0e2a5c;
+  --blue-lift: #16407f;
+  --grid: rgba(255, 255, 255, 0.13);
+  --grid-bold: rgba(255, 255, 255, 0.22);
+  --white: #ffffff;
+  --soft: rgba(255, 255, 255, 0.68);
+  --dim: rgba(255, 255, 255, 0.42);
+  --cream: #e4d2ac;
+
+  /* Graph-paper pitch: a fine line every 28px, a bold one every 5th. */
+  --grid-cell: 28px;
+  --grid-major: 140px;
+
+  /* Plates. Semi-transparent so the grid still reads through them — that
+     translucency is what makes them sit *on* the sheet rather than cover it.
+     The alpha is the one number tuned by eye: low enough to keep the paper
+     visible, high enough that body copy never fights a grid line. */
+  --plate: rgba(22, 64, 127, 0.62);
+  --plate-quiet: rgba(22, 64, 127, 0.4);
+  --plate-edge: rgba(255, 255, 255, 0.1);
+  --plate-edge-hi: rgba(255, 255, 255, 0.18);
+  --radius: 24px;
+
+  /* Three stacked shadows, different blurs: contact, body, ambient — plus an
+     inset top highlight, which on a dark ground is what actually reads as
+     "raised" (a drop shadow alone is invisible against deep blue). */
+  --lift-1:
+    0 1px 2px rgba(3, 8, 20, 0.55), 0 8px 20px rgba(3, 8, 20, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --lift-2:
+    0 2px 4px rgba(3, 8, 20, 0.6), 0 16px 36px rgba(3, 8, 20, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.11);
+
+  /* One curve for the whole site. Never the browser default. */
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --dur-fast: 180ms;
   --dur: 280ms;
   --dur-slow: 620ms;
-  /* Delay between neighbouring elements in a staggered group. */
   --stagger: 50ms;
 
-  /* Elevation is stacked, not a single blur: a contact shadow that keeps the
-     edge crisp, a mid shadow for the body, and a wide ambient one. On a black
-     ground a drop shadow alone is invisible, so each level also carries an
-     inset cream hairline along its top edge — that highlight is what actually
-     reads as "lifted" here. */
-  --shadow-1:
-    inset 0 1px 0 rgba(228, 210, 172, 0.06),
-    0 1px 2px rgba(0, 0, 0, 0.7),
-    0 6px 16px rgba(0, 0, 0, 0.45);
-  --shadow-2:
-    inset 0 1px 0 rgba(228, 210, 172, 0.08),
-    0 2px 4px rgba(0, 0, 0, 0.75),
-    0 12px 28px rgba(0, 0, 0, 0.55),
-    0 32px 64px rgba(0, 0, 0, 0.35);
-  --shadow-3:
-    inset 0 1px 0 rgba(228, 210, 172, 0.12),
-    0 4px 8px rgba(0, 0, 0, 0.8),
-    0 20px 44px rgba(0, 0, 0, 0.6),
-    0 48px 96px rgba(0, 0, 0, 0.45);
-
   --success: #7fa37a;
-  --error: #b4685c;
-  --warning: #c2a05a;
+  --error: #d08a80;
+  --warning: #d8bd7a;
 
   --font-display: "Unbounded", "Arial Narrow", sans-serif;
   --font-body: "Manrope", "Segoe UI", sans-serif;
 }
 
 @theme inline {
-  --color-bg: var(--bg);
-  --color-cream: var(--cream);
-  --color-cream-bright: var(--cream-bright);
-  --color-cream-dim: var(--cream-dim);
-  --color-line: var(--line);
-  --color-line-strong: var(--line-strong);
-  --color-surface: var(--surface);
+  /* The blueprint vocabulary. */
+  --color-deep: var(--deep);
+  --color-blue: var(--blue);
+  --color-blue-lift: var(--blue-lift);
+  --color-soft: var(--soft);
+  --color-dim: var(--dim);
+  --color-plate: var(--plate);
+  --color-plate-quiet: var(--plate-quiet);
+  --color-plate-edge: var(--plate-edge);
 
-  --ease-brand: var(--ease);
-  /* Every Tailwind `transition-*` utility inherits the one brand curve and a
-     single default duration, so standardising easing needs no per-element
-     class and nothing can drift back to the framework default. */
-  --default-transition-timing-function: var(--ease);
-  --default-transition-duration: var(--dur);
-  --shadow-e1: var(--shadow-1);
-  --shadow-e2: var(--shadow-2);
-  --shadow-e3: var(--shadow-3);
+  /* Cream is the ONE accent and it is rationed: logo, primary CTA, active
+     state, key figures, title-block rules. It is reachable only through
+     `accent`, so no component can casually tint body copy with it. */
+  --color-accent: var(--cream);
+
+  /* Legacy names, remapped onto the blueprint. Pages not yet rebuilt keep
+     working and land in the new world automatically — and because the old
+     `cream` body text now resolves to white, cream stops leaking everywhere
+     the moment the palette changes. */
+  --color-bg: var(--deep);
+  --color-surface: var(--plate);
+  --color-line: var(--plate-edge);
+  --color-cream: var(--white);
+  --color-cream-bright: var(--white);
+  --color-cream-dim: var(--dim);
+
   --color-success: var(--success);
   --color-error: var(--error);
   --color-warning: var(--warning);
@@ -77,68 +97,49 @@
   --font-display: var(--font-display);
   --font-body: var(--font-body);
 
+  /* Every Tailwind transition inherits the one curve, so nothing can drift
+     back to the framework default. */
+  --default-transition-timing-function: var(--ease);
+  --default-transition-duration: var(--dur);
+
+  /* Display sizes are Unbounded; nothing below h3 (22px) ever is, which keeps
+     the 20px floor from being approached at all. */
   --text-display: clamp(2.5rem, 5vw, 4.5rem);
-  --text-display--line-height: 1.05;
-  --text-display--letter-spacing: -0.02em;
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.025em;
   --text-h1: clamp(2rem, 3.2vw, 3rem);
   --text-h1--line-height: 1.08;
   --text-h1--letter-spacing: -0.02em;
   --text-h2: clamp(1.5rem, 2.2vw, 2.25rem);
   --text-h2--line-height: 1.12;
-  --text-h2--letter-spacing: -0.01em;
+  --text-h2--letter-spacing: -0.015em;
   --text-h3: 1.375rem;
-  --text-h3--line-height: 1.15;
+  --text-h3--line-height: 1.18;
   --text-h3--letter-spacing: -0.01em;
   --text-body-l: 1.125rem;
-  --text-body-l--line-height: 1.6;
+  --text-body-l--line-height: 1.62;
   --text-body: 1rem;
   --text-body--line-height: 1.6;
   --text-body-s: 0.875rem;
   --text-body-s--line-height: 1.5;
   --text-caption: 0.75rem;
   --text-caption--line-height: 1.4;
-  --text-caption--letter-spacing: 0.06em;
+  --text-caption--letter-spacing: 0.08em;
   --text-ui: 0.9375rem;
   --text-ui--line-height: 1;
 }
 
 * {
-  border-color: var(--line);
+  border-color: var(--plate-edge);
 }
 
 html {
   scroll-behavior: smooth;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
 body {
-  /* Flat #000 makes every surface above it read as a sticker. A wide radial
-     lifting toward --surface gives the page a light source, so cards sit in
-     the scene instead of on it. Fixed attachment keeps the light where the
-     window is, not where the scroll happens to be. */
-  background:
-    radial-gradient(
-      140% 100% at 50% 0%,
-      var(--surface) 0%,
-      #070706 42%,
-      var(--bg) 100%
-    )
-    var(--bg);
-  background-attachment: fixed;
-  color: var(--cream);
+  background: var(--deep);
+  color: var(--soft);
   font-family: var(--font-body);
 }
 
@@ -150,319 +151,89 @@ h3,
 }
 
 .prose-measure {
-  max-width: 65ch;
+  max-width: 62ch;
 }
 
 ::selection {
-  background: var(--cream-bright);
-  color: var(--bg);
+  background: var(--cream);
+  color: var(--deep);
 }
 
 :focus-visible {
-  outline: 2px solid var(--cream-bright);
-  outline-offset: 2px;
+  outline: 2px solid var(--cream);
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 /* ---------------------------------------------------------------------------
-   Stage approach.
-
-   Moving to a new stage travels to the object on the table that stage happens
-   on: the drawing under a pencil and rule, then the phone the order continues
-   on, then the notebook inside it. The object rushes toward the viewer and
-   passes the camera, which reads as arriving rather than as a slide change.
+   The sheet. Two fixed layers, pinned to the viewport rather than the
+   document, so scrolling reads as moving *across* the paper instead of the
+   paper sliding past.
 --------------------------------------------------------------------------- */
 
-@keyframes stage-scrim {
-  0% {
-    opacity: 0;
-  }
-  16% {
-    opacity: 1;
-  }
-  72% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
+.bp-field,
+.bp-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
 }
 
-@keyframes stage-approach {
-  0% {
-    transform: scale(0.52) translate3d(0, 3%, 0);
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-  }
-  70% {
-    opacity: 1;
-  }
-  100% {
-    transform: scale(2.15) translate3d(0, -2%, 0);
-    opacity: 0;
-  }
-}
-
-@keyframes stage-caption {
-  0%,
-  12% {
-    opacity: 0;
-    transform: translate3d(0, 8px, 0);
-  }
-  34%,
-  68% {
-    opacity: 1;
-    transform: none;
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(0, -6px, 0);
-  }
-}
-
-/* Entries land one after another, as if being written down the page. */
-@keyframes stage-entry {
-  from {
-    opacity: 0;
-    transform: translate3d(-6px, 0, 0);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* Reduced motion skips the journey entirely and lands on the content. Doing
-   this in CSS rather than in a render branch keeps the server and the client
-   agreeing on the markup. */
-@media (prefers-reduced-motion: reduce) {
-  .stage-approach {
-    display: none;
-  }
-}
-
-/* ---------------------------------------------------------------------------
-   Subscription surface — "ingot".
-
-   The paid tier is the one place the interface is allowed to look precious.
-   Rather than a third brand colour, it stays inside the cream family and
-   borrows the *behaviour* of metal: a dark-to-light-to-dark ramp across the
-   face, a narrow specular band, and a bevel. Cream already sits where gold
-   does in hue, so a metal ramp built from the existing tokens reads as a
-   bar of bullion rather than as a new palette.
---------------------------------------------------------------------------- */
-
-.ingot {
-  /* The darkest stop is --cream-dim rather than anything deeper: black label
-     text rides this surface, and the sheen sweeps the dark band under it. At
-     #6f6553 that moment measured 3.6:1, under the floor for small text;
-     #8a7f6a holds 5.2:1 across the whole cycle. */
-  background-image: linear-gradient(
-    100deg,
-    #8a7f6a 0%,
-    #e4d2ac 22%,
-    #fff7e6 38%,
-    #f4e4c2 50%,
-    #8a7f6a 72%,
-    #e4d2ac 88%,
-    #8a7f6a 100%
+/* The paper itself: lit in the upper middle, falling to --deep at the edges.
+   This single gradient does most of the work of making a flat blue rectangle
+   read as a physical surface under a lamp. */
+.bp-field {
+  background: radial-gradient(
+    124% 92% at 50% 30%,
+    var(--blue) 0%,
+    #0b1f45 46%,
+    var(--deep) 100%
   );
-  background-size: 260% 100%;
-  background-position: 0% 0%;
-  color: var(--bg);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
-  animation: ingot-sheen 7s linear infinite;
 }
 
-.ingot:hover {
-  animation-duration: 2.6s;
-}
-
-@keyframes ingot-sheen {
-  to {
-    background-position: -260% 0%;
-  }
-}
-
-/* Metal as type, for figures that should read as the paid tier. */
-.ingot-text {
-  background-image: linear-gradient(
-    100deg,
-    #8a7f6a 0%,
-    #e4d2ac 20%,
-    #fff7e6 36%,
-    #f4e4c2 48%,
-    #8a7f6a 68%,
-    #e4d2ac 86%,
-    #8a7f6a 100%
+/* Graph paper. Four repeating gradients: fine lines both ways, bold every 5th.
+   Masked with the same shape as the field so the ruling fades out toward the
+   edges — the lines belong to the lit part of the sheet, not to the dark. */
+.bp-grid {
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      var(--grid) 0 1px,
+      transparent 1px var(--grid-cell)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--grid) 0 1px,
+      transparent 1px var(--grid-cell)
+    ),
+    repeating-linear-gradient(
+      to right,
+      var(--grid-bold) 0 1px,
+      transparent 1px var(--grid-major)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--grid-bold) 0 1px,
+      transparent 1px var(--grid-major)
+    );
+  -webkit-mask-image: radial-gradient(
+    116% 86% at 50% 30%,
+    #000 0%,
+    #000 42%,
+    transparent 100%
   );
-  background-size: 260% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: ingot-sheen 7s linear infinite;
-}
-
-/* A hairline of the same metal, for cards and badges that mark paid features. */
-.ingot-edge {
-  border-color: transparent;
-  background:
-    linear-gradient(var(--surface), var(--surface)) padding-box,
-    linear-gradient(
-        100deg,
-        #6f6553 0%,
-        #e4d2ac 22%,
-        #fff7e6 38%,
-        #f4e4c2 50%,
-        #8a7f6a 72%,
-        #e4d2ac 88%,
-        #6f6553 100%
-      )
-      border-box;
-  background-size:
-    auto,
-    260% 100%;
-  animation: ingot-sheen 7s linear infinite;
-}
-
-/* ---------------------------------------------------------------------------
-   Scroll-scrubbed hero.
-
-   Every motion/no-motion difference is expressed in CSS rather than in a JS
-   render branch. `prefers-reduced-motion` can only be read in the browser, so
-   branching on it during render makes the server and the client disagree and
-   breaks hydration. CSS applies identically to both, which also means the
-   track never changes height after mount — no layout shift either way.
---------------------------------------------------------------------------- */
-
-.hero-track {
-  /* Scroll distance the camera move is spread across. */
-  height: 300svh;
-}
-
-/* The wide 16:9 shot loses its subject on a phone, and a long track would eat
-   most of a phone's scroll before any content appears. */
-@media (max-width: 767px) {
-  .hero-track {
-    height: 200svh;
-  }
-}
-
-/* No scrub, no track: the hero collapses to a single screen already arrived. */
-@media (prefers-reduced-motion: reduce) {
-  .hero-track {
-    height: 100svh;
-  }
-}
-
-/* The still is the reduced-motion presentation; the video is everyone else's. */
-.hero-still {
-  display: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-video {
-    display: none;
-  }
-  .hero-still {
-    display: block;
-  }
-}
-
-/* Headline and CTA fade in over the last stretch of the scrub, so JS starts
-   them hidden. With reduced motion there is nothing to wait for — they are
-   visible from the first paint, with no flash of hidden content either way. */
-@media not (prefers-reduced-motion: reduce) {
-  .hero-content {
-    opacity: 0;
-  }
-  .hero-hint {
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-hint {
-    display: none;
-  }
-}
-
-/* ---------------------------------------------------------------------------
-   Material — surfaces, elevation, grain.
-
-   Three things separate a surface that looks printed from one that looks
-   physical: it is lit unevenly, it is lifted off its ground by more than one
-   shadow, and the whole image carries a little noise. All three are applied
-   here, once, so no screen has to remember to do it.
---------------------------------------------------------------------------- */
-
-/* A panel: lit from its top edge, falling to near-black at the bottom. */
-.surface-1 {
-  background-image: radial-gradient(
-    130% 110% at 50% 0%,
-    #15130f 0%,
-    var(--surface) 46%,
-    #070706 100%
+  mask-image: radial-gradient(
+    116% 86% at 50% 30%,
+    #000 0%,
+    #000 42%,
+    transparent 100%
   );
-  box-shadow: var(--shadow-1);
 }
 
-.surface-2 {
-  background-image: radial-gradient(
-    130% 110% at 50% 0%,
-    #191610 0%,
-    #100e0b 48%,
-    #080807 100%
-  );
-  box-shadow: var(--shadow-2);
-}
-
-.surface-3 {
-  background-image: radial-gradient(
-    130% 110% at 50% 0%,
-    #1d1a13 0%,
-    #131109 48%,
-    #090908 100%
-  );
-  box-shadow: var(--shadow-3);
-}
-
-/* Cards that answer to the pointer. The lift is small on purpose — a card
-   that jumps reads as a toy; a card that rises a hair reads as weight. */
-.card-lift {
-  transition:
-    transform var(--dur) var(--ease),
-    box-shadow var(--dur) var(--ease),
-    border-color var(--dur) var(--ease);
-  will-change: transform;
-}
-
-.card-lift:hover,
-.card-lift:focus-within {
-  transform: translate3d(0, -3px, 0);
-  box-shadow: var(--shadow-3);
-  border-color: var(--line-strong);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .card-lift:hover,
-  .card-lift:focus-within {
-    transform: none;
-  }
-}
-
-/* Film grain over the whole viewport.
-
-   Flat gradients on a dark screen band visibly, and a perfectly clean black
-   is the one thing no photographed surface ever is. A few per cent of static
-   monochrome noise in `overlay` hides the banding and gives every gradient a
-   physical tooth. Generated as an SVG data URI rather than a bitmap: it costs
-   under a kilobyte, never blocks paint, and never has a 2x version to ship.
-   Static, not animated — an animated grain repaints the entire viewport every
-   frame for an effect nobody consciously sees. */
+/* Film grain. On gradients this large and this dark, banding is the default;
+   a few per cent of static monochrome noise is what removes it. Static, never
+   animated — an animated grain repaints the whole viewport every frame for an
+   effect nobody consciously sees. */
 .grain {
   position: fixed;
   inset: 0;
@@ -475,14 +246,74 @@ h3,
 }
 
 /* ---------------------------------------------------------------------------
-   Reveal on scroll.
+   Plates — objects placed on the sheet.
+--------------------------------------------------------------------------- */
 
-   Content arrives on the same curve as everything else, one element after the
-   next. The hidden start state lives in CSS and the class that plays it is
-   added by an IntersectionObserver, so nothing animates until it is actually
-   on screen. Without scripting the <noscript> rule in the document head
-   cancels the hidden state, so the page is never blank for a reader who has
-   JavaScript off.
+.plate {
+  background: var(--plate);
+  border: 1px solid var(--plate-edge);
+  border-radius: var(--radius);
+  box-shadow: var(--lift-1);
+}
+
+/* For large showcase panels that should let more of the paper through. */
+.plate-quiet {
+  background: var(--plate-quiet);
+}
+
+.plate-lift {
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+}
+
+.plate-lift:hover,
+.plate-lift:focus-within {
+  transform: translate3d(0, -3px, 0);
+  box-shadow: var(--lift-2);
+  border-color: var(--plate-edge-hi);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plate-lift:hover,
+  .plate-lift:focus-within {
+    transform: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Perspective — used exactly once, on the hero.
+
+   The hero arrangement is tilted a few degrees so the plates read as laid on a
+   surface receding away. Everywhere below the hero, plates sit flat: one
+   perspective moment is a signature, perspective everywhere is a gimmick.
+--------------------------------------------------------------------------- */
+
+.hero-stage {
+  perspective: 1200px;
+  perspective-origin: 50% 38%;
+}
+
+.hero-tilt {
+  transform: rotateX(4.5deg);
+  transform-origin: 50% 100%;
+}
+
+/* The angle does not read at phone width and costs compositing, so it drops. */
+@media (max-width: 767px) {
+  .hero-tilt {
+    transform: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Entrance — a quiet fade and rise, staggered inside a group.
+
+   The hidden start state lives in CSS and the class that plays it is added by
+   an IntersectionObserver, so nothing animates until it is actually on screen.
+   Without scripting the <noscript> rule in the document cancels the hidden
+   state, so the page is never blank for a reader with JavaScript off.
 --------------------------------------------------------------------------- */
 
 .reveal {
@@ -504,111 +335,83 @@ h3,
   }
 }
 
-/* Reduced motion still needs the content to appear — it just appears at once. */
+/* Reduced motion disables entrance animation entirely, as asked — the content
+   is simply already there. */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   .reveal {
     opacity: 1;
   }
   .reveal-in {
     animation: none;
   }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ---------------------------------------------------------------------------
-   Section transition clips.
+   Scroll-scrubbed hero — kept exactly as it was.
 
-   Two short pre-rendered shots stand in for the move between stages: the
-   drafting table as the model is opened, and the pan into the phone as the
-   order moves to materials. They play once each per session and are never
-   scrubbed, so unlike the hero they need no buffering machinery — only a
-   poster to hold the final frame and a fade that hands off to the real UI.
+   Every motion/no-motion difference is expressed in CSS rather than in a JS
+   render branch: `prefers-reduced-motion` can only be read in the browser, so
+   branching on it during render makes the server and the client disagree.
 --------------------------------------------------------------------------- */
 
-.clip-layer {
-  animation: clip-in 220ms var(--ease) both;
+.hero-track {
+  height: 300svh;
 }
 
-.clip-layer[data-leaving="true"] {
-  animation: clip-out var(--clip-out, 520ms) var(--ease) both;
-}
-
-@keyframes clip-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
+@media (max-width: 767px) {
+  .hero-track {
+    height: 200svh;
   }
 }
 
-@keyframes clip-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
-/* The bloom that carries the phone screen's light into the page background,
-   so the last frame dissolves instead of cutting to black. */
-.clip-bloom {
-  background: radial-gradient(
-    68% 52% at 50% 56%,
-    rgba(244, 228, 194, 0.9) 0%,
-    rgba(228, 210, 172, 0.55) 34%,
-    rgba(13, 12, 10, 0.35) 68%,
-    rgba(0, 0, 0, 0) 100%
-  );
-  animation: clip-bloom var(--clip-out, 520ms) var(--ease) both;
-}
-
-@keyframes clip-bloom {
-  0% {
-    opacity: 0.75;
-    transform: scale(1);
-  }
-  45% {
-    opacity: 0.34;
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.35);
-  }
-}
-
-/* Reduced motion never sees a clip: the overlay is a still that fades out over
-   200ms, which is the whole transition. */
 @media (prefers-reduced-motion: reduce) {
-  .clip-layer,
-  .clip-layer[data-leaving="true"] {
-    animation-duration: 200ms !important;
-  }
-  .clip-bloom {
-    display: none;
+  .hero-track {
+    height: 100svh;
   }
 }
 
-/* The clip is the motion presentation; the poster is the reduced-motion one. */
-.clip-still {
+.hero-still {
   display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .clip-video,
-  .clip-skip {
+  .hero-video {
     display: none;
   }
-  .clip-still {
+  .hero-still {
     display: block;
   }
 }
 
-/* ---------------------------------------------------------------------------
-   Range control.
+@media not (prefers-reduced-motion: reduce) {
+  .hero-content {
+    opacity: 0;
+  }
+  .hero-hint {
+    opacity: 1;
+  }
+}
 
-   The native control paints in the platform's accent colour, which is the one
-   place a third hue could walk into the palette without anyone choosing it.
+@media (prefers-reduced-motion: reduce) {
+  .hero-hint {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Range control — the native one paints in the platform accent, which is the
+   one way a colour nobody chose could enter the palette.
 --------------------------------------------------------------------------- */
 
 .market-range {
@@ -617,7 +420,7 @@ h3,
   width: 100%;
   height: 2px;
   border-radius: 999px;
-  background: var(--line-strong);
+  background: var(--plate-edge-hi);
   outline-offset: 6px;
 }
 
@@ -628,13 +431,9 @@ h3,
   height: 18px;
   border-radius: 999px;
   background: var(--cream);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--lift-1);
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease);
-}
-
-.market-range::-webkit-slider-thumb:hover {
-  background: var(--cream-bright);
 }
 
 .market-range::-moz-range-thumb {
@@ -643,12 +442,41 @@ h3,
   border: none;
   border-radius: 999px;
   background: var(--cream);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--lift-1);
   cursor: pointer;
 }
 
 .market-range::-moz-range-track {
   height: 2px;
   border-radius: 999px;
-  background: var(--line-strong);
+  background: var(--plate-edge-hi);
+}
+
+/* Short viewports — laptops around 720px tall, and phones in landscape.
+
+   The hero plate carries a headline, a paragraph, two buttons and the title
+   block; at full size that is ~640px, which does not fit under a 64px sticky
+   nav on a 720px screen and the top of the plate slides behind the bar. The
+   type steps down and the rhythm tightens rather than any content being
+   dropped — the reader on a small laptop gets the same sheet, just set closer.
+   Keyed to height, not width: it is vertical room that is missing. */
+@media (max-height: 820px) {
+  .hero-content {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+  .hero-content h1 {
+    font-size: clamp(1.75rem, 3.6vw, 2.75rem);
+    margin-top: 0.75rem;
+  }
+  .hero-content .prose-measure {
+    margin-top: 0.75rem;
+    font-size: 1rem;
+  }
+  .hero-content .hero-cta {
+    margin-top: 1.25rem;
+  }
+  .hero-content dl {
+    margin-top: 1.25rem;
+  }
 }

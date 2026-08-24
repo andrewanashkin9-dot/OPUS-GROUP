@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { ButtonLink } from "./Button";
+import { TitleBlock } from "./TitleBlock";
 
 /**
  * The first screen: a camera move from the corner of a dark room to a lit
@@ -56,6 +57,7 @@ function clamp01(v: number) {
 export function ScrollScrubHero() {
   const trackRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLParagraphElement>(null);
 
@@ -63,6 +65,7 @@ export function ScrollScrubHero() {
     const track = trackRef.current;
     const video = videoRef.current;
     const content = contentRef.current;
+    const frame = frameRef.current;
     const hint = hintRef.current;
     if (!track || !video || !content || !hint) return;
 
@@ -123,6 +126,10 @@ export function ScrollScrubHero() {
       const reveal = clamp01(
         (easedProgress - CONTENT_FADE_START) / (1 - CONTENT_FADE_START),
       );
+      // Prologue handoff: the footage dissolves and the blueprint sheet it was
+      // sitting on all along is what remains. Fading a touch ahead of the copy
+      // means the headline lands on clean paper, not over a half-gone room.
+      if (frame) frame.style.opacity = String(clamp01(1 - reveal * 1.25));
       content.style.opacity = String(reveal);
       // Before the copy is legible it must not swallow clicks.
       content.style.pointerEvents = reveal > 0.5 ? "auto" : "none";
@@ -153,7 +160,9 @@ export function ScrollScrubHero() {
     // what makes a scrubbed video stutter.
     const abort = new AbortController();
     fetch(VIDEO_SRC, { signal: abort.signal })
-      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
+      .then((r) =>
+        r.ok ? r.blob() : Promise.reject(new Error(String(r.status))),
+      )
       .then((blob) => {
         if (disposed) return;
         objectUrl = URL.createObjectURL(blob);
@@ -207,70 +216,92 @@ export function ScrollScrubHero() {
     // bottom band — where the scroll hint lives — hangs off the fold at rest,
     // hiding the hint at the only moment it is meant to be visible.
     <section ref={trackRef} className="hero-track relative -mt-16">
-      <div className="sticky top-0 z-0 h-svh w-full overflow-hidden bg-bg">
-        {/* No `src` here on purpose: the element would stream the file while
+      {/* Transparent, not filled: as the footage fades the fixed blueprint
+          layers behind the whole document are what shows through. */}
+      <div className="sticky top-0 z-0 h-svh w-full overflow-hidden">
+        <div ref={frameRef} className="absolute inset-0">
+          {/* No `src` here on purpose: the element would stream the file while
             the effect fetches it too, downloading six megabytes twice. */}
-        <video
-          ref={videoRef}
-          className="hero-video absolute inset-0 h-full w-full object-cover"
-          poster="/assets/hero-zoom-poster.jpg"
-          muted
-          playsInline
-          preload="none"
-          // Decorative: the headline carries the meaning for screen readers.
-          aria-hidden="true"
-          tabIndex={-1}
-        />
-        {/* Reduced motion arrives already there, with no video fetched. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/assets/hero-zoom-end.jpg"
-          alt=""
-          aria-hidden="true"
-          className="hero-still absolute inset-0 h-full w-full object-cover"
-        />
+          <video
+            ref={videoRef}
+            className="hero-video absolute inset-0 h-full w-full object-cover"
+            poster="/assets/hero-zoom-poster.jpg"
+            muted
+            playsInline
+            preload="none"
+            // Decorative: the headline carries the meaning for screen readers.
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+          {/* Reduced motion arrives already there, with no video fetched. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/assets/hero-zoom-end.jpg"
+            alt=""
+            aria-hidden="true"
+            className="hero-still absolute inset-0 h-full w-full object-cover"
+          />
 
-        {/* Keeps cream type legible over the blueprint without introducing a
-            colour — black at low alpha, weighted to the bottom third. */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.55) 28%, rgba(0,0,0,0.12) 58%, rgba(0,0,0,0) 80%)",
-          }}
-        />
-
-        <div className="absolute inset-0 flex items-end justify-center pb-[12svh]">
+          {/* Grades the warm footage toward the sheet it is handing off to, and
+            keeps type legible over it — the deep blue of the paper rather than
+            a neutral black, so the two worlds meet in one colour. */}
           <div
-            ref={contentRef}
-            className="hero-content mx-auto max-w-4xl px-4 text-center will-change-[opacity,transform]"
-          >
-            {/* Full cream, not the dim tone used elsewhere: the scrim is
+            aria-hidden="true"
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(to top, rgba(7,18,41,0.88) 0%, rgba(7,18,41,0.6) 28%, rgba(7,18,41,0.16) 58%, rgba(7,18,41,0) 80%)",
+            }}
+          />
+        </div>
+
+        <div className="hero-stage absolute inset-0 flex items-center justify-center px-4 pb-16 pt-20">
+          <div className="hero-tilt w-full max-w-4xl">
+            <div
+              ref={contentRef}
+              className="hero-content plate mx-auto px-5 py-7 text-center will-change-[opacity,transform] sm:px-10 sm:py-10"
+            >
+              {/* Full cream, not the dim tone used elsewhere: the scrim is
                 thinnest at this height, and dim cream over the blueprint
                 falls to roughly 3.4:1 — under the floor for small text. */}
-            <p className="text-caption font-medium uppercase text-cream">
-              Фото → 3D-модель → смета → бригада
-            </p>
-            <h1 className="font-display mt-4 text-display font-extrabold tracking-tight text-cream-bright">
-              Ваш дом в 3D — из четырёх фотографий
-            </h1>
-            <p className="prose-measure mx-auto mt-5 text-body-l text-cream">
-              Загрузите фото дома — и настройте крышу, фасад и забор прямо в
-              модели. Материалы и стоимость считаются сами.
-            </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-4">
-              <ButtonLink href="/editor">Загрузить фото дома</ButtonLink>
-              <ButtonLink href="/#how-it-works" variant="secondary">
-                Как это работает
-              </ButtonLink>
+              <p className="text-caption font-medium uppercase text-accent">
+                Фото → 3D-модель → смета → бригада
+              </p>
+              <h1 className="font-display mt-4 text-display font-extrabold tracking-tight text-white">
+                Ваш дом в 3D — из четырёх фотографий
+              </h1>
+              <p className="prose-measure mx-auto mt-5 text-body-l text-soft">
+                Загрузите фото дома — и настройте крышу, фасад и забор прямо в
+                модели. Материалы и стоимость считаются сами.
+              </p>
+              <div className="hero-cta mt-8 flex flex-wrap justify-center gap-4">
+                <ButtonLink href="/editor">Загрузить фото дома</ButtonLink>
+                <ButtonLink href="/#how-it-works" variant="secondary">
+                  Как это работает
+                </ButtonLink>
+              </div>
+
+              {/* The stamp at the foot of the sheet. On the landing it
+                  describes the sample project; in the editor the same block
+                  carries the reader's own house, live. */}
+              <TitleBlock
+                className="mt-7 !bg-transparent !shadow-none sm:mt-9"
+                fields={[
+                  { label: "Объект", value: "Частный дом" },
+                  { label: "Габариты", value: "9,5 × 8,2 м", secondary: true },
+                  { label: "Этажность", value: "2 этажа" },
+                  { label: "Площадь фасадов", value: "186,7 м²" },
+                  { label: "Смета", value: "1 526 203 ₽", accent: true },
+                  { label: "Масштаб", value: "1:100", secondary: true },
+                ]}
+              />
             </div>
           </div>
         </div>
 
         <p
           ref={hintRef}
-          className="hero-hint absolute inset-x-0 bottom-6 text-center text-caption uppercase text-cream-dim"
+          className="hero-hint absolute inset-x-0 bottom-6 text-center text-caption uppercase text-dim"
         >
           Листайте, чтобы приблизиться
         </p>

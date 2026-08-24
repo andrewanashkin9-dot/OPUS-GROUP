@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Footer } from "@/components/Footer";
 import { NavBar } from "@/components/NavBar";
 import { ProductPhoto } from "@/components/market/ProductPhoto";
-import { SectionTransition } from "@/components/stage/SectionTransition";
 import { ButtonLink } from "@/components/Button";
 import { formatRub, formatUnit } from "@/lib/format";
 import { marketUnitLabel } from "@/lib/marketplace";
@@ -35,9 +34,6 @@ export default function CartPage() {
 
   return (
     <>
-      {/* Plays only when the reader came here from the model — the pan into
-          the phone belongs to that move, not to the page. */}
-      <SectionTransition id="estimate" requireArm bloom />
       <NavBar />
       <main className="mx-auto min-h-[60vh] w-full max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
         <h1 className="font-display text-h1 font-extrabold text-cream-bright">Смета</h1>

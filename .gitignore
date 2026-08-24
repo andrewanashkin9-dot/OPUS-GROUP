@@ -41,3 +41,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Higgsfield CLI companion skills (installed by `npx skills add higgsfield-ai/skills`).
+# Tooling for an unrelated product, not part of this project: ~1.4 MB of skill
+# definitions that would otherwise land in a frontend PR diff. Regenerate with
+# that command if they are wanted again. Scoped rather than ignoring all of
+# .claude/, so a real .claude/settings.json can still be tracked.
+/.agents/
+/.claude/skills/
+/skills-lock.json

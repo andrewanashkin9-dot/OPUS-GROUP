@@ -153,7 +153,7 @@ export class MockModel3DProvider implements Model3DProvider {
   private currentModel: SceneModel | null = null;
 
   async generateFromPhotos(photos: File[]): Promise<SceneModel> {
-    await delay(2600);
+    await delay(1200);
     const model = buildHouse(DEFAULT_CONFIG, photos.length || 4);
     this.currentModel = model;
     return model;

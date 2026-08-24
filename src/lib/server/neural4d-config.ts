@@ -49,3 +49,20 @@ export function getNeural4DConfig(): Neural4DConfig | null {
 export function neural4dAuthHeaders(config: Neural4DConfig): HeadersInit {
   return { Authorization: `Bearer ${config.apiKey}` };
 }
+
+/**
+ * Включён ли вызов вендора.
+ *
+ * Пока идёт работа над дизайном, ждать реконструкцию на каждом нажатии
+ * незачем: генерация сразу отдаёт шаблонный дом, а вендор не трогается.
+ * По умолчанию **выключено** — чтобы забытый в .env ключ не начал тратить
+ * деньги и время на запросы, которых никто не ждёт.
+ *
+ * Включить обратно — одна строка в .env:
+ *
+ *     NEURAL4D_ENABLED=true
+ */
+export function isNeural4DEnabled(): boolean {
+  const raw = process.env.NEURAL4D_ENABLED?.trim().toLowerCase();
+  return raw === "true" || raw === "1" || raw === "yes";
+}

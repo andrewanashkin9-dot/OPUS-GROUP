@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { validateSceneModel } from "@/lib/3d/scene-model-schema";
 import {
   getNeural4DConfig,
+  isNeural4DEnabled,
   neural4dAuthHeaders,
 } from "@/lib/server/neural4d-config";
 
@@ -27,6 +28,16 @@ const MAX_BYTES_PER_PHOTO = 20 * 1024 * 1024; // 20 МБ, как обещает 
 const VENDOR_TIMEOUT_MS = 120_000;
 
 export async function POST(request: Request) {
+  // Вендор намеренно выключен на время работы над дизайном: генерация сразу
+  // отдаёт шаблонный дом, ничего не ждёт и ничего не тратит. Проверка стоит
+  // раньше всех остальных — даже читать ключ незачем.
+  if (!isNeural4DEnabled()) {
+    return NextResponse.json(
+      { configured: false, reason: "disabled" },
+      { status: 200, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   const config = getNeural4DConfig();
 
   // Ключа нет — это штатное состояние до подключения вендора, а не сбой:

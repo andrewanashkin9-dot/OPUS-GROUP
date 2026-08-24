@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { Button } from "@/components/Button";
-import { marketUnitLabel, type Product } from "@/lib/marketplace";
+import {
+  marketUnitLabel,
+  suggestedQuantity,
+  type Product,
+} from "@/lib/marketplace";
+import { quantityStep } from "@/lib/quantity-step";
 import { useAppStore } from "@/lib/store";
 
 /**
@@ -13,21 +18,32 @@ import { useAppStore } from "@/lib/store";
 
 interface AddToCartProps {
   product: Product;
-  /** Quantity the model implies, when it can answer that. */
-  suggested?: number;
   compact?: boolean;
 }
 
-export function AddToCart({ product, suggested, compact = false }: AddToCartProps) {
+export function AddToCart({ product, compact = false }: AddToCartProps) {
+  const model = useAppStore((s) => s.model);
   const addMarketItem = useAppStore((s) => s.addMarketItem);
   const inCart = useAppStore((s) => s.marketItems[product.id]);
-  const [quantity, setQuantity] = useState(suggested ?? 1);
+
+  // The saved project is replayed into the store after mount, so on the first
+  // render there is no model and no suggestion yet. Seeding state from the
+  // suggestion would therefore freeze it at 1 while the page went on to say
+  // "нужно 144 м²" — the field and the sentence next to it disagreeing.
+  // Holding only the reader's own override keeps the default following the
+  // model, with no effect and no remount to resynchronise them.
+  const suggestion = suggestedQuantity(product, model);
+  const [override, setOverride] = useState<number | null>(null);
+  const quantity = override ?? suggestion?.quantity ?? 1;
+  const setQuantity = (next: number) => setOverride(Math.max(1, next));
 
   if (compact) {
     return (
       <button
         type="button"
-        onClick={() => addMarketItem(product.id, 1)}
+        // Quick-add takes the quantity the model implies, when it knows one:
+        // one brick is never the answer to a facade.
+        onClick={() => addMarketItem(product.id, quantity)}
         className="relative z-10 shrink-0 rounded-full border border-line px-3 py-1.5 text-body-s font-medium text-cream transition-colors hover:border-cream-dim hover:text-cream-bright"
       >
         {inCart ? `В смете · ${inCart}` : "В смету"}
@@ -41,7 +57,7 @@ export function AddToCart({ product, suggested, compact = false }: AddToCartProp
         <button
           type="button"
           aria-label="Уменьшить количество"
-          onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+          onClick={() => setQuantity(quantity - quantityStep(quantity))}
           className="h-10 w-10 rounded-full border border-line text-cream-dim transition-colors hover:border-cream-dim hover:text-cream-bright"
         >
           −
@@ -52,14 +68,14 @@ export function AddToCart({ product, suggested, compact = false }: AddToCartProp
             type="number"
             min={1}
             value={quantity}
-            onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+            onChange={(e) => setQuantity(Number(e.target.value) || 1)}
             className="w-20 rounded-lg border border-line bg-surface px-3 py-2 text-center text-body tabular-nums text-cream-bright"
           />
         </label>
         <button
           type="button"
           aria-label="Увеличить количество"
-          onClick={() => setQuantity((q) => q + 1)}
+          onClick={() => setQuantity(quantity + quantityStep(quantity))}
           className="h-10 w-10 rounded-full border border-line text-cream-dim transition-colors hover:border-cream-dim hover:text-cream-bright"
         >
           +

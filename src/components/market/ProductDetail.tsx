@@ -41,7 +41,10 @@ export function ProductDetail({ product }: { product: Product }) {
         </nav>
 
         <div className="mt-8 grid gap-10 lg:grid-cols-2 lg:gap-14">
-          <div className="surface-1 overflow-hidden rounded-2xl border border-line">
+          {/* self-start keeps the photo its own height: stretched to match the
+              spec sheet beside it, the panel would run on as empty surface
+              under a 4:3 image. */}
+          <div className="surface-1 self-start overflow-hidden rounded-2xl border border-line lg:sticky lg:top-24">
             <div className="aspect-[4/3]">
               <ProductPhoto id={product.id} alt={product.name} priority />
             </div>
@@ -79,7 +82,7 @@ export function ProductDetail({ product }: { product: Product }) {
             )}
 
             <div className="mt-8">
-              <AddToCart product={product} suggested={suggestion?.quantity} />
+              <AddToCart product={product} />
             </div>
 
             <table className="mt-10 w-full border-t border-line text-body-s">

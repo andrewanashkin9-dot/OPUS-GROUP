@@ -8,6 +8,7 @@ import { SectionTransition } from "@/components/stage/SectionTransition";
 import { ButtonLink } from "@/components/Button";
 import { formatRub, formatUnit } from "@/lib/format";
 import { marketUnitLabel } from "@/lib/marketplace";
+import { quantityStep } from "@/lib/quantity-step";
 import {
   useAppStore,
   useBom,
@@ -129,10 +130,16 @@ export default function CartPage() {
                       <Stepper
                         label={line.product.name}
                         onDecrement={() =>
-                          setMarketQuantity(line.product.id, line.quantity - 1)
+                          setMarketQuantity(
+                            line.product.id,
+                            line.quantity - quantityStep(line.quantity),
+                          )
                         }
                         onIncrement={() =>
-                          setMarketQuantity(line.product.id, line.quantity + 1)
+                          setMarketQuantity(
+                            line.product.id,
+                            line.quantity + quantityStep(line.quantity),
+                          )
                         }
                       >
                         {line.quantity} {marketUnitLabel(line.unit)}

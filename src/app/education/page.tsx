@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Footer } from "@/components/Footer";
 import { NavBar } from "@/components/NavBar";
+import { Reveal } from "@/components/ui/Reveal";
 import { EDUCATION_CARDS } from "@/lib/3d/education";
 import type { NodeKind } from "@/lib/3d/types";
 import { nodeKindLabel } from "@/lib/store";
@@ -25,8 +26,8 @@ export default function EducationPage() {
           База знаний
         </h1>
         <p className="prose-measure mt-4 text-body-l text-cream-dim">
-          Те же подсказки, что появляются в конструкторе в момент выбора —
-          здесь их можно читать без привязки к своей модели.
+          Те же подсказки, что появляются в конструкторе в момент выбора — здесь
+          их можно читать без привязки к своей модели.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-2">
@@ -46,20 +47,24 @@ export default function EducationPage() {
         </div>
 
         <ul className="mt-10 grid gap-6 sm:grid-cols-2">
-          {cards.map((card) => (
-            <li key={card.id} className="rounded-2xl border border-line bg-surface p-6">
-              <div className="flex items-center gap-2">
-                <span className="rounded-full border border-line px-2.5 py-1 text-caption uppercase text-cream-dim">
-                  {card.tag}
-                </span>
-                <span className="text-caption uppercase text-cream-dim">
-                  {nodeKindLabel(card.nodeKind)}
-                </span>
-              </div>
-              <h2 className="font-display mt-3 text-h3 font-medium text-cream-bright">
-                {card.title}
-              </h2>
-              <p className="mt-2 text-body-s text-cream-dim">{card.body}</p>
+          {cards.map((card, i) => (
+            <li key={card.id} className="h-full">
+              <Reveal index={i} className="h-full">
+                <div className="card-lift surface-1 h-full rounded-2xl border border-line p-6">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full border border-line px-2.5 py-1 text-caption uppercase text-cream-dim">
+                      {card.tag}
+                    </span>
+                    <span className="text-caption uppercase text-cream-dim">
+                      {nodeKindLabel(card.nodeKind)}
+                    </span>
+                  </div>
+                  <h2 className="font-display mt-3 text-h3 font-medium text-cream-bright">
+                    {card.title}
+                  </h2>
+                  <p className="mt-2 text-body-s text-cream-dim">{card.body}</p>
+                </div>
+              </Reveal>
             </li>
           ))}
         </ul>

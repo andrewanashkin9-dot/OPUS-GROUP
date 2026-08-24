@@ -35,8 +35,7 @@ export function ProductPhoto({
     <picture>
       <source type="image/webp" srcSet={sources.webp} />
       <source type="image/jpeg" srcSet={sources.jpeg} />
-      {/* eslint-disable-next-line @next/next/no-img-element -- see the note
-          above: pre-rendered at both densities, in both formats, already. */}
+      {/* Plain <img>, deliberately — see the note above. */}
       <img
         src={sources.fallback}
         alt={alt}

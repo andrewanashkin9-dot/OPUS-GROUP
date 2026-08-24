@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { Logo } from "./Logo";
 
 const links = [
@@ -10,16 +13,26 @@ const links = [
 ];
 
 export function NavBar() {
+  // Below md the links used to be hidden with nothing in their place, which
+  // left a phone with no route to the shop, the crews or the knowledge base
+  // at all — only the logo. They fold into a disclosure instead.
+  const [open, setOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2 shrink-0">
+        <Link
+          href="/"
+          className="flex shrink-0 items-center gap-2"
+          onClick={() => setOpen(false)}
+        >
           <Logo className="h-8 w-8 text-cream" />
           <span className="font-display text-[20px] font-medium tracking-tight">
             OPUS GROUP
           </span>
         </Link>
-        <nav className="hidden md:flex items-center gap-8">
+
+        <nav className="hidden items-center gap-8 md:flex">
           {links.map((link) => (
             <Link
               key={link.href}
@@ -30,15 +43,76 @@ export function NavBar() {
             </Link>
           ))}
         </nav>
+
         <div className="flex items-center gap-3">
           <Link
             href="/editor"
-            className="hidden sm:inline-flex items-center rounded-full bg-cream px-5 py-2.5 text-ui font-bold text-bg transition-colors hover:bg-cream-bright"
+            className="hidden items-center rounded-full bg-cream px-5 py-2.5 text-ui font-bold text-bg transition-colors hover:bg-cream-bright sm:inline-flex"
           >
             Начать бесплатно
           </Link>
+
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            aria-controls="mobile-nav"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-line text-cream transition-colors hover:border-cream-dim md:hidden"
+          >
+            <span className="sr-only">{open ? "Закрыть меню" : "Открыть меню"}</span>
+            <svg
+              viewBox="0 0 20 20"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              {open ? (
+                <path d="M5 5l10 10M15 5L5 15" />
+              ) : (
+                <path d="M3 6h14M3 10h14M3 14h14" />
+              )}
+            </svg>
+          </button>
         </div>
       </div>
+
+      {open && (
+        <nav
+          id="mobile-nav"
+          className="border-t border-line px-4 pb-4 pt-2 md:hidden"
+        >
+          <ul>
+            {links.map((link) => (
+              <li key={link.href} className="border-b border-line last:border-b-0">
+                <Link
+                  href={link.href}
+                  onClick={() => setOpen(false)}
+                  className="block py-3 text-body font-medium text-cream transition-colors hover:text-cream-bright"
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/editor"
+            onClick={() => setOpen(false)}
+            className="mt-4 flex items-center justify-center rounded-full bg-cream px-5 py-3 text-ui font-bold text-bg transition-colors hover:bg-cream-bright"
+          >
+            Начать бесплатно
+          </Link>
+          <Link
+            href="/cart"
+            onClick={() => setOpen(false)}
+            className="mt-2 flex items-center justify-center rounded-full border border-line px-5 py-3 text-ui font-bold text-cream transition-colors hover:border-cream-dim"
+          >
+            Смета
+          </Link>
+        </nav>
+      )}
     </header>
   );
 }

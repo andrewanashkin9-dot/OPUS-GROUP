@@ -62,9 +62,14 @@ export default function ServicesPage() {
               <li key={crew.id} className="h-full">
                 <Reveal index={i} className="h-full">
                   <div className="card-lift surface-1 flex h-full flex-col rounded-2xl border border-line p-6">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h2 className="font-display text-h3 font-medium text-cream-bright">
+                    {/* min-w-0 and flex-wrap on purpose: a flex item cannot
+                        shrink below its min-content by default, so a long crew
+                        name («ФундаментСтрой») was widening the grid track,
+                        then main, then the document — a 35 px horizontal
+                        scroll on a 390 px screen. */}
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h2 className="font-display text-h3 font-medium break-words text-cream-bright">
                           {crew.name}
                         </h2>
                         <p className="mt-1 text-body-s text-cream-dim">
@@ -96,7 +101,7 @@ export default function ServicesPage() {
                       ))}
                     </div>
 
-                    <div className="mt-6 flex items-center justify-between gap-3 border-t border-line pt-4">
+                    <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
                       <span className="text-body-s font-medium text-cream">
                         {crew.priceRangeLabel}
                       </span>

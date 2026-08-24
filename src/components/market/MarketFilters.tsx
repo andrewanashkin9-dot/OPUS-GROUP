@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { formatRub } from "@/lib/format";
 import {
   BRANDS,
@@ -32,6 +33,9 @@ export const INITIAL_FILTER: FilterState = {
   onlyForModel: false,
 };
 
+/** Brands shown before the list has to be asked for. */
+const BRANDS_SHOWN = 6;
+
 const STEPS = 100;
 const RATIO = Math.log(PRICE_MAX / PRICE_MIN);
 
@@ -61,6 +65,19 @@ export function MarketFilters({
   hasModel,
   resultCount,
 }: MarketFiltersProps) {
+  const [allBrands, setAllBrands] = useState(false);
+  // Fourteen brands is four rows of chips on a phone — more height than the
+  // catalogue itself gets above the fold. Any brand already picked stays
+  // visible, so collapsing never hides an active filter.
+  const brands = allBrands
+    ? BRANDS
+    : Array.from(
+        new Set([
+          ...BRANDS.slice(0, BRANDS_SHOWN),
+          ...BRANDS.filter((b) => value.brands.includes(b)),
+        ]),
+      );
+
   const isDefault =
     !value.categories.length &&
     !value.brands.length &&
@@ -87,7 +104,7 @@ export function MarketFilters({
       </FilterGroup>
 
       <FilterGroup label="Производитель">
-        {BRANDS.map((brand) => (
+        {brands.map((brand) => (
           <Chip
             key={brand}
             active={value.brands.includes(brand)}
@@ -96,6 +113,15 @@ export function MarketFilters({
             {brand}
           </Chip>
         ))}
+        {brands.length < BRANDS.length && (
+          <button
+            type="button"
+            onClick={() => setAllBrands(true)}
+            className="rounded-full px-3.5 py-1.5 text-body-s font-medium text-cream underline underline-offset-2 transition-colors hover:text-cream-bright"
+          >
+            Ещё {BRANDS.length - brands.length}
+          </button>
+        )}
       </FilterGroup>
 
       <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-4">

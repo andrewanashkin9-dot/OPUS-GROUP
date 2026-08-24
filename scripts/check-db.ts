@@ -54,7 +54,11 @@ main().catch((error: unknown) => {
   } else if (/EAI_AGAIN/.test(message)) {
     console.error("   DNS временно недоступен — проверьте сеть и повторите.");
   } else if (/ETIMEDOUT|timeout/i.test(message)) {
-    console.error("   Хост не отвечает: проверьте DB_PORT и правила группы безопасности в Yandex Cloud.");
+    console.error("   Имя нашлось, но хост не отвечает на этом порту. Причины:");
+    console.error("     1) группа безопасности кластера не пускает ваш IP на 6432;");
+    console.error("     2) исходящие на 6432 режет ваша сеть — рабочий Wi-Fi или");
+    console.error("        провайдер часто выпускают только 80 и 443. Проверить");
+    console.error("        можно с телефона в режиме модема.");
   } else if (/password authentication failed|SASL/i.test(message)) {
     console.error("   Неверный DB_USER или DB_PASSWORD.");
   } else if (/self.signed|certificate/i.test(message)) {

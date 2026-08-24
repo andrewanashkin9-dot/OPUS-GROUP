@@ -24,8 +24,8 @@ interface ProductCardProps {
 
 export function ProductCard({ product, fitsModel = false, priority }: ProductCardProps) {
   return (
-    <article className="card-lift surface-1 relative flex h-full flex-col overflow-hidden rounded-2xl border border-line">
-      <div className="relative aspect-[4/3] overflow-hidden border-b border-line bg-bg">
+    <article className="plate plate-lift relative flex h-full flex-col overflow-hidden">
+      <div className="relative aspect-[4/3] overflow-hidden border-b border-[var(--plate-edge)] bg-bg">
         <ProductPhoto id={product.id} alt={product.name} priority={priority} />
         {fitsModel && (
           <span className="absolute left-3 top-3 rounded-full border border-cream-dim bg-bg/80 px-2.5 py-1 text-caption uppercase text-cream-bright backdrop-blur">
@@ -41,7 +41,7 @@ export function ProductCard({ product, fitsModel = false, priority }: ProductCar
           <span className="truncate">{product.brand}</span>
         </div>
 
-        <h3 className="font-display mt-2 text-body-l font-medium leading-snug text-cream-bright">
+        <h3 className="font-display mt-2 text-body-l font-semibold leading-snug text-white">
           <Link
             href={`/market/${product.id}`}
             className="outline-offset-4 after:absolute after:inset-0 after:content-['']"
@@ -54,9 +54,9 @@ export function ProductCard({ product, fitsModel = false, priority }: ProductCar
           {product.summary}
         </p>
 
-        <div className="mt-5 flex items-end justify-between gap-3 border-t border-line pt-4">
+        <div className="mt-5 flex items-end justify-between gap-3 border-t border-[var(--plate-edge)] pt-4">
           <span>
-            <span className="font-display block text-h3 font-medium tabular-nums text-cream-bright">
+            <span className="font-display block text-h3 font-semibold tabular-nums text-accent">
               {formatRub(product.price)}
             </span>
             <span className="text-caption uppercase text-cream-dim">

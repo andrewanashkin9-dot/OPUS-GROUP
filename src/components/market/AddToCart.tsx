@@ -44,7 +44,7 @@ export function AddToCart({ product, compact = false }: AddToCartProps) {
         // Quick-add takes the quantity the model implies, when it knows one:
         // one brick is never the answer to a facade.
         onClick={() => addMarketItem(product.id, quantity)}
-        className="relative z-10 shrink-0 rounded-full border border-line px-3 py-1.5 text-body-s font-medium text-cream transition-colors hover:border-cream-dim hover:text-cream-bright"
+        className="relative z-10 shrink-0 rounded-full border border-[var(--plate-edge)] px-3 py-1.5 text-body-s font-medium text-cream transition-colors hover:border-cream-dim hover:text-cream-bright"
       >
         {inCart ? `В смете · ${inCart}` : "В смету"}
       </button>
@@ -58,7 +58,7 @@ export function AddToCart({ product, compact = false }: AddToCartProps) {
           type="button"
           aria-label="Уменьшить количество"
           onClick={() => setQuantity(quantity - quantityStep(quantity))}
-          className="h-10 w-10 rounded-full border border-line text-cream-dim transition-colors hover:border-cream-dim hover:text-cream-bright"
+          className="h-10 w-10 rounded-full border border-[var(--plate-edge)] text-cream-dim transition-colors hover:border-cream-dim hover:text-cream-bright"
         >
           −
         </button>
@@ -69,14 +69,14 @@ export function AddToCart({ product, compact = false }: AddToCartProps) {
             min={1}
             value={quantity}
             onChange={(e) => setQuantity(Number(e.target.value) || 1)}
-            className="w-20 rounded-lg border border-line bg-surface px-3 py-2 text-center text-body tabular-nums text-cream-bright"
+            className="w-20 rounded-lg border border-[var(--plate-edge)] bg-surface px-3 py-2 text-center text-body tabular-nums text-cream-bright"
           />
         </label>
         <button
           type="button"
           aria-label="Увеличить количество"
           onClick={() => setQuantity(quantity + quantityStep(quantity))}
-          className="h-10 w-10 rounded-full border border-line text-cream-dim transition-colors hover:border-cream-dim hover:text-cream-bright"
+          className="h-10 w-10 rounded-full border border-[var(--plate-edge)] text-cream-dim transition-colors hover:border-cream-dim hover:text-cream-bright"
         >
           +
         </button>

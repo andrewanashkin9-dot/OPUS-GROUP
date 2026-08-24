@@ -87,7 +87,7 @@ export function MarketFilters({
   return (
     <section
       aria-label="Фильтры каталога"
-      className="surface-1 rounded-2xl border border-line p-5 sm:p-6"
+      className="plate p-5 sm:p-6"
     >
       <FilterGroup label="Категория">
         {CATEGORIES.map((category) => (
@@ -199,8 +199,8 @@ function Chip({
       aria-pressed={active}
       className={`rounded-full border px-3.5 py-1.5 text-body-s font-medium transition-colors ${
         active
-          ? "border-cream-bright bg-cream text-bg"
-          : "border-line text-cream-dim hover:border-cream-dim hover:text-cream-bright"
+          ? "border-accent bg-accent text-deep"
+          : "border-[var(--plate-edge)] text-cream-dim hover:border-cream-dim hover:text-cream-bright"
       }`}
     >
       {children}

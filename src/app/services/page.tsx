@@ -59,7 +59,7 @@ export default function ServicesPage() {
             return (
               <li key={crew.id} className="h-full">
                 <Reveal index={i} className="h-full">
-                  <div className="card-lift surface-1 flex h-full flex-col rounded-2xl border border-line p-6">
+                  <div className="plate plate-lift flex h-full flex-col p-6">
                     {/* min-w-0 and flex-wrap on purpose: a flex item cannot
                         shrink below its min-content by default, so a long crew
                         name («ФундаментСтрой») was widening the grid track,
@@ -92,14 +92,14 @@ export default function ServicesPage() {
                       {crew.specialties.map((kind) => (
                         <span
                           key={kind}
-                          className="rounded-full border border-line px-2.5 py-1 text-caption uppercase text-cream-dim"
+                          className="rounded-full border border-[var(--plate-edge)] px-2.5 py-1 text-caption uppercase text-cream-dim"
                         >
                           {nodeKindLabel(kind)}
                         </span>
                       ))}
                     </div>
 
-                    <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+                    <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--plate-edge)] pt-4">
                       <span className="text-body-s font-medium text-cream">
                         {crew.priceRangeLabel}
                       </span>
@@ -107,7 +107,7 @@ export default function ServicesPage() {
                         type="button"
                         onClick={() => requestQuote(crew.id)}
                         disabled={requested}
-                        className="inline-flex items-center rounded-full bg-cream px-4 py-2 text-body-s font-bold text-bg transition-colors hover:bg-cream-bright disabled:bg-transparent disabled:border disabled:border-success disabled:text-success"
+                        className="inline-flex items-center rounded-full bg-accent px-4 py-2 text-body-s font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 disabled:bg-transparent disabled:shadow-none disabled:border disabled:border-success disabled:text-success"
                       >
                         {requested ? "Заявка отправлена ✓" : "Запросить смету"}
                       </button>

@@ -35,7 +35,7 @@ export function Toolbar({ model, selectedNodeId, onSelectKind }: ToolbarProps) {
               onClick={() => onSelectKind(firstNode.id)}
               className={`shrink-0 rounded-full px-3 py-2 text-body-s font-medium transition-colors sm:px-4 ${
                 active
-                  ? "bg-cream text-bg"
+                  ? "bg-accent text-deep"
                   : "text-cream-dim hover:text-cream-bright"
               }`}
               aria-pressed={active}

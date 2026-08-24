@@ -50,9 +50,9 @@ export default function EducationPage() {
           {cards.map((card, i) => (
             <li key={card.id} className="h-full">
               <Reveal index={i} className="h-full">
-                <div className="card-lift surface-1 h-full rounded-2xl border border-line p-6">
+                <div className="plate plate-lift h-full p-6">
                   <div className="flex items-center gap-2">
-                    <span className="rounded-full border border-line px-2.5 py-1 text-caption uppercase text-cream-dim">
+                    <span className="rounded-full border border-[var(--plate-edge)] px-2.5 py-1 text-caption uppercase text-cream-dim">
                       {card.tag}
                     </span>
                     <span className="text-caption uppercase text-cream-dim">
@@ -90,8 +90,8 @@ function FilterChip({
       aria-pressed={active}
       className={`rounded-full border px-4 py-2 text-body-s font-medium transition-colors ${
         active
-          ? "border-cream-bright bg-cream text-bg"
-          : "border-line text-cream-dim hover:border-cream-dim hover:text-cream-bright"
+          ? "border-accent bg-accent text-deep"
+          : "border-[var(--plate-edge)] text-cream-dim hover:border-cream-dim hover:text-cream-bright"
       }`}
     >
       {label}

@@ -44,7 +44,7 @@ export function ProductDetail({ product }: { product: Product }) {
           {/* self-start keeps the photo its own height: stretched to match the
               spec sheet beside it, the panel would run on as empty surface
               under a 4:3 image. */}
-          <div className="surface-1 self-start overflow-hidden rounded-2xl border border-line lg:sticky lg:top-24">
+          <div className="plate self-start overflow-hidden lg:sticky lg:top-24">
             <div className="aspect-[4/3]">
               <ProductPhoto id={product.id} alt={product.name} priority />
             </div>
@@ -54,7 +54,7 @@ export function ProductDetail({ product }: { product: Product }) {
             <p className="text-caption uppercase text-cream-dim">
               {product.brand} · {categoryLabel(product.category)}
             </p>
-            <h1 className="font-display mt-2 text-h1 font-extrabold text-cream-bright">
+            <h1 className="font-display mt-2 text-h1 font-extrabold text-white">
               {product.name}
             </h1>
             <p className="prose-measure mt-4 text-body-l text-cream-dim">
@@ -62,7 +62,7 @@ export function ProductDetail({ product }: { product: Product }) {
             </p>
 
             <div className="mt-8 flex items-end gap-3">
-              <span className="font-display text-h1 font-extrabold tabular-nums text-cream-bright">
+              <span className="font-display text-h1 font-extrabold tabular-nums text-accent">
                 {formatRub(product.price)}
               </span>
               <span className="pb-1.5 text-body-l text-cream-dim">
@@ -71,7 +71,7 @@ export function ProductDetail({ product }: { product: Product }) {
             </div>
 
             {suggestion && (
-              <p className="surface-1 mt-6 rounded-xl border border-line p-4 text-body-s text-cream">
+              <p className="plate mt-6 p-4 text-body-s text-soft">
                 По вашей модели нужно{" "}
                 <span className="font-bold tabular-nums text-cream-bright">
                   {suggestion.quantity} {marketUnitLabel(product.unit)}
@@ -85,11 +85,11 @@ export function ProductDetail({ product }: { product: Product }) {
               <AddToCart product={product} />
             </div>
 
-            <table className="mt-10 w-full border-t border-line text-body-s">
+            <table className="mt-10 w-full border-t border-[var(--plate-edge)] text-body-s">
               <caption className="pb-3 text-left text-caption font-medium uppercase text-cream-dim">
                 Характеристики
               </caption>
-              <tbody className="divide-y divide-line">
+              <tbody className="divide-y divide-[var(--plate-edge)]">
                 {product.specs.map(([key, value]) => (
                   <tr key={key}>
                     <th
@@ -107,7 +107,7 @@ export function ProductDetail({ product }: { product: Product }) {
         </div>
 
         {related.length > 0 && (
-          <section className="mt-20 border-t border-line pt-10">
+          <section className="mt-20 border-t border-[var(--plate-edge)] pt-10">
             <h2 className="font-display text-h2 font-medium text-cream-bright">
               Ещё в разделе «{categoryLabel(product.category)}»
             </h2>

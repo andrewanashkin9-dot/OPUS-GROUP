@@ -39,7 +39,7 @@ export default function CartPage() {
         <h1 className="font-display text-h1 font-extrabold text-cream-bright">Смета</h1>
 
         {empty ? (
-          <div className="surface-1 mt-12 rounded-2xl border border-line p-10 text-center">
+          <div className="plate mt-12 p-10 text-center">
             <p className="text-body-l text-cream-dim">
               Корзина пока пуста — соберите дом в конструкторе, и материалы
               появятся здесь сами. Или добавьте позиции из магазина.
@@ -63,14 +63,14 @@ export default function CartPage() {
                 <h2 className="mt-10 text-caption font-medium uppercase text-cream-dim">
                   По модели
                 </h2>
-                <ul className="mt-3 divide-y divide-line border-t border-line">
+                <ul className="mt-3 divide-y divide-[var(--plate-edge)] border-t border-[var(--plate-edge)]">
                   {bom.map((line) => (
                     <li key={line.id} className="flex flex-wrap items-center gap-4 py-5">
                       <div className="min-w-0 flex-1">
                         <Link
                           href="/editor"
                           onClick={() => selectNode(line.nodeId)}
-                          className="text-body font-medium text-cream transition-colors hover:text-cream-bright"
+                          className="text-body font-medium text-white transition-colors hover:text-accent"
                         >
                           {line.nodeLabel}
                         </Link>
@@ -87,7 +87,7 @@ export default function CartPage() {
                         {line.quantity} {formatUnit(line.unit)}
                       </Stepper>
 
-                      <span className="w-32 shrink-0 text-right text-body-s font-bold tabular-nums text-cream-bright">
+                      <span className="w-32 shrink-0 text-right text-body-s font-bold tabular-nums text-white">
                         {formatRub(line.total)}
                       </span>
                     </li>
@@ -101,20 +101,20 @@ export default function CartPage() {
                 <h2 className="text-caption font-medium uppercase text-cream-dim">
                   Из магазина
                 </h2>
-                <ul className="mt-3 divide-y divide-line border-t border-line">
+                <ul className="mt-3 divide-y divide-[var(--plate-edge)] border-t border-[var(--plate-edge)]">
                   {marketLines.map((line) => (
                     <li
                       key={line.product.id}
                       className="flex flex-wrap items-center gap-4 py-5"
                     >
-                      <div className="h-16 w-20 shrink-0 overflow-hidden rounded-lg border border-line">
+                      <div className="h-16 w-20 shrink-0 overflow-hidden rounded-lg border border-[var(--plate-edge)]">
                         <ProductPhoto id={line.product.id} alt="" />
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <Link
                           href={`/market/${line.product.id}`}
-                          className="text-body font-medium text-cream transition-colors hover:text-cream-bright"
+                          className="text-body font-medium text-white transition-colors hover:text-accent"
                         >
                           {line.product.name}
                         </Link>
@@ -159,7 +159,7 @@ export default function CartPage() {
               </section>
             )}
 
-            <div className="mt-10 space-y-3 border-t border-line pt-6">
+            <div className="mt-10 space-y-3 border-t border-[var(--plate-edge)] pt-6">
               {bom.length > 0 && (
                 <TotalRow label="Материалы по модели" value={materialsTotal} />
               )}
@@ -167,11 +167,11 @@ export default function CartPage() {
                 <TotalRow label="Позиции из магазина" value={marketTotal} />
               )}
               <TotalRow label="Доставка (оценочно)" value={delivery} />
-              <div className="flex items-center justify-between border-t border-line pt-3">
+              <div className="flex items-center justify-between border-t border-[var(--plate-edge)] pt-3">
                 <span className="font-display text-h3 font-medium text-cream-bright">
                   Итого
                 </span>
-                <span className="font-display text-h3 font-medium tabular-nums text-cream-bright">
+                <span className="font-display text-h3 font-semibold tabular-nums text-accent">
                   {formatRub(goods + delivery)}
                 </span>
               </div>
@@ -222,7 +222,7 @@ function Stepper({
         type="button"
         aria-label={`Уменьшить количество: ${label}`}
         onClick={onDecrement}
-        className="h-8 w-8 rounded-full border border-line text-cream-dim transition-colors hover:border-cream-dim hover:text-cream-bright"
+        className="h-8 w-8 rounded-full border border-[var(--plate-edge)] text-cream-dim transition-colors hover:border-cream-dim hover:text-cream-bright"
       >
         −
       </button>
@@ -231,7 +231,7 @@ function Stepper({
         type="button"
         aria-label={`Увеличить количество: ${label}`}
         onClick={onIncrement}
-        className="h-8 w-8 rounded-full border border-line text-cream-dim transition-colors hover:border-cream-dim hover:text-cream-bright"
+        className="h-8 w-8 rounded-full border border-[var(--plate-edge)] text-cream-dim transition-colors hover:border-cream-dim hover:text-cream-bright"
       >
         +
       </button>

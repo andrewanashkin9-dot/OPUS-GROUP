@@ -1,6 +1,6 @@
 "use client";
 
-import { ContactShadows, Environment, Lightformer, OrbitControls } from "@react-three/drei";
+import { Environment, Lightformer, OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
@@ -8,6 +8,7 @@ import { roofDimensions } from "@/lib/3d/roof-geometry";
 import type { SceneModel } from "@/lib/3d/types";
 import { BlueprintGround } from "./BlueprintGround";
 import { CameraRig } from "./CameraRig";
+import { GroundShadow } from "./GroundShadow";
 import { HouseScene } from "./HouseScene";
 
 interface EditorCanvasProps {
@@ -151,16 +152,7 @@ export function EditorCanvas({
 
       <BlueprintGround />
 
-      {/* The soft contact shadow that seats the house on the paper. */}
-      <ContactShadows
-        position={[0, 0.002, 0]}
-        scale={span * 3.2}
-        resolution={1024}
-        blur={2.6}
-        opacity={0.55}
-        far={totalHeight * 1.2}
-        color="#03081a"
-      />
+      <GroundShadow widthM={widthM} depthM={depthM} />
 
       <Building
         model={model}

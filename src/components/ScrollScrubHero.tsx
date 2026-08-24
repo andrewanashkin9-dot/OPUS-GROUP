@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { ButtonLink } from "./Button";
+import { HeroRender } from "./HeroRender";
 import { TitleBlock } from "./TitleBlock";
 
 /**
@@ -256,45 +257,56 @@ export function ScrollScrubHero() {
         </div>
 
         <div className="hero-stage absolute inset-0 flex items-center justify-center px-4 pb-16 pt-20">
-          <div className="hero-tilt w-full max-w-4xl">
+          <div className="hero-tilt w-full max-w-6xl">
+            {/* Render and copy side by side on the same tilted surface. Below
+                lg the render is dropped rather than stacked: the headline,
+                paragraph, buttons and title block already fill a phone screen,
+                and stacking an image on top pushes the plate under the nav. */}
             <div
               ref={contentRef}
-              className="hero-content plate mx-auto px-5 py-7 text-center will-change-[opacity,transform] sm:px-10 sm:py-10"
+              className="hero-content grid items-center gap-6 will-change-[opacity,transform] lg:grid-cols-[1.15fr_1fr] lg:gap-10"
             >
-              {/* Full cream, not the dim tone used elsewhere: the scrim is
+              <HeroRender className="hero-render hidden lg:block" />
+              <div className="plate px-5 py-7 text-center sm:px-8 sm:py-9 lg:text-left">
+                {/* Full cream, not the dim tone used elsewhere: the scrim is
                 thinnest at this height, and dim cream over the blueprint
                 falls to roughly 3.4:1 — under the floor for small text. */}
-              <p className="text-caption font-medium uppercase text-accent">
-                Фото → 3D-модель → смета → бригада
-              </p>
-              <h1 className="font-display mt-4 text-display font-extrabold tracking-tight text-white">
-                Ваш дом в 3D — из четырёх фотографий
-              </h1>
-              <p className="prose-measure mx-auto mt-5 text-body-l text-soft">
-                Загрузите фото дома — и настройте крышу, фасад и забор прямо в
-                модели. Материалы и стоимость считаются сами.
-              </p>
-              <div className="hero-cta mt-8 flex flex-wrap justify-center gap-4">
-                <ButtonLink href="/editor">Загрузить фото дома</ButtonLink>
-                <ButtonLink href="/#how-it-works" variant="secondary">
-                  Как это работает
-                </ButtonLink>
-              </div>
+                <p className="text-caption font-medium uppercase text-accent">
+                  Фото → 3D-модель → смета → бригада
+                </p>
+                <h1 className="font-display mt-4 text-display font-extrabold tracking-tight text-white">
+                  Ваш дом в 3D — из четырёх фотографий
+                </h1>
+                <p className="prose-measure mx-auto mt-5 text-body-l text-soft lg:mx-0">
+                  Загрузите фото дома — и настройте крышу, фасад и забор прямо в
+                  модели. Материалы и стоимость считаются сами.
+                </p>
+                <div className="hero-cta mt-8 flex flex-wrap justify-center gap-4 lg:justify-start">
+                  <ButtonLink href="/editor">Загрузить фото дома</ButtonLink>
+                  <ButtonLink href="/#how-it-works" variant="secondary">
+                    Как это работает
+                  </ButtonLink>
+                </div>
 
-              {/* The stamp at the foot of the sheet. On the landing it
+                {/* The stamp at the foot of the sheet. On the landing it
                   describes the sample project; in the editor the same block
                   carries the reader's own house, live. */}
-              <TitleBlock
-                className="mt-7 !bg-transparent !shadow-none sm:mt-9"
-                fields={[
-                  { label: "Объект", value: "Частный дом" },
-                  { label: "Габариты", value: "9,5 × 8,2 м", secondary: true },
-                  { label: "Этажность", value: "2 этажа" },
-                  { label: "Площадь фасадов", value: "186,7 м²" },
-                  { label: "Смета", value: "1 526 203 ₽", accent: true },
-                  { label: "Масштаб", value: "1:100", secondary: true },
-                ]}
-              />
+                <TitleBlock
+                  className="mt-7 !bg-transparent !shadow-none sm:mt-9"
+                  fields={[
+                    { label: "Объект", value: "Частный дом" },
+                    {
+                      label: "Габариты",
+                      value: "9,5 × 8,2 м",
+                      secondary: true,
+                    },
+                    { label: "Этажность", value: "2 этажа" },
+                    { label: "Площадь фасадов", value: "186,7 м²" },
+                    { label: "Смета", value: "1 526 203 ₽", accent: true },
+                    { label: "Масштаб", value: "1:100", secondary: true },
+                  ]}
+                />
+              </div>
             </div>
           </div>
         </div>

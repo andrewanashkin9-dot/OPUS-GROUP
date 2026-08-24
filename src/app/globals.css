@@ -492,3 +492,21 @@ h3,
     margin-top: 1.25rem;
   }
 }
+
+/* Beside the render, the headline does not need the full display size: at 72px
+   it ran to four lines and forced the copy plate wide enough to crowd the
+   picture out. The display size still runs at full scale everywhere else. */
+@media (min-width: 1024px) and (min-height: 821px) {
+  .hero-content h1 {
+    font-size: clamp(2.25rem, 3.4vw, 3.25rem);
+  }
+}
+
+/* Short viewports give the render up first — the copy and the title block
+   carry the message, and a picture that pushes the plate under the nav bar
+   costs more than it adds. */
+@media (max-height: 820px) {
+  .hero-render {
+    display: none;
+  }
+}

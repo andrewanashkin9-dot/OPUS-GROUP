@@ -44,6 +44,7 @@ Open [http://localhost:3000](http://localhost:3000). The editor
 npm run dev     # start the dev server
 npm run build   # production build
 npm run lint    # eslint
+npm run db:check # проверить подключение к PostgreSQL
 ```
 
 ## Где вписать ключ Neural4D
@@ -73,6 +74,47 @@ npm run lint    # eslint
 
 Проверено «канарейкой»: со подставленным тестовым значением сборка не
 содержит его ни в одном файле `.next/static`, а ответы и логи чисты.
+
+## База данных PostgreSQL
+
+Проект подключается к Managed Service for PostgreSQL в Yandex Cloud. Все
+настройки — только через переменные окружения, ни одного значения в коде.
+
+**Как настроить локально:**
+
+1. `cp .env.example .env`
+2. Заполните в `.env` четыре обязательные строки: `DB_HOST` (FQDN хоста из
+   консоли Yandex Cloud, вида `rc1a-xxxxxxxx.mdb.yandexcloud.net`), `DB_NAME`,
+   `DB_USER`, `DB_PASSWORD`. `DB_PORT` уже стоит `6432` — это порт пулера
+   соединений, подключаться нужно через него.
+3. Скачайте корневой сертификат облака и укажите путь к нему в
+   `DB_SSL_ROOT_CERT`:
+
+   ```bash
+   mkdir -p ~/.postgresql
+   curl -o ~/.postgresql/root.crt https://storage.yandexcloud.net/cloud-certs/CA.pem
+   ```
+
+4. `npm run db:check` — скрипт делает один тестовый запрос и печатает, к чему
+   подключился, или объясняет, что именно не так.
+
+**На Vercel:** те же имена в Settings → Environment Variables. Префикса
+`NEXT_PUBLIC_` быть не должно — с ним Next подставит пароль в браузерный
+бандл. Файла на диске там нет, поэтому `DB_SSL_ROOT_CERT` не задаётся:
+соединение остаётся шифрованным, но без проверки сертификата.
+
+### Как это устроено
+
+- `src/lib/server/db-config.ts` — единственное место, которое читает пароль.
+  Импортирует `server-only`, поэтому сборка **падает** при случайном импорте
+  из клиентского компонента.
+- `src/lib/server/db.ts` — пул соединений (`getPool`, `query`, `pingDatabase`).
+  Пул создаётся лениво и переиспользуется между горячими перезагрузками, иначе
+  за час разработки был бы выбран лимит соединений базы.
+- Запросы всегда параметризованные (`$1`, `$2`), склейки строк с SQL нет —
+  значение не может превратиться в код (SQL-инъекция).
+- `.env` закрыт `.gitignore` (`.env*`, кроме `.env.example`), поэтому реальный
+  пароль в GitHub не попадёт.
 
 ## Deploying to Vercel (free Hobby tier)
 

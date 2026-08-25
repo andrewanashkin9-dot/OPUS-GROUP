@@ -10,6 +10,11 @@
  *
  * WebP at both densities with a JPEG fallback, per the image rule; no alpha is
  * needed because the frame, not a cutout, is what separates it from the sheet.
+ *
+ * The image always renders. Its box changes height with the viewport and the
+ * picture crops to fit (object-cover, biased slightly above centre so the house
+ * stays in frame) — a short screen gets less of the plane, never less of the
+ * house, and never an empty gap where the render should be.
  */
 export function HeroRender({ className = "" }: { className?: string }) {
   return (
@@ -32,7 +37,7 @@ export function HeroRender({ className = "" }: { className?: string }) {
           height={467}
           alt="Двухэтажный дом с двускатной крышей на чертёжной плоскости — так выглядит модель, собранная из четырёх фотографий"
           decoding="async"
-          className="block h-full w-full object-cover"
+          className="block h-full w-full object-cover object-[50%_42%]"
         />
       </picture>
     </figure>

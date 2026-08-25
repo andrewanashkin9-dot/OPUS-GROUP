@@ -464,49 +464,118 @@ h3,
   background: var(--plate-edge-hi);
 }
 
-/* Short viewports — laptops around 720px tall, and phones in landscape.
+/* ---------------------------------------------------------------------------
+   Hero — one arrangement that adapts.
 
-   The hero plate carries a headline, a paragraph, two buttons and the title
-   block; at full size that is ~640px, which does not fit under a 64px sticky
-   nav on a 720px screen and the top of the plate slides behind the bar. The
-   type steps down and the rhythm tightens rather than any content being
-   dropped — the reader on a small laptop gets the same sheet, just set closer.
-   Keyed to height, not width: it is vertical room that is missing. */
-@media (max-height: 820px) {
-  .hero-content {
-    padding-top: 1.5rem;
-    padding-bottom: 1.5rem;
+   The render is never switched off. Its box changes height with the viewport
+   and the picture crops inside it (object-cover), so a short screen loses some
+   of the drawing plane rather than the whole image. Every rule below is keyed
+   to WIDTH, because width is what decides whether the two blocks sit stacked
+   or side by side; height is absorbed by the box shrinking.
+--------------------------------------------------------------------------- */
+
+/* Stacked, phone-first: a band across the top, deep enough to read as a
+   building and shallow enough to leave the copy its room. */
+.hero-render {
+  height: clamp(7rem, 23svh, 13rem);
+}
+
+.hero-render img {
+  height: 100%;
+}
+
+/* From md the two sit side by side. That is what actually rescues a short
+   landscape screen: there the width is plentiful and only the height is
+   scarce, so a second column costs no vertical room at all. The box keeps the
+   render's own 3:2 until the viewport is too short for it, then max-height
+   takes over and the picture crops instead of forcing the row taller. */
+@media (min-width: 768px) {
+  .hero-render {
+    height: auto;
+    aspect-ratio: 3 / 2;
+    max-height: 58svh;
   }
+}
+
+/* Once the copy shares the row with the render it has roughly half the width,
+   so the full display scale no longer fits it — at 820px that was a 49px face
+   in a 370px column, two words to a line. */
+@media (min-width: 768px) {
   .hero-content h1 {
-    font-size: clamp(1.75rem, 3.6vw, 2.75rem);
-    margin-top: 0.75rem;
-  }
-  .hero-content .prose-measure {
-    margin-top: 0.75rem;
-    font-size: 1rem;
-  }
-  .hero-content .hero-cta {
-    margin-top: 1.25rem;
-  }
-  .hero-content dl {
-    margin-top: 1.25rem;
+    font-size: clamp(1.75rem, 3.2vw, 2.5rem);
   }
 }
 
 /* Beside the render, the headline does not need the full display size: at 72px
    it ran to four lines and forced the copy plate wide enough to crowd the
-   picture out. The display size still runs at full scale everywhere else. */
-@media (min-width: 1024px) and (min-height: 821px) {
+   picture out. Width-gated only. */
+@media (min-width: 1024px) {
   .hero-content h1 {
     font-size: clamp(2.25rem, 3.4vw, 3.25rem);
   }
 }
 
-/* Short viewports give the render up first — the copy and the title block
-   carry the message, and a picture that pushes the plate under the nav bar
-   costs more than it adds. */
-@media (max-height: 820px) {
+/* Short viewports — small laptops, and phones on their side.
+
+   The copy tightens rather than anything being dropped: the type steps down
+   and the rhythm closes up, so the same sheet is simply set closer. This one
+   is keyed to height on purpose — it is vertical room that is missing — but
+   it only ever compacts, it never hides. */
+@media (max-height: 860px) {
+  .hero-content h1 {
+    font-size: clamp(1.5rem, 3.4vw, 2.25rem);
+    margin-top: 0.6rem;
+  }
+  .hero-content .prose-measure {
+    margin-top: 0.6rem;
+    font-size: 0.9375rem;
+  }
+  .hero-content .hero-cta {
+    margin-top: 1rem;
+  }
+  .hero-content dl {
+    margin-top: 1rem;
+  }
   .hero-render {
+    max-height: 46svh;
+  }
+}
+
+/* Very short viewports — a phone held sideways, roughly 390px of height.
+
+   Compaction alone cannot close this one: the stage's own padding plus a
+   headline, paragraph, buttons and the title block need more room than the
+   screen has. So here the title block gives way, and the render does not —
+   the picture is the thing worth keeping at this size, and the same figures
+   are a scroll away in the sections below.
+
+   Everything else tightens rather than disappears. Keyed to height because
+   this is purely a vertical-room problem; the layout is still two columns,
+   which is what makes a sideways phone workable at all. */
+@media (max-height: 560px) {
+  .hero-stage {
+    padding-top: 4.5rem;
+    padding-bottom: 0.75rem;
+  }
+  .hero-content .plate {
+    padding-top: 0.9rem;
+    padding-bottom: 0.9rem;
+  }
+  .hero-content h1 {
+    font-size: clamp(1.25rem, 2.7vw, 1.75rem);
+    margin-top: 0.4rem;
+  }
+  .hero-content .prose-measure {
+    margin-top: 0.4rem;
+    font-size: 0.875rem;
+  }
+  .hero-content .hero-cta {
+    margin-top: 0.7rem;
+  }
+  .hero-content dl {
     display: none;
+  }
+  .hero-render {
+    max-height: 72svh;
   }
 }

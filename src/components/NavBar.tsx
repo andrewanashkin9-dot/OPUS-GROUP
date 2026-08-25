@@ -32,7 +32,7 @@ export function NavBar() {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-6 lg:flex xl:gap-8">
           {links.map((link) => (
             <Link
               key={link.href}
@@ -57,7 +57,7 @@ export function NavBar() {
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
             aria-controls="mobile-nav"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)] md:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)] lg:hidden"
           >
             <span className="sr-only">{open ? "Закрыть меню" : "Открыть меню"}</span>
             <svg
@@ -82,7 +82,7 @@ export function NavBar() {
       {open && (
         <nav
           id="mobile-nav"
-          className="border-t border-[var(--plate-edge)] px-4 pb-4 pt-2 md:hidden"
+          className="border-t border-[var(--plate-edge)] px-4 pb-4 pt-2 lg:hidden"
         >
           <ul>
             {links.map((link) => (

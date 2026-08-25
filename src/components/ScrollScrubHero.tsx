@@ -258,16 +258,21 @@ export function ScrollScrubHero() {
 
         <div className="hero-stage absolute inset-0 flex items-center justify-center px-4 pb-16 pt-20">
           <div className="hero-tilt w-full max-w-6xl">
-            {/* Render and copy side by side on the same tilted surface. Below
-                lg the render is dropped rather than stacked: the headline,
-                paragraph, buttons and title block already fill a phone screen,
-                and stacking an image on top pushes the plate under the nav. */}
+            {/* One arrangement that adapts, rather than a layout with the
+                picture switched off below a cutoff. Stacked on a phone with
+                the render on top; two columns from md upward, which is what
+                actually rescues a short landscape screen — there the width is
+                plentiful and only the height is scarce, so putting the two
+                side by side costs no vertical room at all.
+
+                Gated on width alone. Height is handled by the render's box
+                shrinking and the picture cropping, never by hiding it. */}
             <div
               ref={contentRef}
-              className="hero-content grid items-center gap-6 will-change-[opacity,transform] lg:grid-cols-[1.15fr_1fr] lg:gap-10"
+              className="hero-content flex flex-col gap-5 will-change-[opacity,transform] md:grid md:grid-cols-[1.05fr_1fr] md:items-center md:gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-10"
             >
-              <HeroRender className="hero-render hidden lg:block" />
-              <div className="plate px-5 py-7 text-center sm:px-8 sm:py-9 lg:text-left">
+              <HeroRender className="hero-render min-w-0" />
+              <div className="plate min-w-0 px-5 py-6 text-center sm:px-8 sm:py-9 md:text-left">
                 {/* Full cream, not the dim tone used elsewhere: the scrim is
                 thinnest at this height, and dim cream over the blueprint
                 falls to roughly 3.4:1 — under the floor for small text. */}
@@ -277,11 +282,11 @@ export function ScrollScrubHero() {
                 <h1 className="font-display mt-4 text-display font-extrabold tracking-tight text-white">
                   Ваш дом в 3D — из четырёх фотографий
                 </h1>
-                <p className="prose-measure mx-auto mt-5 text-body-l text-soft lg:mx-0">
+                <p className="prose-measure mx-auto mt-4 text-body-l text-soft md:mx-0">
                   Загрузите фото дома — и настройте крышу, фасад и забор прямо в
                   модели. Материалы и стоимость считаются сами.
                 </p>
-                <div className="hero-cta mt-8 flex flex-wrap justify-center gap-4 lg:justify-start">
+                <div className="hero-cta mt-6 flex flex-wrap justify-center gap-3 md:justify-start">
                   <ButtonLink href="/editor">Загрузить фото дома</ButtonLink>
                   <ButtonLink href="/#how-it-works" variant="secondary">
                     Как это работает

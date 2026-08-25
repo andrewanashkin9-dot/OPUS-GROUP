@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import { ButtonLink } from "./Button";
-import { HeroRender } from "./HeroRender";
 import { TitleBlock } from "./TitleBlock";
 
 /**
@@ -243,36 +242,19 @@ export function ScrollScrubHero() {
             className="hero-still absolute inset-0 h-full w-full object-cover"
           />
 
-          {/* Grades the warm footage toward the sheet it is handing off to, and
-            keeps type legible over it — the deep blue of the paper rather than
-            a neutral black, so the two worlds meet in one colour. */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(to top, rgba(7,18,41,0.88) 0%, rgba(7,18,41,0.6) 28%, rgba(7,18,41,0.16) 58%, rgba(7,18,41,0) 80%)",
-            }}
-          />
+          {/* Grades the warm footage toward the sheet it is handing off to and
+              keeps type legible over it. Themed rather than a literal, so on
+              black paper the footage grades to black instead of to blue. */}
+          <div aria-hidden="true" className="hero-scrim absolute inset-0" />
         </div>
 
         <div className="hero-stage absolute inset-0 flex items-center justify-center px-4 pb-16 pt-20">
-          <div className="hero-tilt w-full max-w-6xl">
-            {/* One arrangement that adapts, rather than a layout with the
-                picture switched off below a cutoff. Stacked on a phone with
-                the render on top; two columns from md upward, which is what
-                actually rescues a short landscape screen — there the width is
-                plentiful and only the height is scarce, so putting the two
-                side by side costs no vertical room at all.
-
-                Gated on width alone. Height is handled by the render's box
-                shrinking and the picture cropping, never by hiding it. */}
+          <div className="hero-tilt w-full max-w-4xl">
             <div
               ref={contentRef}
-              className="hero-content flex flex-col gap-5 will-change-[opacity,transform] md:grid md:grid-cols-[1.05fr_1fr] md:items-center md:gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-10"
+              className="hero-content will-change-[opacity,transform]"
             >
-              <HeroRender className="hero-render min-w-0" />
-              <div className="plate min-w-0 px-5 py-6 text-center sm:px-8 sm:py-9 md:text-left">
+              <div className="plate mx-auto px-5 py-7 text-center sm:px-10 sm:py-10">
                 {/* Full cream, not the dim tone used elsewhere: the scrim is
                 thinnest at this height, and dim cream over the blueprint
                 falls to roughly 3.4:1 — under the floor for small text. */}
@@ -282,11 +264,11 @@ export function ScrollScrubHero() {
                 <h1 className="font-display mt-4 text-display font-extrabold tracking-tight text-white">
                   Ваш дом в 3D — из четырёх фотографий
                 </h1>
-                <p className="prose-measure mx-auto mt-4 text-body-l text-soft md:mx-0">
+                <p className="prose-measure mx-auto mt-4 text-body-l text-soft">
                   Загрузите фото дома — и настройте крышу, фасад и забор прямо в
                   модели. Материалы и стоимость считаются сами.
                 </p>
-                <div className="hero-cta mt-6 flex flex-wrap justify-center gap-3 md:justify-start">
+                <div className="hero-cta mt-7 flex flex-wrap justify-center gap-3">
                   <ButtonLink href="/editor">Загрузить фото дома</ButtonLink>
                   <ButtonLink href="/#how-it-works" variant="secondary">
                     Как это работает

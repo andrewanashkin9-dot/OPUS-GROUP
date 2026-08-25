@@ -83,7 +83,7 @@ export function EditorShell() {
         </div>
 
         {/* Desktop rail */}
-        <aside className="hidden w-96 shrink-0 flex-col gap-8 overflow-y-auto border-l border-[var(--plate-edge)] bg-[rgba(7,18,41,0.55)] p-6 backdrop-blur-sm lg:flex">
+        <aside className="hidden w-96 shrink-0 flex-col gap-8 overflow-y-auto border-l border-[var(--plate-edge)] bg-[var(--rail)] p-6 backdrop-blur-sm lg:flex">
           <HouseControls model={model} />
           <MaterialsPalette node={selectedNode} />
           <ColorPicker node={selectedNode} />
@@ -94,7 +94,7 @@ export function EditorShell() {
       </div>
 
       {/* Mobile: view-and-color-only degrade */}
-      <div className="border-t border-[var(--plate-edge)] bg-[rgba(7,18,41,0.55)] p-3 backdrop-blur-sm lg:hidden">
+      <div className="border-t border-[var(--plate-edge)] bg-[var(--rail)] p-3 backdrop-blur-sm lg:hidden">
         <button
           type="button"
           onClick={() => setMobileSheetOpen((v) => !v)}

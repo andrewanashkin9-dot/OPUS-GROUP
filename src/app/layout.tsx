@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { StoreHydrator } from "@/components/StoreHydrator";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { BlueprintSpace } from "@/components/ui/BlueprintSpace";
 import { FilmGrain } from "@/components/ui/FilmGrain";
 import "./globals.css";
@@ -12,7 +13,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ru" data-scroll-behavior="smooth" className="h-full antialiased">
+    <html
+      lang="ru"
+      data-scroll-behavior="smooth"
+      className="h-full antialiased"
+    >
+      <head>
+        {/* Applies the saved sheet colour before first paint. Inlined and
+            blocking on purpose: a module would arrive a hop too late and the
+            reader would see the default theme flash first. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full bg-deep font-body text-soft">
         {/* Entrance animation starts hidden and is played by an observer. With
             no scripting nothing would ever play it, so the hidden state is

@@ -14,7 +14,7 @@ export function TopBar() {
   const total = useCartTotal(bom);
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--plate-edge)] bg-[rgba(7,18,41,0.72)] px-4 backdrop-blur-md sm:px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--plate-edge)] bg-[var(--bar)] px-4 backdrop-blur-md sm:px-6">
       <div className="flex items-center gap-4 min-w-0">
         <Link href="/" className="flex items-center gap-2 shrink-0" aria-label="На главную">
           <Logo className="h-7 w-7 text-accent" />

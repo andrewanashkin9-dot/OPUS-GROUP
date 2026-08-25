@@ -17,6 +17,14 @@
   --deep: #071229;
   --blue: #0e2a5c;
   --blue-lift: #16407f;
+  /* Middle stop of the sheet gradient, and the two translucent chrome
+     backdrops. Tokens rather than literals because a theme has to be able to
+     move the whole surface without every component knowing about it. */
+  --field-mid: #0b1f45;
+  --bar: rgba(7, 18, 41, 0.72);
+  --rail: rgba(7, 18, 41, 0.55);
+  /* Base of the hero scrim, as a triplet so alpha stops can be composed. */
+  --scrim-rgb: 7, 18, 41;
   --grid: rgba(255, 255, 255, 0.13);
   --grid-bold: rgba(255, 255, 255, 0.22);
   --white: #ffffff;
@@ -61,6 +69,42 @@
 
   --font-display: "Unbounded", "Arial Narrow", sans-serif;
   --font-body: "Manrope", "Segoe UI", sans-serif;
+}
+
+/* ---------------------------------------------------------------------------
+   Black theme.
+
+   The same sheet with the blue taken out of it: identical layout, identical
+   spacing, identical grid pitch, and the ruling stays white at exactly the
+   same two alphas. Only the surface underneath changes, which is the whole
+   point — the drawing is the same drawing, on black paper.
+
+   Set on <html> before first paint by the inline script in the layout, so a
+   reader who chose black never sees a blue frame first.
+--------------------------------------------------------------------------- */
+
+:root[data-theme="black"] {
+  --deep: #000000;
+  --blue: #121212;
+  --field-mid: #090909;
+  --blue-lift: #242424;
+
+  --plate: rgba(38, 38, 38, 0.66);
+  --plate-quiet: rgba(38, 38, 38, 0.42);
+
+  --bar: rgba(0, 0, 0, 0.78);
+  --rail: rgba(0, 0, 0, 0.6);
+  --scrim-rgb: 0, 0, 0;
+
+  /* Lifted a little: on black the same shadow has nothing to darken, so the
+     inset highlight does more of the work of separating a plate from the
+     ground than the drop shadows do. */
+  --lift-1:
+    0 1px 2px rgba(0, 0, 0, 0.8), 0 8px 20px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --lift-2:
+    0 2px 4px rgba(0, 0, 0, 0.85), 0 16px 36px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 @theme inline {
@@ -198,7 +242,7 @@ h3,
   background: radial-gradient(
     124% 92% at 50% 30%,
     var(--blue) 0%,
-    #0b1f45 46%,
+    var(--field-mid) 46%,
     var(--deep) 100%
   );
 }
@@ -474,47 +518,6 @@ h3,
    or side by side; height is absorbed by the box shrinking.
 --------------------------------------------------------------------------- */
 
-/* Stacked, phone-first: a band across the top, deep enough to read as a
-   building and shallow enough to leave the copy its room. */
-.hero-render {
-  height: clamp(7rem, 23svh, 13rem);
-}
-
-.hero-render img {
-  height: 100%;
-}
-
-/* From md the two sit side by side. That is what actually rescues a short
-   landscape screen: there the width is plentiful and only the height is
-   scarce, so a second column costs no vertical room at all. The box keeps the
-   render's own 3:2 until the viewport is too short for it, then max-height
-   takes over and the picture crops instead of forcing the row taller. */
-@media (min-width: 768px) {
-  .hero-render {
-    height: auto;
-    aspect-ratio: 3 / 2;
-    max-height: 58svh;
-  }
-}
-
-/* Once the copy shares the row with the render it has roughly half the width,
-   so the full display scale no longer fits it — at 820px that was a 49px face
-   in a 370px column, two words to a line. */
-@media (min-width: 768px) {
-  .hero-content h1 {
-    font-size: clamp(1.75rem, 3.2vw, 2.5rem);
-  }
-}
-
-/* Beside the render, the headline does not need the full display size: at 72px
-   it ran to four lines and forced the copy plate wide enough to crowd the
-   picture out. Width-gated only. */
-@media (min-width: 1024px) {
-  .hero-content h1 {
-    font-size: clamp(2.25rem, 3.4vw, 3.25rem);
-  }
-}
-
 /* Short viewports — small laptops, and phones on their side.
 
    The copy tightens rather than anything being dropped: the type steps down
@@ -535,9 +538,6 @@ h3,
   }
   .hero-content dl {
     margin-top: 1rem;
-  }
-  .hero-render {
-    max-height: 46svh;
   }
 }
 
@@ -575,7 +575,16 @@ h3,
   .hero-content dl {
     display: none;
   }
-  .hero-render {
-    max-height: 72svh;
-  }
+}
+
+/* The scrim under the hero copy, in whichever surface the theme is on, so the
+   footage always grades toward the paper it is handing off to. */
+.hero-scrim {
+  background: linear-gradient(
+    to top,
+    rgba(var(--scrim-rgb), 0.88) 0%,
+    rgba(var(--scrim-rgb), 0.6) 28%,
+    rgba(var(--scrim-rgb), 0.16) 58%,
+    rgba(var(--scrim-rgb), 0) 80%
+  );
 }

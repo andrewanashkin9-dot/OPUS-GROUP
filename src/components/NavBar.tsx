@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { ThemeToggle } from "./ui/ThemeToggle";
 import { Logo } from "./Logo";
 
 const links = [
@@ -19,7 +20,7 @@ export function NavBar() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--plate-edge)] bg-[rgba(7,18,41,0.72)] backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-[var(--plate-edge)] bg-[var(--bar)] backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
@@ -44,7 +45,8 @@ export function NavBar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle />
           <Link
             href="/editor"
             className="hidden items-center rounded-full bg-accent px-5 py-2.5 text-ui font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 sm:inline-flex"
@@ -59,7 +61,9 @@ export function NavBar() {
             aria-controls="mobile-nav"
             className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)] lg:hidden"
           >
-            <span className="sr-only">{open ? "Закрыть меню" : "Открыть меню"}</span>
+            <span className="sr-only">
+              {open ? "Закрыть меню" : "Открыть меню"}
+            </span>
             <svg
               viewBox="0 0 20 20"
               className="h-5 w-5"
@@ -86,7 +90,10 @@ export function NavBar() {
         >
           <ul>
             {links.map((link) => (
-              <li key={link.href} className="border-b border-[var(--plate-edge)] last:border-b-0">
+              <li
+                key={link.href}
+                className="border-b border-[var(--plate-edge)] last:border-b-0"
+              >
                 <Link
                   href={link.href}
                   onClick={() => setOpen(false)}

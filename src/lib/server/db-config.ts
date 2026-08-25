@@ -76,7 +76,9 @@ function readSsl(): DbConfig["ssl"] {
 
   // Путь к файлу берётся из окружения, а не из запроса: иначе кто угодно
   // мог бы заставить сервер прочитать произвольный файл с диска.
-  return { ca: readFileSync(caPath, "utf8"), rejectUnauthorized: true };
+  // turbopackIgnore: путь известен только во время работы, статически его
+  // не разрешить — сборщик иначе предупреждает, что не смог его проследить.
+  return { ca: readFileSync(/* turbopackIgnore: true */ caPath, "utf8"), rejectUnauthorized: true };
 }
 
 /**

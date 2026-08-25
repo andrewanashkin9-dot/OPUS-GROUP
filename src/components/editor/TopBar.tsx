@@ -17,7 +17,7 @@ export function TopBar() {
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--plate-edge)] bg-[var(--bar)] px-4 backdrop-blur-md sm:px-6">
       <div className="flex items-center gap-4 min-w-0">
         <Link href="/" className="flex items-center gap-2 shrink-0" aria-label="На главную">
-          <Logo className="h-7 w-7 text-accent" />
+          <Logo className="h-8 w-8 text-accent" />
         </Link>
         <span className="truncate text-body-s font-medium text-dim">
           {model?.name ?? "Новый проект"}

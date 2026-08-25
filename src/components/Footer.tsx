@@ -8,7 +8,7 @@ export function Footer() {
         <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-2">
-              <Logo className="h-7 w-7 text-accent" />
+              <Logo className="h-8 w-8 text-accent" />
               <span className="font-display text-[18px] font-semibold text-white">OPUS GROUP</span>
             </div>
             <p className="mt-4 max-w-xs text-body-s text-dim">

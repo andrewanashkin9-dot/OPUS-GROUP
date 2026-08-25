@@ -27,7 +27,7 @@ export function NavBar() {
           className="flex shrink-0 items-center gap-2"
           onClick={() => setOpen(false)}
         >
-          <Logo className="h-8 w-8 text-accent" />
+          <Logo className="h-9 w-9 text-accent" />
           <span className="font-display text-[20px] font-semibold tracking-tight text-white">
             OPUS GROUP
           </span>

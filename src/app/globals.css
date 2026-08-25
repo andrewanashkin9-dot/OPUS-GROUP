@@ -588,3 +588,19 @@ h3,
     rgba(var(--scrim-rgb), 0) 80%
   );
 }
+
+/* The brand mark. Painted as `currentColor` through a mask of the artwork, so
+   it inherits the accent from its context and needs no per-theme variant. */
+.logo-mark {
+  background-color: currentColor;
+  -webkit-mask-image: url("/assets/brand/opus-mark.png");
+  mask-image: url("/assets/brand/opus-mark.png");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  /* The mark is taller than it is wide; contained, it fits the box by height
+     and stays centred rather than being stretched to a square. */
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}

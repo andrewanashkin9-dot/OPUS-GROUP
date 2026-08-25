@@ -12,7 +12,8 @@
     "lint": "eslint",
     "db:check": "tsx --conditions=react-server scripts/check-db.ts",
     "db:migrate": "tsx --conditions=react-server scripts/migrate.ts",
-    "db:migrate:status": "tsx --conditions=react-server scripts/migrate.ts --status"
+    "db:migrate:status": "tsx --conditions=react-server scripts/migrate.ts --status",
+    "db:cleanup": "tsx --conditions=react-server scripts/cleanup.ts"
   },
   "dependencies": {
     "@fontsource/manrope": "^5.3.0",

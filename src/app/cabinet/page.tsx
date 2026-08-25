@@ -4,6 +4,8 @@ import { requireUser } from "@/lib/server/auth/guard";
 import { findUserById } from "@/lib/server/auth/users";
 import { LogoutButton } from "./LogoutButton";
 import { RequestsPanel } from "./RequestsPanel";
+import { SubscriptionPanel } from "./SubscriptionPanel";
+import { query } from "@/lib/server/db";
 import { listClientRequests, listOpenRequests } from "@/lib/server/requests/queries";
 
 export const metadata: Metadata = {
@@ -56,6 +58,8 @@ export default async function CabinetPage() {
         </p>
       )}
 
+      {user.role === "executor" && (await renderSubscription(user.id))}
+
       {(user.role === "client" || user.role === "executor") && (
         <RequestsPanel
           role={user.role}
@@ -83,5 +87,23 @@ function Row({ label, value }: { label: string; value: string }) {
       <dt className="text-body-s text-cream-dim">{label}</dt>
       <dd className="text-body text-cream-bright">{value}</dd>
     </div>
+  );
+}
+
+/** Текущее состояние подписки исполнителя — читается прямо здесь, у базы. */
+async function renderSubscription(executorId: string) {
+  const { rows } = await query<{ status: string; paidUntil: Date }>(
+    `select status, current_period_end as "paidUntil"
+       from subscriptions
+      where executor_id = $1 and status in ('active', 'past_due')
+      limit 1`,
+    [executorId],
+  );
+  const current = rows[0];
+  return (
+    <SubscriptionPanel
+      status={current?.status ?? null}
+      paidUntil={current ? new Date(current.paidUntil).toLocaleDateString("ru-RU") : null}
+    />
   );
 }

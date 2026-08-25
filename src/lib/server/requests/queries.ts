@@ -1,6 +1,7 @@
 import "server-only";
 
 import { query, withTransaction } from "../db";
+import { recordDealCommission } from "../payments/commission";
 import { canTransition, transitionError, type RequestStatus } from "./status";
 
 /**
@@ -269,19 +270,29 @@ export async function changeRequestStatus(
     canTransition(from, to),
   );
 
-  const { rowCount } = await query(
-    `update requests set status = $3
-      where id = $1 and client_id = $2 and status = any($4::request_status[])`,
-    [requestId, clientId, to, allowedFrom],
-  );
+  await withTransaction(async (client) => {
+    const { rowCount } = await client.query(
+      `update requests set status = $3
+        where id = $1 and client_id = $2 and status = any($4::request_status[])`,
+      [requestId, clientId, to, allowedFrom],
+    );
 
-  if (rowCount === 0) {
-    const current = await findRequest(requestId);
-    // «Не твоя заявка» и «нет такой заявки» — один ответ. Иначе перебором id
-    // выясняется, какие заявки существуют.
-    if (!current || current.clientId !== clientId) {
-      throw new DomainError("Заявка не найдена", 404);
+    if (rowCount === 0) {
+      const current = await findRequest(requestId);
+      // «Не твоя заявка» и «нет такой заявки» — один ответ. Иначе перебором id
+      // выясняется, какие заявки существуют.
+      if (!current || current.clientId !== clientId) {
+        throw new DomainError("Заявка не найдена", 404);
+      }
+      throw new DomainError(transitionError(current.status, to), 409);
     }
-    throw new DomainError(transitionError(current.status, to), 409);
-  }
+
+    // Завершение сделки — момент, когда возникает вознаграждение. Комиссия
+    // пишется той же транзакцией: завершённая заявка без строки в учёте
+    // означает недостачу, которую обнаружат при сверке в конце квартала,
+    // когда восстанавливать сумму уже неоткуда.
+    if (to === "completed") {
+      await recordDealCommission(client, requestId);
+    }
+  });
 }

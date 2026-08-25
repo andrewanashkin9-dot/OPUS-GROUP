@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/server/auth/guard";
 import { findUserById } from "@/lib/server/auth/users";
 import { LogoutButton } from "./LogoutButton";
+import { RequestsPanel } from "./RequestsPanel";
+import { listClientRequests, listOpenRequests } from "@/lib/server/requests/queries";
 
 export const metadata: Metadata = {
   title: "Кабинет — OPUS GROUP",
@@ -54,7 +56,21 @@ export default async function CabinetPage() {
         </p>
       )}
 
-      <div className="mt-10">
+      {(user.role === "client" || user.role === "executor") && (
+        <RequestsPanel
+          role={user.role}
+          // Сервер уже здесь, у базы — запрашивать те же данные вторым
+          // заходом из браузера значило бы показать пустой экран и сходить
+          // по сети за тем, что было под рукой.
+          initialRequests={
+            user.role === "executor"
+              ? await listOpenRequests(user.id)
+              : await listClientRequests(user.id)
+          }
+        />
+      )}
+
+      <div className="mt-14">
         <LogoutButton />
       </div>
     </main>

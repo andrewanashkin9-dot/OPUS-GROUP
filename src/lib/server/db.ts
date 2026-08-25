@@ -1,7 +1,7 @@
 import "server-only";
 
 import { Pool } from "pg";
-import type { QueryResult, QueryResultRow } from "pg";
+import type { PoolClient, QueryResult, QueryResultRow } from "pg";
 import { getDbConfig } from "./db-config";
 
 /**
@@ -64,6 +64,43 @@ export function query<Row extends QueryResultRow = QueryResultRow>(
   params?: readonly unknown[],
 ): Promise<QueryResult<Row>> {
   return getPool().query<Row>(text, params as unknown[] | undefined);
+}
+
+/**
+ * Выполняет несколько запросов как одно целое.
+ *
+ * Нужно там, где половина работы хуже, чем никакой. Подтверждение отклика —
+ * ровно такой случай: надо пометить один отклик принятым, остальные
+ * отклонёнными и перевести заявку в работу. Оборвись связь посередине —
+ * заявка осталась бы «новой» с уже принятым откликом, и никакой экран не
+ * показал бы правды.
+ *
+ * Все запросы внутри идут по одному и тому же соединению: транзакция живёт
+ * в соединении, и запрос, ушедший в соседнее из пула, окажется вне её.
+ * Поэтому внутрь передаётся клиент, а не общая функция query.
+ */
+export async function withTransaction<T>(
+  fn: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await getPool().connect();
+  try {
+    await client.query("begin");
+    const result = await fn(client);
+    await client.query("commit");
+    return result;
+  } catch (error) {
+    // Откат в своём try: если и он не удался (соединение уже мертво),
+    // наружу должна уйти исходная ошибка, а не ошибка отката, которая
+    // скроет настоящую причину.
+    try {
+      await client.query("rollback");
+    } catch {
+      /* соединение потеряно — база откатит транзакцию сама */
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**

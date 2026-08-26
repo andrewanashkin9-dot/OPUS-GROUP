@@ -6,10 +6,16 @@ import { ThemeToggle } from "./ui/ThemeToggle";
 import { Logo } from "./Logo";
 import { canModerate } from "@/lib/auth/cookie-names";
 import { useRoleCookie } from "@/lib/auth/useRoleCookie";
+import { useBom, useMarketLines } from "@/lib/store";
 
 const links = [
   { href: "/#how-it-works", label: "Как это работает" },
   { href: "/market", label: "Магазин" },
+  // Смета стоит сразу за магазином: оттуда в неё и складывают. До этого
+  // попасть в неё с широкого экрана было неоткуда — ссылка жила только в
+  // подвале и в панелях конструктора, и посетитель, добавивший позицию из
+  // магазина, терял её из виду.
+  { href: "/cart", label: "Смета" },
   { href: "/services", label: "Услуги" },
   { href: "/education", label: "База знаний" },
   { href: "/#pricing", label: "Тарифы" },
@@ -28,6 +34,14 @@ export function NavBar() {
   const role = useRoleCookie();
   const signedIn = role !== null;
   const showModeration = canModerate(role);
+
+  // Сколько позиций в смете — чтобы добавленное из магазина не пропадало из
+  // виду. Хранилище поднимается из localStorage только после монтирования
+  // (skipHydration), поэтому и на сервере, и в первой отрисовке здесь ноль:
+  // разметка сходится, а число появляется следом.
+  const bomCount = useBom().length;
+  const marketCount = useMarketLines().length;
+  const estimateCount = bomCount + marketCount;
 
   // Гостю — вход, вошедшему — кабинет. Ошибиться нестрашно: /cabinet всё
   // равно развернёт на форму входа того, у кого нет настоящей сессии.
@@ -55,9 +69,17 @@ export function NavBar() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-body-s font-medium text-dim transition-colors hover:text-white"
+              className="flex items-center gap-1.5 text-body-s font-medium text-dim transition-colors hover:text-white"
+              aria-label={
+                link.href === "/cart" && estimateCount > 0
+                  ? `Смета, позиций: ${estimateCount}`
+                  : undefined
+              }
             >
               {link.label}
+              {link.href === "/cart" && estimateCount > 0 && (
+                <EstimateCount value={estimateCount} />
+              )}
             </Link>
           ))}
           {/* Только у модераторов и администраторов; остальные не увидят
@@ -135,9 +157,17 @@ export function NavBar() {
                 <Link
                   href={link.href}
                   onClick={() => setOpen(false)}
-                  className="block py-3 text-body font-medium text-white transition-colors hover:text-accent"
+                  className="flex items-center gap-2 py-3 text-body font-medium text-white transition-colors hover:text-accent"
+                  aria-label={
+                    link.href === "/cart" && estimateCount > 0
+                      ? `Смета, позиций: ${estimateCount}`
+                      : undefined
+                  }
                 >
                   {link.label}
+                  {link.href === "/cart" && estimateCount > 0 && (
+                    <EstimateCount value={estimateCount} />
+                  )}
                 </Link>
               </li>
             ))}
@@ -160,13 +190,6 @@ export function NavBar() {
           >
             Начать бесплатно
           </Link>
-          <Link
-            href="/cart"
-            onClick={() => setOpen(false)}
-            className="mt-2 flex items-center justify-center rounded-full border border-[var(--plate-edge)] px-5 py-3 text-ui font-bold text-white transition-colors hover:border-[var(--plate-edge-hi)]"
-          >
-            Смета
-          </Link>
           {/* Обязательно и здесь: на узком экране верхняя кнопка скрыта, и без
               этой строки с телефона в аккаунт было бы не попасть. */}
           <Link
@@ -179,5 +202,26 @@ export function NavBar() {
         </nav>
       )}
     </header>
+  );
+}
+
+/**
+ * Число позиций в смете.
+ *
+ * Акцентом, а не белым: это единственное место в меню, где цифра меняется, и
+ * она должна ловить взгляд ровно тогда, когда в смете что-то появилось.
+ * tabular-nums — чтобы соседние ссылки не дёргались, когда счётчик переходит
+ * с однозначного на двузначный.
+ */
+function EstimateCount({ value }: { value: number }) {
+  return (
+    <span
+      // Читалке экрана эта цифра не нужна: она бы склеилась с названием
+      // ссылки в «Смета 3». Понятную фразу даёт сама ссылка через aria-label.
+      aria-hidden="true"
+      className="rounded-full bg-accent px-1.5 py-0.5 text-caption font-bold tabular-nums text-deep"
+    >
+      {value}
+    </span>
   );
 }

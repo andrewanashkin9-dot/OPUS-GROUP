@@ -52,7 +52,7 @@ export function MaterialsPalette({ node, compact = false }: MaterialsPaletteProp
               className={`relative flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition-colors ${
                 selected
                   ? "border-cream-bright"
-                  : "border-line hover:border-cream-dim"
+                  : "border-[var(--plate-edge)] hover:border-cream-dim"
               } ${locked ? "opacity-70" : ""}`}
             >
               <TextureSwatch
@@ -71,7 +71,7 @@ export function MaterialsPalette({ node, compact = false }: MaterialsPaletteProp
                 </>
               )}
               {locked && (
-                <span className="ingot absolute right-2 top-2 rounded-full px-2 py-0.5 text-caption font-bold uppercase">
+                <span className="absolute right-2 top-2 rounded-full bg-accent px-2 py-0.5 text-caption font-bold uppercase text-deep">
                   Technic
                 </span>
               )}
@@ -87,14 +87,14 @@ export function MaterialsPalette({ node, compact = false }: MaterialsPaletteProp
       )}
 
       {lockedAttemptId && (
-        <div className="mt-4 rounded-xl border border-line bg-bg p-4">
-          <p className="text-body-s text-cream">
+        <div className="mt-4 rounded-xl border border-[var(--plate-edge)] bg-bg p-4">
+          <p className="text-body-s text-soft">
             Этот материал доступен в подписке «Technic» — вместе с точными
             размерами и полной спецификацией.
           </p>
           <Link
             href="/#pricing"
-            className="ingot mt-3 inline-flex items-center rounded-full px-4 py-2 text-body-s font-bold"
+            className="mt-3 inline-flex items-center rounded-full bg-accent px-4 py-2 text-body-s font-bold text-deep"
           >
             Оформить подписку за 700 ₽/мес
           </Link>

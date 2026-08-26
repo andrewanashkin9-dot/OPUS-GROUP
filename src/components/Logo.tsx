@@ -2,28 +2,28 @@ interface LogoProps {
   className?: string;
 }
 
-/** Wireframe shipping container hanging from a crane hook — the brand mark. */
+/**
+ * The OPUS GROUP mark: a wireframe shipping container on a crane hook.
+ *
+ * Drawn as a CSS mask over `currentColor` rather than as an <img>. The mark is
+ * single-colour line work, so masking lets one asset serve every context — it
+ * takes the accent from whatever it sits in, which means it follows the theme
+ * between blue and black paper and will follow the accent colour itself if
+ * that changes, with no second file and no per-theme swap.
+ *
+ * The supplied artwork was a flattened raster with the transparency *painted
+ * in* as a checkerboard, so it was keyed to a real alpha channel first: ink
+ * above the checker's grey, everything at or below it dropped. Its hairlines
+ * average to about 40% coverage when scaled into a 32px box, which next to
+ * solid nav type reads as a grey smudge, so the alpha is gained to put the
+ * strokes back at full ink while leaving the antialiased tips soft.
+ */
 export function Logo({ className }: LogoProps) {
   return (
-    <svg
-      viewBox="0 0 40 40"
-      fill="none"
-      className={className}
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M17 2v4" />
-      <path d="M17 6c0 2.2 1.3 3 3 3s3-.8 3-3" />
-      <path d="M20 9v3" />
-      <path d="M8 14h24l-3 5H11z" />
-      <path d="M8 14 6 12M32 14l2-2" />
-      <rect x="9" y="19" width="22" height="14" />
-      <path d="M9 19 6 22v14h3M31 19l3 3v14h-3" />
-      <path d="M6 36h28" />
-      <path d="M14 19v14M20 19v14M26 19v14" />
-    </svg>
+    <span
+      role="img"
+      aria-label="OPUS GROUP"
+      className={`logo-mark inline-block shrink-0 ${className ?? ""}`}
+    />
   );
 }

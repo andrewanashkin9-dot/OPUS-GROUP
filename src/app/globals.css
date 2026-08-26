@@ -1,29 +1,150 @@
 @import "tailwindcss";
 @import "./fonts.css";
 
+/* ===========================================================================
+   OPUS GROUP — blueprint space.
+
+   The whole site is one sheet of blueprint paper. The grid is the world; every
+   card, panel and button is an object placed on it. Two fixed layers build the
+   sheet (field + grid), one fixed layer adds tooth (grain), and everything
+   else is a plate sitting above them.
+
+   Restraint is the constraint: nothing here loops, pulses or scans. The only
+   motion is caused by the reader — entering the viewport, or a pointer.
+=========================================================================== */
+
 :root {
-  --bg: #000000;
-  --cream: #e4d2ac;
-  --cream-bright: #f4e4c2;
-  --cream-dim: #8a7f6a;
-  --line: #2a2620;
-  --surface: #0d0c0a;
+  --deep: #071229;
+  --blue: #0e2a5c;
+  --blue-lift: #16407f;
+  /* Middle stop of the sheet gradient, and the two translucent chrome
+     backdrops. Tokens rather than literals because a theme has to be able to
+     move the whole surface without every component knowing about it. */
+  --field-mid: #0b1f45;
+  --bar: rgba(7, 18, 41, 0.72);
+  --rail: rgba(7, 18, 41, 0.55);
+  /* Base of the hero scrim, as a triplet so alpha stops can be composed. */
+  --scrim-rgb: 7, 18, 41;
+  --grid: rgba(255, 255, 255, 0.13);
+  --grid-bold: rgba(255, 255, 255, 0.22);
+  --white: #ffffff;
+  --soft: rgba(255, 255, 255, 0.68);
+  --dim: rgba(255, 255, 255, 0.42);
+  /* The one accent. Gold, not beige: on the blueprint sheet a cream sat so
+     close to the paper's own warmth that it read as a lighter grey, and an
+     accent that has to be pointed out is not an accent. Contrast measured
+     against the composited plate rather than the sheet, because that is what
+     it is actually printed on: 7.22:1 on #133872 in blue and about 14:1 on
+     #1F1F1F in black, so it clears AAA for body text in both themes; black
+     on the filled version reads 13.3:1. */
+  --accent: #ffd700;
+  /* A lifted tint for edges and rules, where full-strength gold on a hairline
+     reads as a stray highlight rather than as a drawn line. */
+  --accent-line: rgba(255, 215, 0, 0.22);
+
+  /* Graph-paper pitch: a fine line every 28px, a bold one every 5th. */
+  --grid-cell: 28px;
+  --grid-major: 140px;
+
+  /* Plates. Semi-transparent so the grid still reads through them — that
+     translucency is what makes them sit *on* the sheet rather than cover it.
+     The alpha is the one number tuned by eye: low enough to keep the paper
+     visible, high enough that body copy never fights a grid line. */
+  --plate: rgba(22, 64, 127, 0.62);
+  --plate-quiet: rgba(22, 64, 127, 0.4);
+  --plate-edge: rgba(255, 255, 255, 0.1);
+  --plate-edge-hi: rgba(255, 255, 255, 0.18);
+  --radius: 24px;
+
+  /* Three stacked shadows, different blurs: contact, body, ambient — plus an
+     inset top highlight, which on a dark ground is what actually reads as
+     "raised" (a drop shadow alone is invisible against deep blue). */
+  --lift-1:
+    0 1px 2px rgba(3, 8, 20, 0.55), 0 8px 20px rgba(3, 8, 20, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --lift-2:
+    0 2px 4px rgba(3, 8, 20, 0.6), 0 16px 36px rgba(3, 8, 20, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.11);
+
+  /* One curve for the whole site. Never the browser default. */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 180ms;
+  --dur: 280ms;
+  --dur-slow: 620ms;
+  --stagger: 50ms;
 
   --success: #7fa37a;
-  --error: #b4685c;
-  --warning: #c2a05a;
+  --error: #d08a80;
+  --warning: #d8bd7a;
 
   --font-display: "Unbounded", "Arial Narrow", sans-serif;
   --font-body: "Manrope", "Segoe UI", sans-serif;
 }
 
+/* ---------------------------------------------------------------------------
+   Black theme.
+
+   The same sheet with the blue taken out of it: identical layout, identical
+   spacing, identical grid pitch, and the ruling stays white at exactly the
+   same two alphas. Only the surface underneath changes, which is the whole
+   point — the drawing is the same drawing, on black paper.
+
+   Set on <html> before first paint by the inline script in the layout, so a
+   reader who chose black never sees a blue frame first.
+--------------------------------------------------------------------------- */
+
+:root[data-theme="black"] {
+  --deep: #000000;
+  --blue: #121212;
+  --field-mid: #090909;
+  --blue-lift: #242424;
+
+  --plate: rgba(38, 38, 38, 0.66);
+  --plate-quiet: rgba(38, 38, 38, 0.42);
+
+  --bar: rgba(0, 0, 0, 0.78);
+  --rail: rgba(0, 0, 0, 0.6);
+  --scrim-rgb: 0, 0, 0;
+
+  /* Lifted a little: on black the same shadow has nothing to darken, so the
+     inset highlight does more of the work of separating a plate from the
+     ground than the drop shadows do. */
+  --lift-1:
+    0 1px 2px rgba(0, 0, 0, 0.8), 0 8px 20px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --lift-2:
+    0 2px 4px rgba(0, 0, 0, 0.85), 0 16px 36px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
 @theme inline {
-  --color-bg: var(--bg);
-  --color-cream: var(--cream);
-  --color-cream-bright: var(--cream-bright);
-  --color-cream-dim: var(--cream-dim);
-  --color-line: var(--line);
-  --color-surface: var(--surface);
+  /* The blueprint vocabulary. */
+  --color-deep: var(--deep);
+  --color-blue: var(--blue);
+  --color-blue-lift: var(--blue-lift);
+  --color-soft: var(--soft);
+  --color-dim: var(--dim);
+  --color-plate: var(--plate);
+  --color-plate-quiet: var(--plate-quiet);
+  --color-plate-edge: var(--plate-edge);
+
+  /* The accent is rationed: logo, primary CTA, active
+     state, key figures, title-block rules. It is reachable only through
+     `accent`, so no component can casually tint body copy with it. */
+  --color-accent: var(--accent);
+  --color-accent-line: var(--accent-line);
+
+  /* Legacy names, remapped onto the blueprint. Pages not yet rebuilt keep
+     working and land in the new world automatically — and because the old
+     `cream` body text now resolves to white, the accent stops leaking
+     everywhere the moment the palette changes. */
+  --color-bg: var(--deep);
+  --color-surface: var(--plate);
+  --color-line: var(--plate-edge);
+  --color-cream: var(--white);
+  --color-cream-bright: var(--white);
+  --color-cream-dim: var(--dim);
+
   --color-success: var(--success);
   --color-error: var(--error);
   --color-warning: var(--warning);
@@ -31,56 +152,53 @@
   --font-display: var(--font-display);
   --font-body: var(--font-body);
 
-  --text-display: clamp(2.5rem, 5vw, 4.5rem);
-  --text-display--line-height: 1.05;
-  --text-display--letter-spacing: -0.02em;
+  /* Every Tailwind transition inherits the one curve, so nothing can drift
+     back to the framework default. */
+  --default-transition-timing-function: var(--ease);
+  --default-transition-duration: var(--dur);
+
+  /* Display sizes are Unbounded; nothing below h3 (22px) ever is, which keeps
+     the 20px floor from being approached at all. */
+  /* The floor was 2.5rem, which on a 390px screen set a wide display face at
+     40px and ran the longest Russian word almost into the plate's padding.
+     6vw lets it scale down with the viewport while staying far above the 20px
+     Unbounded floor. */
+  --text-display: clamp(2rem, 6vw, 4.5rem);
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.025em;
   --text-h1: clamp(2rem, 3.2vw, 3rem);
   --text-h1--line-height: 1.08;
   --text-h1--letter-spacing: -0.02em;
   --text-h2: clamp(1.5rem, 2.2vw, 2.25rem);
   --text-h2--line-height: 1.12;
-  --text-h2--letter-spacing: -0.01em;
+  --text-h2--letter-spacing: -0.015em;
   --text-h3: 1.375rem;
-  --text-h3--line-height: 1.15;
+  --text-h3--line-height: 1.18;
   --text-h3--letter-spacing: -0.01em;
   --text-body-l: 1.125rem;
-  --text-body-l--line-height: 1.6;
+  --text-body-l--line-height: 1.62;
   --text-body: 1rem;
   --text-body--line-height: 1.6;
   --text-body-s: 0.875rem;
   --text-body-s--line-height: 1.5;
   --text-caption: 0.75rem;
   --text-caption--line-height: 1.4;
-  --text-caption--letter-spacing: 0.06em;
+  --text-caption--letter-spacing: 0.08em;
   --text-ui: 0.9375rem;
   --text-ui--line-height: 1;
 }
 
 * {
-  border-color: var(--line);
+  border-color: var(--plate-edge);
 }
 
 html {
   scroll-behavior: smooth;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
 body {
-  background: var(--bg);
-  color: var(--cream);
+  background: var(--deep);
+  color: var(--soft);
   font-family: var(--font-body);
 }
 
@@ -92,82 +210,191 @@ h3,
 }
 
 .prose-measure {
-  max-width: 65ch;
+  max-width: 62ch;
 }
 
 ::selection {
-  background: var(--cream-bright);
-  color: var(--bg);
+  background: var(--accent);
+  color: var(--deep);
 }
 
+/* Tailwind's `transition-colors` lists outline-color among the properties it
+   animates, so a focus ring inherits the site's 280ms fade — it drifts up from
+   the element's own colour instead of appearing. A keyboard user needs to see
+   where focus landed at the moment it lands, so transitions are switched off
+   for the focused element and the accent ring is simply there. */
 :focus-visible {
-  outline: 2px solid var(--cream-bright);
-  outline-offset: 2px;
+  outline-width: 2px;
+  outline-style: solid;
+  outline-color: var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+  transition-property: none;
 }
 
 /* ---------------------------------------------------------------------------
-   Stage approach.
-
-   Moving to a new stage travels to the object on the table that stage happens
-   on: the drawing under a pencil and rule, then the phone the order continues
-   on, then the notebook inside it. The object rushes toward the viewer and
-   passes the camera, which reads as arriving rather than as a slide change.
+   The sheet. Two fixed layers, pinned to the viewport rather than the
+   document, so scrolling reads as moving *across* the paper instead of the
+   paper sliding past.
 --------------------------------------------------------------------------- */
 
-@keyframes stage-scrim {
-  0% {
-    opacity: 0;
-  }
-  16% {
-    opacity: 1;
-  }
-  72% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
+.bp-field,
+.bp-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
 }
 
-@keyframes stage-approach {
-  0% {
-    transform: scale(0.52) translate3d(0, 3%, 0);
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-  }
-  70% {
-    opacity: 1;
-  }
-  100% {
-    transform: scale(2.15) translate3d(0, -2%, 0);
-    opacity: 0;
-  }
+/* The paper itself: lit in the upper middle, falling to --deep at the edges.
+   This single gradient does most of the work of making a flat blue rectangle
+   read as a physical surface under a lamp. */
+.bp-field {
+  background: radial-gradient(
+    124% 92% at 50% 30%,
+    var(--blue) 0%,
+    var(--field-mid) 46%,
+    var(--deep) 100%
+  );
 }
 
-@keyframes stage-caption {
-  0%,
-  12% {
-    opacity: 0;
-    transform: translate3d(0, 8px, 0);
-  }
-  34%,
-  68% {
-    opacity: 1;
+/* Graph paper. Four repeating gradients: fine lines both ways, bold every 5th.
+   Masked with the same shape as the field so the ruling fades out toward the
+   edges — the lines belong to the lit part of the sheet, not to the dark. */
+.bp-grid {
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      var(--grid) 0 1px,
+      transparent 1px var(--grid-cell)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--grid) 0 1px,
+      transparent 1px var(--grid-cell)
+    ),
+    repeating-linear-gradient(
+      to right,
+      var(--grid-bold) 0 1px,
+      transparent 1px var(--grid-major)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--grid-bold) 0 1px,
+      transparent 1px var(--grid-major)
+    );
+  -webkit-mask-image: radial-gradient(
+    116% 86% at 50% 30%,
+    #000 0%,
+    #000 42%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    116% 86% at 50% 30%,
+    #000 0%,
+    #000 42%,
+    transparent 100%
+  );
+}
+
+/* Film grain. On gradients this large and this dark, banding is the default;
+   a few per cent of static monochrome noise is what removes it. Static, never
+   animated — an animated grain repaints the whole viewport every frame for an
+   effect nobody consciously sees. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* ---------------------------------------------------------------------------
+   Plates — objects placed on the sheet.
+--------------------------------------------------------------------------- */
+
+.plate {
+  background: var(--plate);
+  border: 1px solid var(--plate-edge);
+  border-radius: var(--radius);
+  box-shadow: var(--lift-1);
+}
+
+/* For large showcase panels that should let more of the paper through. */
+.plate-quiet {
+  background: var(--plate-quiet);
+}
+
+.plate-lift {
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+}
+
+.plate-lift:hover,
+.plate-lift:focus-within {
+  transform: translate3d(0, -3px, 0);
+  box-shadow: var(--lift-2);
+  border-color: var(--plate-edge-hi);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plate-lift:hover,
+  .plate-lift:focus-within {
     transform: none;
   }
-  100% {
-    opacity: 0;
-    transform: translate3d(0, -6px, 0);
+}
+
+/* ---------------------------------------------------------------------------
+   Perspective — used exactly once, on the hero.
+
+   The hero arrangement is tilted a few degrees so the plates read as laid on a
+   surface receding away. Everywhere below the hero, plates sit flat: one
+   perspective moment is a signature, perspective everywhere is a gimmick.
+--------------------------------------------------------------------------- */
+
+.hero-stage {
+  perspective: 1200px;
+  perspective-origin: 50% 38%;
+}
+
+.hero-tilt {
+  transform: rotateX(4.5deg);
+  transform-origin: 50% 100%;
+}
+
+/* The angle does not read at phone width and costs compositing, so it drops. */
+@media (max-width: 767px) {
+  .hero-tilt {
+    transform: none;
   }
 }
 
-/* Entries land one after another, as if being written down the page. */
-@keyframes stage-entry {
+/* ---------------------------------------------------------------------------
+   Entrance — a quiet fade and rise, staggered inside a group.
+
+   The hidden start state lives in CSS and the class that plays it is added by
+   an IntersectionObserver, so nothing animates until it is actually on screen.
+   Without scripting the <noscript> rule in the document cancels the hidden
+   state, so the page is never blank for a reader with JavaScript off.
+--------------------------------------------------------------------------- */
+
+.reveal {
+  opacity: 0;
+}
+
+.reveal-in {
+  animation: reveal var(--dur-slow) var(--ease) var(--reveal-delay, 0ms) both;
+}
+
+@keyframes reveal {
   from {
     opacity: 0;
-    transform: translate3d(-6px, 0, 0);
+    transform: translate3d(0, 16px, 0);
   }
   to {
     opacity: 1;
@@ -175,132 +402,52 @@ h3,
   }
 }
 
-/* Reduced motion skips the journey entirely and lands on the content. Doing
-   this in CSS rather than in a render branch keeps the server and the client
-   agreeing on the markup. */
+/* Reduced motion disables entrance animation entirely, as asked — the content
+   is simply already there. */
 @media (prefers-reduced-motion: reduce) {
-  .stage-approach {
-    display: none;
+  html {
+    scroll-behavior: auto;
+  }
+  .reveal {
+    opacity: 1;
+  }
+  .reveal-in {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
 /* ---------------------------------------------------------------------------
-   Subscription surface — "ingot".
-
-   The paid tier is the one place the interface is allowed to look precious.
-   Rather than a third brand colour, it stays inside the cream family and
-   borrows the *behaviour* of metal: a dark-to-light-to-dark ramp across the
-   face, a narrow specular band, and a bevel. Cream already sits where gold
-   does in hue, so a metal ramp built from the existing tokens reads as a
-   bar of bullion rather than as a new palette.
---------------------------------------------------------------------------- */
-
-.ingot {
-  /* The darkest stop is --cream-dim rather than anything deeper: black label
-     text rides this surface, and the sheen sweeps the dark band under it. At
-     #6f6553 that moment measured 3.6:1, under the floor for small text;
-     #8a7f6a holds 5.2:1 across the whole cycle. */
-  background-image: linear-gradient(
-    100deg,
-    #8a7f6a 0%,
-    #e4d2ac 22%,
-    #fff7e6 38%,
-    #f4e4c2 50%,
-    #8a7f6a 72%,
-    #e4d2ac 88%,
-    #8a7f6a 100%
-  );
-  background-size: 260% 100%;
-  background-position: 0% 0%;
-  color: var(--bg);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
-  animation: ingot-sheen 7s linear infinite;
-}
-
-.ingot:hover {
-  animation-duration: 2.6s;
-}
-
-@keyframes ingot-sheen {
-  to {
-    background-position: -260% 0%;
-  }
-}
-
-/* Metal as type, for figures that should read as the paid tier. */
-.ingot-text {
-  background-image: linear-gradient(
-    100deg,
-    #8a7f6a 0%,
-    #e4d2ac 20%,
-    #fff7e6 36%,
-    #f4e4c2 48%,
-    #8a7f6a 68%,
-    #e4d2ac 86%,
-    #8a7f6a 100%
-  );
-  background-size: 260% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: ingot-sheen 7s linear infinite;
-}
-
-/* A hairline of the same metal, for cards and badges that mark paid features. */
-.ingot-edge {
-  border-color: transparent;
-  background:
-    linear-gradient(var(--surface), var(--surface)) padding-box,
-    linear-gradient(
-        100deg,
-        #6f6553 0%,
-        #e4d2ac 22%,
-        #fff7e6 38%,
-        #f4e4c2 50%,
-        #8a7f6a 72%,
-        #e4d2ac 88%,
-        #6f6553 100%
-      )
-      border-box;
-  background-size:
-    auto,
-    260% 100%;
-  animation: ingot-sheen 7s linear infinite;
-}
-
-/* ---------------------------------------------------------------------------
-   Scroll-scrubbed hero.
+   Scroll-scrubbed hero — kept exactly as it was.
 
    Every motion/no-motion difference is expressed in CSS rather than in a JS
-   render branch. `prefers-reduced-motion` can only be read in the browser, so
-   branching on it during render makes the server and the client disagree and
-   breaks hydration. CSS applies identically to both, which also means the
-   track never changes height after mount — no layout shift either way.
+   render branch: `prefers-reduced-motion` can only be read in the browser, so
+   branching on it during render makes the server and the client disagree.
 --------------------------------------------------------------------------- */
 
 .hero-track {
-  /* Scroll distance the camera move is spread across. */
   height: 300svh;
 }
 
-/* The wide 16:9 shot loses its subject on a phone, and a long track would eat
-   most of a phone's scroll before any content appears. */
 @media (max-width: 767px) {
   .hero-track {
     height: 200svh;
   }
 }
 
-/* No scrub, no track: the hero collapses to a single screen already arrived. */
 @media (prefers-reduced-motion: reduce) {
   .hero-track {
     height: 100svh;
   }
 }
 
-/* The still is the reduced-motion presentation; the video is everyone else's. */
 .hero-still {
   display: none;
 }
@@ -314,9 +461,6 @@ h3,
   }
 }
 
-/* Headline and CTA fade in over the last stretch of the scrub, so JS starts
-   them hidden. With reduced motion there is nothing to wait for — they are
-   visible from the first paint, with no flash of hidden content either way. */
 @media not (prefers-reduced-motion: reduce) {
   .hero-content {
     opacity: 0;
@@ -332,8 +476,142 @@ h3,
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Range control — the native one paints in the platform accent, which is the
+   one way a colour nobody chose could enter the palette.
+--------------------------------------------------------------------------- */
 
-:focus-visible {
-  outline: 2px solid var(--cream-bright);
-  outline-offset: 2px;
+.market-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--plate-edge-hi);
+  outline-offset: 6px;
+}
+
+.market-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: var(--lift-1);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.market-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: var(--lift-1);
+  cursor: pointer;
+}
+
+.market-range::-moz-range-track {
+  height: 2px;
+  border-radius: 999px;
+  background: var(--plate-edge-hi);
+}
+
+/* ---------------------------------------------------------------------------
+   Hero — one arrangement that adapts.
+
+   The render is never switched off. Its box changes height with the viewport
+   and the picture crops inside it (object-cover), so a short screen loses some
+   of the drawing plane rather than the whole image. Every rule below is keyed
+   to WIDTH, because width is what decides whether the two blocks sit stacked
+   or side by side; height is absorbed by the box shrinking.
+--------------------------------------------------------------------------- */
+
+/* Short viewports — small laptops, and phones on their side.
+
+   The copy tightens rather than anything being dropped: the type steps down
+   and the rhythm closes up, so the same sheet is simply set closer. This one
+   is keyed to height on purpose — it is vertical room that is missing — but
+   it only ever compacts, it never hides. */
+@media (max-height: 860px) {
+  .hero-content h1 {
+    font-size: clamp(1.5rem, 3.4vw, 2.25rem);
+    margin-top: 0.6rem;
+  }
+  .hero-content .prose-measure {
+    margin-top: 0.6rem;
+    font-size: 0.9375rem;
+  }
+  .hero-content .hero-cta {
+    margin-top: 1rem;
+  }
+  .hero-content dl {
+    margin-top: 1rem;
+  }
+}
+
+/* Very short viewports — a phone held sideways, roughly 390px of height.
+
+   Compaction alone cannot close this one: the stage's own padding plus a
+   headline, paragraph, buttons and the title block need more room than the
+   screen has. So here the title block gives way, and the render does not —
+   the picture is the thing worth keeping at this size, and the same figures
+   are a scroll away in the sections below.
+
+   Everything else tightens rather than disappears. Keyed to height because
+   this is purely a vertical-room problem; the layout is still two columns,
+   which is what makes a sideways phone workable at all. */
+@media (max-height: 560px) {
+  .hero-stage {
+    padding-top: 4.5rem;
+    padding-bottom: 0.75rem;
+  }
+  .hero-content .plate {
+    padding-top: 0.9rem;
+    padding-bottom: 0.9rem;
+  }
+  .hero-content h1 {
+    font-size: clamp(1.25rem, 2.7vw, 1.75rem);
+    margin-top: 0.4rem;
+  }
+  .hero-content .prose-measure {
+    margin-top: 0.4rem;
+    font-size: 0.875rem;
+  }
+  .hero-content .hero-cta {
+    margin-top: 0.7rem;
+  }
+  .hero-content dl {
+    display: none;
+  }
+}
+
+/* The scrim under the hero copy, in whichever surface the theme is on, so the
+   footage always grades toward the paper it is handing off to. */
+.hero-scrim {
+  background: linear-gradient(
+    to top,
+    rgba(var(--scrim-rgb), 0.88) 0%,
+    rgba(var(--scrim-rgb), 0.6) 28%,
+    rgba(var(--scrim-rgb), 0.16) 58%,
+    rgba(var(--scrim-rgb), 0) 80%
+  );
+}
+
+/* The brand mark. Painted as `currentColor` through a mask of the artwork, so
+   it inherits the accent from its context and needs no per-theme variant. */
+.logo-mark {
+  background-color: currentColor;
+  -webkit-mask-image: url("/assets/brand/opus-mark.png");
+  mask-image: url("/assets/brand/opus-mark.png");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  /* The mark is taller than it is wide; contained, it fits the box by height
+     and stays centred rather than being stretched to a square. */
+  -webkit-mask-size: contain;
+  mask-size: contain;
 }

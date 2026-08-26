@@ -204,3 +204,78 @@ exact pitch, and the premium brick/tile/facade materials, are Technic.
   interchangeable behind one factory (`src/lib/3d/index.ts`).
 - State: `zustand` store for the editor/cart (`src/lib/store.ts`) so price
   and BOM stay in sync as materials are swapped.
+
+## 7. Material and depth
+
+Nothing in the palette changes here — this is about how the two colours are
+lit. A flat `#000` ground makes every panel read as a sticker on a void, and
+solid hairlines turn into visible bars wherever the ground behind them moves.
+
+- **Ground.** The page is a radial lifting toward `--surface` at the top,
+  fixed to the viewport rather than the scroll, so the layout has one light
+  source. Panels use `.surface-1` / `.surface-2` / `.surface-3`, each a small
+  radial of its own.
+- **Elevation.** Three stacked shadows per level — a contact shadow, a body
+  shadow, a wide ambient one — plus an inset cream hairline along the top
+  edge. On black the hairline is what actually reads as "lifted"; the drop
+  shadows alone are invisible. `--shadow-1/2/3`, with `.card-lift` for
+  surfaces that answer to the pointer.
+- **Hairlines.** `--line` is `rgba(228,210,172,0.1)` and `--line-strong` is
+  the same at `0.2`, never a solid line colour.
+- **Grain.** 4% static monochrome noise over the whole viewport in `overlay`
+  (`.grain`, mounted once in the root layout). It hides the banding those
+  gradients would otherwise show on a dark screen. Static, not animated: an
+  animated grain repaints the viewport every frame for an effect nobody
+  consciously sees.
+- **Motion.** One curve for the whole product: `--ease:
+  cubic-bezier(0.16,1,0.3,1)`, wired into Tailwind's
+  `--default-transition-timing-function` so every `transition-*` inherits it.
+  Groups arrive staggered by `--stagger` (50 ms) via `<Reveal index>`, which
+  toggles a class from an IntersectionObserver — with a `<noscript>` rule that
+  cancels the hidden start state.
+- **Photography.** Material samples are rendered offline by
+  `tools/generate-material-photos.mjs` (painters in
+  `tools/material-photo-painters.js`), one per product, at 2× and downsampled
+  with Lanczos, shipped as WebP with a JPEG fallback at both densities. These
+  are *photographs* — lit from one side, in focus at the top and falling off
+  at the bottom, with surface tooth — not the seamless tiles in
+  `src/lib/3d/textures.ts`, which exist to repeat across a 3D surface at any
+  colour.
+
+## 8. The materials market
+
+`/market` is the shop next to the configurator; `/market/[id]` is one
+product, prerendered from `src/lib/marketplace-catalog.json`. That JSON is
+the single source of truth: the photo generator reads the same file, so a
+product added in one place cannot go missing in the other.
+
+It shares the configurator's cart rather than keeping its own — one basket,
+one delivery charge, one total, because the reader is buying for one
+building. Where a product covers a surface the model already measured, the
+quantity is derived from the geometry and the rate quoted in that product's
+own spec sheet (`suggestedQuantity`), so the arithmetic and the datasheet
+cannot disagree. The price filter is logarithmic: the catalogue runs from a
+24 ₽ brick to a 27 900 ₽ door.
+
+## 9. Section transitions
+
+Two pre-rendered shots carry the reader between stages: the drafting table on
+opening a model, and the pan into the phone on the move from the model to the
+estimate (`SectionTransition`, clips declared in `src/lib/transitions.ts`).
+
+They play forward once and are never scrubbed, so they reuse none of the
+hero's buffering and seek machinery — only its poster and reduced-motion
+patterns. The second clip ends on a lit phone screen and carries a bloom out
+of it as it leaves, so the last frame dissolves into the page's background
+instead of cutting from white to black.
+
+- At most once per session, per transition (`sessionStorage`).
+- The clip into the estimate is armed by the control that navigates, so
+  arriving at the cart any other way shows nothing.
+- The next clip is warmed during idle time.
+- Reduced motion sees the final frame for 200 ms instead, and the whole
+  motion/no-motion difference is expressed in CSS rather than in a render
+  branch.
+- The decision runs through an external store, so the server and the
+  hydrating client both render nothing and `sessionStorage` is never read
+  during render.

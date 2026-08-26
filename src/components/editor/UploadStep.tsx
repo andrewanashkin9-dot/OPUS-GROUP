@@ -99,7 +99,7 @@ export function UploadStep() {
             <p
               className="px-3 py-2 text-caption"
               style={{
-                color: previews[i] ? "var(--cream-bright)" : "var(--cream-dim)",
+                color: previews[i] ? "var(--white)" : "var(--dim)",
               }}
             >
               {previews[i] ? "✓ " : ""}
@@ -119,7 +119,7 @@ export function UploadStep() {
         type="button"
         disabled={files.length !== REQUIRED_PHOTOS || isGenerating}
         onClick={() => generateFromPhotos(files)}
-        className="mt-8 inline-flex items-center justify-center self-center rounded-full bg-cream px-8 py-3.5 text-ui font-bold text-bg transition-colors hover:bg-cream-bright disabled:opacity-40"
+        className="mt-8 inline-flex items-center justify-center self-center rounded-full bg-accent px-8 py-3.5 text-ui font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 disabled:opacity-40"
       >
         {isGenerating ? "Строим 3D-модель…" : "Построить 3D-модель"}
       </button>

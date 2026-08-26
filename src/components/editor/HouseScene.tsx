@@ -37,7 +37,8 @@ import {
   useRoofDims,
 } from "./HouseDetails";
 
-const SELECTED = "#f4e4c2";
+/** The accent, lifted a little: on a lit surface pure gold reads dull. */
+const SELECTED = "#ffe14d";
 
 interface HouseSceneProps {
   model: SceneModel;

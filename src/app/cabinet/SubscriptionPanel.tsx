@@ -52,8 +52,11 @@ export function SubscriptionPanel({
               : "Приоритетные заявки, точные размеры и расширенная библиотека материалов."}
           </p>
         </div>
+        {/* Кнопка была variant="ingot": в редизайне основной ветки этот
+            вариант и класс .ingot убраны, платный тариф обозначается
+            акцентом — а акцент теперь и есть primary. */}
         {!active && (
-          <Button variant="ingot" onClick={subscribe} disabled={pending}>
+          <Button onClick={subscribe} disabled={pending}>
             {pending ? "Готовим оплату…" : "Оформить за 700 ₽/мес"}
           </Button>
         )}

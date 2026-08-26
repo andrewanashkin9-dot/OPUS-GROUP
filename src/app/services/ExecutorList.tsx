@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Reveal } from "@/components/ui/Reveal";
 import { nodeKindLabel, useAppStore } from "@/lib/store";
 import type { NodeKind } from "@/lib/3d/types";
 
@@ -15,6 +16,10 @@ import type { NodeKind } from "@/lib/3d/types";
  * собирают; «★ 4.9» без единого отзыва — это просто картинка, вводящая
  * заказчика в заблуждение. Вместо неё показывается то, что действительно
  * известно из базы: сколько заявок бригада довела до конца.
+ *
+ * Оформление карточки (plate, Reveal, акцентная кнопка) пришло из редизайна
+ * основной ветки и сохранено целиком — вместе с min-w-0 и flex-wrap, которые
+ * там чинили горизонтальную прокрутку на узких экранах.
  */
 
 export interface ExecutorCard {
@@ -72,54 +77,67 @@ export function ExecutorList({ executors }: { executors: ExecutorCard[] }) {
         </p>
       ) : (
         <ul className="mt-10 grid gap-6 sm:grid-cols-2">
-          {visible.map((crew) => {
+          {visible.map((crew, i) => {
             const requested = requestedIds.has(crew.id);
             return (
-              <li key={crew.id} className="flex flex-col rounded-2xl border border-line bg-surface p-6">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="font-display text-h3 font-medium text-cream-bright">
-                      {crew.displayName}
-                    </h2>
-                    <p className="mt-1 text-body-s text-cream-dim">{crew.city ?? "город не указан"}</p>
-                  </div>
-                  {crew.hasActiveSubscription && (
-                    <span className="ingot shrink-0 rounded-full px-2.5 py-1 text-caption font-bold">
-                      Technic
-                    </span>
-                  )}
-                </div>
+              <li key={crew.id} className="h-full">
+                <Reveal index={i} className="h-full">
+                  <div className="plate plate-lift flex h-full flex-col p-6">
+                    {/* min-w-0 and flex-wrap on purpose: a flex item cannot
+                        shrink below its min-content by default, so a long crew
+                        name («ФундаментСтрой») was widening the grid track,
+                        then main, then the document — a 35 px horizontal
+                        scroll on a 390 px screen. */}
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h2 className="font-display text-h3 font-medium break-words text-cream-bright">
+                          {crew.displayName}
+                        </h2>
+                        <p className="mt-1 text-body-s text-cream-dim">
+                          {crew.city ?? "город не указан"}
+                        </p>
+                      </div>
+                      {crew.hasActiveSubscription && (
+                        <span className="shrink-0 rounded-full border border-[var(--accent-line)] px-2.5 py-1 text-caption font-bold uppercase text-accent">
+                          Technic
+                        </span>
+                      )}
+                    </div>
 
-                <Reputation completed={crew.completedDeals} rate={crew.completionRate} />
+                    <Reputation completed={crew.completedDeals} rate={crew.completionRate} />
 
-                {crew.bio && <p className="mt-4 flex-1 text-body-s text-cream-dim">{crew.bio}</p>}
+                    {crew.bio && (
+                      <p className="mt-4 flex-1 text-body-s text-cream-dim">{crew.bio}</p>
+                    )}
 
-                {crew.specialties.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    {crew.specialties.map((kind) => (
-                      <span
-                        key={kind}
-                        className="rounded-full border border-line px-2.5 py-1 text-caption uppercase text-cream-dim"
-                      >
-                        {nodeKindLabel(kind as NodeKind)}
+                    {crew.specialties.length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-1.5">
+                        {crew.specialties.map((kind) => (
+                          <span
+                            key={kind}
+                            className="rounded-full border border-[var(--plate-edge)] px-2.5 py-1 text-caption uppercase text-cream-dim"
+                          >
+                            {nodeKindLabel(kind as NodeKind)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--plate-edge)] pt-4">
+                      <span className="text-body-s font-medium text-cream">
+                        {crew.priceHint ?? "цена по смете объекта"}
                       </span>
-                    ))}
+                      <button
+                        type="button"
+                        onClick={() => setRequestedIds((prev) => new Set(prev).add(crew.id))}
+                        disabled={requested}
+                        className="inline-flex items-center rounded-full bg-accent px-4 py-2 text-body-s font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 disabled:border disabled:border-success disabled:bg-transparent disabled:text-success disabled:shadow-none"
+                      >
+                        {requested ? "Заявка отправлена ✓" : "Запросить смету"}
+                      </button>
+                    </div>
                   </div>
-                )}
-
-                <div className="mt-6 flex items-center justify-between gap-3 border-t border-line pt-4">
-                  <span className="text-body-s font-medium text-cream">
-                    {crew.priceHint ?? "цена по смете объекта"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setRequestedIds((prev) => new Set(prev).add(crew.id))}
-                    disabled={requested}
-                    className="inline-flex items-center rounded-full bg-cream px-4 py-2 text-body-s font-bold text-bg transition-colors hover:bg-cream-bright disabled:border disabled:border-success disabled:bg-transparent disabled:text-success"
-                  >
-                    {requested ? "Заявка отправлена ✓" : "Запросить смету"}
-                  </button>
-                </div>
+                </Reveal>
               </li>
             );
           })}

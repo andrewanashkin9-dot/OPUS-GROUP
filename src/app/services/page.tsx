@@ -1,6 +1,5 @@
 import { Footer } from "@/components/Footer";
 import { NavBar } from "@/components/NavBar";
-import { StageApproach } from "@/components/stage/StageApproach";
 import { listExecutors } from "@/lib/server/profiles/queries";
 import { ExecutorList } from "./ExecutorList";
 
@@ -11,6 +10,9 @@ import { ExecutorList } from "./ExecutorList";
  * исполнителей приходит из базы при каждом заходе. Заранее собрать её
  * нельзя — состав бригад меняется, а заблокированный исполнитель должен
  * пропадать из выдачи сразу, а не после следующей сборки.
+ *
+ * Разметка карточек живёт в ExecutorList: она клиентская, потому что
+ * фильтрует бригады по модели дома из хранилища браузера.
  */
 export const dynamic = "force-dynamic";
 
@@ -19,7 +21,6 @@ export default async function ServicesPage() {
 
   return (
     <>
-      <StageApproach stage="services" />
       <NavBar />
       <main className="mx-auto min-h-[60vh] max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
         <h1 className="font-display text-h1 font-extrabold text-cream-bright">

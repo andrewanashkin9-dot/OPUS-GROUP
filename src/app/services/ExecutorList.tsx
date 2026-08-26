@@ -37,11 +37,11 @@ export interface ExecutorCard {
 
 export function ExecutorList({
   executors,
-  unavailable,
+  demo,
 }: {
   executors: ExecutorCard[];
-  /** Список не приехал: база не настроена или не отвечает. */
-  unavailable: boolean;
+  /** Это образцы карточек, а не зарегистрированные бригады. */
+  demo: boolean;
 }) {
   const model = useAppStore((s) => s.model);
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
@@ -69,14 +69,31 @@ export function ExecutorList({
   return (
     <>
       <p className="prose-measure mt-4 text-body-l text-cream-dim">
-        {unavailable
-          ? "Бригады подбираются под работы из вашей модели дома."
+        {demo
+          ? "Так будет выглядеть подбор бригад под вашу модель дома."
           : model
             ? "Показаны бригады, которые закрывают именно те работы, что есть в вашей модели."
             : "Постройте модель дома в конструкторе — и здесь останутся только нужные вам бригады."}
       </p>
 
-      {model && !unavailable && (
+      {/* Пометка стоит над карточками, а не под ними: человек должен узнать,
+          что бригады выдуманы, до того как выберет одну, а не после. */}
+      {demo && (
+        <p
+          role="status"
+          className="prose-measure mt-4 rounded-xl border border-[var(--plate-edge)] px-4 py-3 text-body-s"
+          style={{ color: "var(--warning)" }}
+        >
+          Это примеры карточек, а не настоящие бригады: регистрация
+          исполнителей ещё готовится. Ни телефонов, ни договоров за ними нет —
+          и заявка по ним никуда не уйдёт.
+        </p>
+      )}
+
+      {/* Переключатель нужен и на образцах: половина смысла раздела — что
+          список сам сужается под дом, и без кнопки «показать всех» человек с
+          односкатной крышей увидит одну карточку и упрётся. */}
+      {model && (
         <button
           type="button"
           onClick={() => setShowAllOverride(!showAll)}
@@ -87,29 +104,9 @@ export function ExecutorList({
       )}
 
       {visible.length === 0 ? (
-        <div className="mt-10">
-          {unavailable ? (
-            // Не «бригад нет»: мы не знаем, есть ли они. Пустой список из-за
-            // нашей поломки нельзя выдавать за факт о рынке — человек уйдёт
-            // искать подрядчика в другом месте, решив, что здесь никого нет.
-            <>
-              <p className="text-body-s" style={{ color: "var(--warning)" }}>
-                Список бригад сейчас недоступен — мы не смогли его загрузить.
-                Попробуйте обновить страницу через несколько минут.
-              </p>
-              <p className="mt-3 text-body-s text-cream-dim">
-                Смета по материалам считается без этого: она собирается прямо
-                в браузере и никуда не делась.
-              </p>
-            </>
-          ) : (
-            <p className="text-body-s text-cream-dim">
-              {executors.length === 0
-                ? "Бригады ещё не зарегистрировались."
-                : "Под вашу модель пока никто не подходит — посмотрите всех."}
-            </p>
-          )}
-        </div>
+        <p className="mt-10 text-body-s text-cream-dim">
+          Под вашу модель пока никто не подходит — посмотрите всех.
+        </p>
       ) : (
         <ul className="mt-10 grid gap-6 sm:grid-cols-2">
           {visible.map((crew, i) => {
@@ -162,14 +159,27 @@ export function ExecutorList({
                       <span className="text-body-s font-medium text-cream">
                         {crew.priceHint ?? "цена по смете объекта"}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => setRequestedIds((prev) => new Set(prev).add(crew.id))}
-                        disabled={requested}
-                        className="inline-flex items-center rounded-full bg-accent px-4 py-2 text-body-s font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 disabled:border disabled:border-success disabled:bg-transparent disabled:text-success disabled:shadow-none"
-                      >
-                        {requested ? "Заявка отправлена ✓" : "Запросить смету"}
-                      </button>
+                      {/* У образца нет кнопки. Полноценная акцентная кнопка,
+                          которая ничего не делает, — это обещание, а обещать
+                          тут некому: бригады выдуманы. Место действия при
+                          этом остаётся на виду, чтобы карточка показывала,
+                          как она будет выглядеть по-настоящему. */}
+                      {demo ? (
+                        <span className="text-body-s text-cream-dim">
+                          Заявка — после регистрации бригад
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setRequestedIds((prev) => new Set(prev).add(crew.id))
+                          }
+                          disabled={requested}
+                          className="inline-flex items-center rounded-full bg-accent px-4 py-2 text-body-s font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 disabled:border disabled:border-success disabled:bg-transparent disabled:text-success disabled:shadow-none"
+                        >
+                          {requested ? "Заявка отправлена ✓" : "Запросить смету"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </Reveal>

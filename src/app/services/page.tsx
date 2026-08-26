@@ -1,5 +1,6 @@
 import { Footer } from "@/components/Footer";
 import { NavBar } from "@/components/NavBar";
+import { DEMO_CREWS } from "@/lib/demo-crews";
 import { isDbConfigured } from "@/lib/server/db-config";
 import { listExecutors } from "@/lib/server/profiles/queries";
 import { ExecutorList, type ExecutorCard } from "./ExecutorList";
@@ -18,13 +19,23 @@ import { ExecutorList, type ExecutorCard } from "./ExecutorList";
  * целиком из-за отсутствующего списка. Теперь список — это то, что может
  * не приехать, а не то, без чего нет страницы.
  *
+ * Пока настоящих бригад нет ни одной, показываются образцы (DEMO_CREWS) —
+ * с явной пометкой, что это примеры. Пустая страница не объясняет, зачем
+ * раздел нужен; образцы объясняют. Как только в базе появляется хотя бы один
+ * исполнитель, образцы исчезают целиком: смешивать выдуманные карточки с
+ * настоящими нельзя ни одной секунды.
+ *
  * Разметка карточек живёт в ExecutorList: она клиентская, потому что
  * фильтрует бригады по модели дома из хранилища браузера.
  */
 export const dynamic = "force-dynamic";
 
 export default async function ServicesPage() {
-  const { executors, unavailable } = await loadExecutors();
+  const executors = await loadExecutors();
+  // Ни одной настоящей бригады — показываем образцы. Сюда же попадает и
+  // случай «база не ответила»: причина записана в журнал, а человеку важно
+  // не почему список пуст, а что карточки перед ним ненастоящие.
+  const demo = executors.length === 0;
 
   return (
     <>
@@ -33,7 +44,7 @@ export default async function ServicesPage() {
         <h1 className="font-display text-h1 font-extrabold text-cream-bright">
           Бригады для монтажа
         </h1>
-        <ExecutorList executors={executors} unavailable={unavailable} />
+        <ExecutorList executors={demo ? DEMO_CREWS : executors} demo={demo} />
       </main>
       <Footer />
     </>
@@ -41,26 +52,21 @@ export default async function ServicesPage() {
 }
 
 /**
- * Список бригад — или честное «не смогли узнать».
+ * Настоящие бригады из базы — или пусто.
  *
- * Разница между «база не отвечает» и «никто не зарегистрировался» видна
- * только здесь, и потерять её нельзя: пустой список в первом случае — это
- * не факт о рынке, а наша поломка, и писать «бригад пока нет» было бы
- * враньём в сторону, которая стоит человеку заказа.
+ * Пусто по трём причинам: базы нет в окружении, база не ответила, в базе
+ * никого. Наружу они неразличимы намеренно — человеку одинаково нечего
+ * выбирать, — но в журнал отказ попадает целиком, иначе о нём никто не
+ * узнает.
  */
-async function loadExecutors(): Promise<{
-  executors: ExecutorCard[];
-  unavailable: boolean;
-}> {
-  if (!isDbConfigured()) {
-    return { executors: [], unavailable: true };
-  }
+async function loadExecutors(): Promise<ExecutorCard[]> {
+  if (!isDbConfigured()) return [];
   try {
-    return { executors: await listExecutors(), unavailable: false };
+    return await listExecutors();
   } catch (error) {
     // В журнал — полностью, на страницу — ни строчки: в тексте ошибки
     // подключения бывают хост и имя пользователя.
     console.error("[services] не удалось получить список бригад:", error);
-    return { executors: [], unavailable: true };
+    return [];
   }
 }

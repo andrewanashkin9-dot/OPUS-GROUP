@@ -1,0 +1,87 @@
+import type { ExecutorCard } from "@/app/services/ExecutorList";
+
+/**
+ * Пять бригад-примеров для раздела «Услуги».
+ *
+ * Настоящих исполнителей ещё нет — регистрация для них только готовится, — а
+ * пустая страница не объясняет, зачем этот раздел вообще нужен. Поэтому здесь
+ * лежат образцы карточек: они показывают, что человек увидит, когда бригады
+ * появятся.
+ *
+ * Что здесь намеренно НЕ выдумано:
+ *
+ *  - **репутация**. У всех ноль завершённых заявок, и карточка честно пишет
+ *    «пока без завершённых заявок». Нарисовать «12 завершённых» было бы
+ *    рекламой несуществующей бригады, а по такой рекламе человек выбирает,
+ *    кому доверить крышу.
+ *  - **подписка**. Значок Technic не ставится никому: это платный статус, и
+ *    рисовать его бесплатно — обесценивать его у тех, кто заплатит.
+ *  - **контакты**. Ни телефонов, ни почт, ни ссылок. Позвонить по образцу
+ *    нельзя, и делать вид, что можно, нельзя тоже.
+ *
+ * Выдуманы только название, город, специализация и вилка цен — то, из чего
+ * состоит витрина. Список исчезает сам, как только в базе появляется хотя бы
+ * один настоящий исполнитель: см. src/app/services/page.tsx.
+ */
+export const DEMO_CREWS: ExecutorCard[] = [
+  {
+    id: "demo-krovlya-severa",
+    displayName: "Кровля Севера",
+    city: "Москва и область",
+    specialties: ["roof", "facade"],
+    bio: "Металлочерепица, фальц и мягкая кровля. Работаем со стропильной системой целиком: обрешётка, вентзазор, водосток.",
+    priceHint: "от 900 ₽/м² монтаж",
+    completedDeals: 0,
+    cancelledDeals: 0,
+    completionRate: null,
+    hasActiveSubscription: false,
+  },
+  {
+    id: "demo-fasad-i-tochka",
+    displayName: "Фасад и Точка",
+    city: "Санкт-Петербург",
+    specialties: ["facade", "window"],
+    bio: "Вентфасады и мокрая штукатурка по утеплителю. Ставим окна в один заход с откосами, чтобы не ждать вторую бригаду.",
+    priceHint: "от 1 400 ₽/м² под ключ",
+    completedDeals: 0,
+    cancelledDeals: 0,
+    completionRate: null,
+    hasActiveSubscription: false,
+  },
+  {
+    id: "demo-osnovanie",
+    displayName: "Основание",
+    city: "Казань",
+    specialties: ["foundation", "fence"],
+    bio: "Ленточный и свайно-ростверковый фундамент. Геология и разметка — до сметы, чтобы глубина заложения не оказалась сюрпризом.",
+    priceHint: "от 5 800 ₽/м³ бетона",
+    completedDeals: 0,
+    cancelledDeals: 0,
+    completionRate: null,
+    hasActiveSubscription: false,
+  },
+  {
+    id: "demo-perimetr",
+    displayName: "Периметр",
+    city: "Екатеринбург",
+    specialties: ["fence", "foundation"],
+    bio: "Заборы из профнастила, штакетника и сварной секции. Столбы бетонируем ниже глубины промерзания — иначе к весне поведёт.",
+    priceHint: "от 2 100 ₽ за погонный метр",
+    completedDeals: 0,
+    cancelledDeals: 0,
+    completionRate: null,
+    hasActiveSubscription: false,
+  },
+  {
+    id: "demo-tyoplyy-kontur",
+    displayName: "Тёплый Контур",
+    city: "Новосибирск",
+    specialties: ["window", "door", "facade"],
+    bio: "Окна, входные двери и утепление контура. Проверяем узлы примыкания тепловизором после монтажа, а не по обещанию.",
+    priceHint: "смета по объекту",
+    completedDeals: 0,
+    cancelledDeals: 0,
+    completionRate: null,
+    hasActiveSubscription: false,
+  },
+];

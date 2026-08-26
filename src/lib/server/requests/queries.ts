@@ -29,6 +29,8 @@ export interface RequestRow {
   publishedAt: Date | null;
   createdAt: Date;
   responsesCount?: number;
+  /** Оставлен ли отзыв по этой заявке — чтобы не показывать форму дважды. */
+  hasReview?: boolean;
 }
 
 /**
@@ -84,7 +86,8 @@ export async function listClientRequests(clientId: string): Promise<RequestRow[]
   const { rows } = await query<RequestRow>(
     `select ${requestColumns()},
             (select count(*) from responses rs
-              where rs.request_id = r.id and rs.status <> 'withdrawn')::int as "responsesCount"
+              where rs.request_id = r.id and rs.status <> 'withdrawn')::int as "responsesCount",
+            exists (select 1 from reviews v where v.request_id = r.id) as "hasReview"
        from requests r
       where r.client_id = $1
       order by r.created_at desc

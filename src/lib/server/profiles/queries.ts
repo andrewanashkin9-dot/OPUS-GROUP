@@ -17,6 +17,14 @@ import { query } from "../db";
  * как его отклик приняли.
  */
 
+export interface ReviewSummary {
+  id: string;
+  rating: number;
+  comment: string | null;
+  authorName: string;
+  createdAt: Date;
+}
+
 export interface ExecutorProfile {
   id: string;
   displayName: string;
@@ -31,6 +39,11 @@ export interface ExecutorProfile {
   /** Доля завершённых, 0–1. null, если сделок ещё не было. */
   completionRate: number | null;
   hasActiveSubscription: boolean;
+  /** Средняя оценка, 1–5. null — отзывов ещё нет; это не то же, что ноль. */
+  ratingAverage: number | null;
+  reviewCount: number;
+  /** Последние отзывы с текстом — для карточки. */
+  reviews: ReviewSummary[];
   portfolio: PortfolioItem[];
 }
 
@@ -74,6 +87,11 @@ export async function listExecutors(filter?: { specialties?: string[] }): Promis
                  and s.status in ('active', 'past_due')
                  and s.current_period_end > now()
             ) as "hasActiveSubscription",
+            -- Рейтинг считается здесь и нигде не хранится. round(...,1) —
+            -- потому что «4,7» человек читает, а «4,6666666» нет.
+            rated.average as "ratingAverage",
+            rated.count::int as "reviewCount",
+            coalesce(rated.items, '[]'::json) as reviews,
             coalesce(folio.items, '[]'::json) as portfolio
        from users u
        left join executor_profiles p on p.user_id = u.id
@@ -95,9 +113,35 @@ export async function listExecutors(filter?: { specialties?: string[] }): Promis
            from portfolio_items i
           where i.executor_id = u.id
        ) folio on true
+       -- Средняя оценка и три последних отзыва одним проходом. Три, а не
+       -- все: карточка в сетке, и десять цитат подряд её растянут — за
+       -- остальными человек пойдёт на страницу исполнителя, когда она будет.
+       cross join lateral (
+         select round(avg(v.rating), 1)::float8 as average,
+                count(*) as count,
+                (
+                  select json_agg(x)
+                    from (
+                      select v2.id, v2.rating, v2.comment,
+                             a.display_name as "authorName",
+                             v2.created_at  as "createdAt"
+                        from reviews v2
+                        join users a on a.id = v2.author_id
+                       where v2.executor_id = u.id
+                       order by v2.created_at desc
+                       limit 3
+                    ) x
+                ) as items
+           from reviews v
+          where v.executor_id = u.id
+       ) rated
       where u.role = 'executor'
         and u.status = 'active'
         and ($1::text[] is null or p.specialties && $1::work_kind[])
+      -- Порядок прежний, по числу доведённых до конца сделок. Ранжировать по
+      -- рейтингу — отдельное решение со своей ценой: новичок без отзывов
+      -- проваливался бы в конец и не получал первую работу, с которой у него
+      -- только и может появиться первый отзыв.
       order by stats.completed desc, u.display_name
       limit 200`,
     [specialties],

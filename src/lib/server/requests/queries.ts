@@ -2,6 +2,7 @@ import "server-only";
 
 import { query, withTransaction } from "../db";
 import { recordDealCommission } from "../payments/commission";
+import { LIMIT_MESSAGE, canRespondSql, readAccessState } from "../payments/access";
 import { canTransition, transitionError, type RequestStatus } from "./status";
 
 /**
@@ -190,18 +191,29 @@ export async function createResponse(input: {
 }): Promise<ResponseRow> {
   try {
     const { rows } = await query<{ id: string }>(
+      // Право на отклик проверяется внутри самой вставки, а не запросом
+      // перед ней: между «проверили» и «записали» помещается второй такой же
+      // запрос, и исполнитель без подписки получил бы два бесплатных отклика.
       `insert into responses (request_id, executor_id, message, price_amount, lead_time_days)
        select r.id, $2, $3, $4, $5
          from requests r
-        where r.id = $1 and r.status = 'published'
+        where r.id = $1
+          and r.status = 'published'
+          and ${canRespondSql("$2")}
        returning id`,
       [input.requestId, input.executorId, input.message, input.priceAmount, input.leadTimeDays],
     );
 
     if (rows.length === 0) {
-      // Ноль строк означает, что источник вставки пуст: заявки нет или она
-      // уже не «новая». Снаружи это одно и то же — подсказывать, что заявка
-      // существует, но занята, незачем.
+      // Ноль строк — либо заявка не принимает отклики, либо кончился лимит.
+      // Это разные вещи для человека: во втором случае ему нужна ссылка на
+      // оплату, а не «попробуйте другую заявку». Разбираем, что именно.
+      const access = await readAccessState(input.executorId);
+      if (!access.allowed) {
+        // 402 Payment Required — ровно этот случай: запрос корректен,
+        // не хватает оплаты. Клиент по коду понимает, что показать.
+        throw new DomainError(LIMIT_MESSAGE, 402);
+      }
       throw new DomainError("Заявка не найдена или больше не принимает отклики", 409);
     }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/Button";
 import { useApiFetch } from "@/lib/auth/useApiFetch";
 
@@ -83,6 +84,8 @@ export function RequestsPanel({
 
   const [requests, setRequests] = useState<RequestItem[]>(initialRequests);
   const [error, setError] = useState<string | null>(null);
+  /** Отдельно от обычной ошибки: тут нужна не жалоба, а ссылка на оплату. */
+  const [limitReached, setLimitReached] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -96,13 +99,20 @@ export function RequestsPanel({
     async (url: string, body?: unknown) => {
       setBusy(true);
       setError(null);
-      const { ok, data } = await call<{ error?: string }>(url, {
+      const { ok, status, data } = await call<{ error?: string }>(url, {
         method: "POST",
         headers: body ? { "content-type": "application/json" } : undefined,
         body: body ? JSON.stringify(body) : undefined,
       });
-      if (!ok) setError(data.error ?? "Не получилось");
-      else await load();
+      if (!ok) {
+        // 402 Payment Required — кончился бесплатный лимит. Это не поломка,
+        // а развилка: человеку нужна ссылка на оплату, а не красная плашка.
+        if (status === 402) setLimitReached(true);
+        else setError(data.error ?? "Не получилось");
+      } else {
+        setLimitReached(false);
+        await load();
+      }
       setBusy(false);
       return ok;
     },
@@ -119,6 +129,24 @@ export function RequestsPanel({
         <p role="alert" className="mt-4 rounded-2xl border border-error/40 px-4 py-3 text-body-s text-error">
           {error}
         </p>
+      )}
+
+      {limitReached && (
+        <div
+          role="alert"
+          className="mt-4 rounded-2xl border p-4"
+          style={{ borderColor: "rgba(255,215,0,0.45)" }}
+        >
+          <p className="text-body-s text-white">
+            Первый отклик бесплатный, для следующих нужна подписка.
+          </p>
+          <Link
+            href="/subscribe"
+            className="mt-3 inline-flex items-center rounded-full bg-accent px-4 py-2 text-body-s font-bold text-deep transition-[filter] hover:brightness-108"
+          >
+            Оформить подписку за 700 ₽/мес
+          </Link>
+        </div>
       )}
 
       {isClient && <NewRequestForm busy={busy} onCreate={(body) => act("/api/requests", body)} />}

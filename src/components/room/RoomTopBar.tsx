@@ -50,7 +50,7 @@ export function RoomTopBar() {
           href="/cart"
           className="inline-flex shrink-0 items-center rounded-full bg-accent px-4 py-2 text-body-s font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108"
         >
-          В корзину
+          В смету
         </Link>
       </div>
     </header>

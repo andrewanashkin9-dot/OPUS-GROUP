@@ -11,3 +11,24 @@
  */
 export const ACCESS_COOKIE = "opus_access";
 export const REFRESH_COOKIE = "opus_refresh";
+
+/**
+ * Роль — **подсказка для интерфейса и только**.
+ *
+ * В отличие от двух других, эта cookie доступна из JavaScript: иначе меню
+ * не смогло бы её прочитать. Значит, её можно подделать — и это учтено:
+ * подделавший увидит в меню лишнюю ссылку, по которой его развернут. Права
+ * проверяются на сервере в трёх местах (proxy, страница, API), и ни одна из
+ * проверок в эту cookie не смотрит.
+ *
+ * Внутри только роль. Ни имени, ни почты: cookie уходит с каждым запросом и
+ * читается любым скриптом на странице.
+ */
+export const ROLE_COOKIE = "opus_role";
+
+export type UiRole = "client" | "executor" | "moderator" | "admin";
+
+/** Кому показывать пункт «Модерация». */
+export function canModerate(role: string | null): boolean {
+  return role === "moderator" || role === "admin";
+}

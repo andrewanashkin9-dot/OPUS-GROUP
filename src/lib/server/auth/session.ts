@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { ACCESS_COOKIE, REFRESH_COOKIE } from "@/lib/auth/cookie-names";
+import { ACCESS_COOKIE, REFRESH_COOKIE, ROLE_COOKIE } from "@/lib/auth/cookie-names";
 import { query } from "../db";
 import {
   ACCESS_TOKEN_TTL_SECONDS,
@@ -49,6 +49,8 @@ export interface IssuedSession {
   accessToken: string;
   refreshToken: string;
   sessionId: string;
+  /** Только для cookie-подсказки меню, см. ROLE_COOKIE. */
+  role: UserRole;
 }
 
 /**
@@ -74,7 +76,7 @@ export async function createSession(
   const sessionId = rows[0].id;
   const accessToken = await signAccessToken({ userId, role, sessionId });
 
-  return { accessToken, refreshToken, sessionId };
+  return { accessToken, refreshToken, sessionId, role };
 }
 
 /**
@@ -123,7 +125,7 @@ export async function rotateSession(refreshToken: string): Promise<IssuedSession
     sessionId: session.id,
   });
 
-  return { accessToken, refreshToken: nextToken, sessionId: session.id };
+  return { accessToken, refreshToken: nextToken, sessionId: session.id, role: session.role };
 }
 
 /** Закрывает одну сессию. Строка остаётся — по ней видно, когда вышли. */
@@ -155,6 +157,13 @@ export async function setSessionCookies(session: IssuedSession): Promise<void> {
     session.refreshToken,
     cookieOptions(REFRESH_TOKEN_TTL_SECONDS, REFRESH_COOKIE_PATH),
   );
+  // Единственная cookie без httpOnly: меню — код в браузере, и прочитать её
+  // должно уметь именно оно. Живёт столько же, сколько сессия, и
+  // переписывается при каждом продлении — понижение роли доедет вместе с ним.
+  store.set(ROLE_COOKIE, session.role, {
+    ...cookieOptions(REFRESH_TOKEN_TTL_SECONDS),
+    httpOnly: false,
+  });
 }
 
 export async function clearSessionCookies(): Promise<void> {
@@ -162,6 +171,7 @@ export async function clearSessionCookies(): Promise<void> {
   // maxAge: 0 — браузеру сказано забыть cookie немедленно.
   store.set(ACCESS_COOKIE, "", cookieOptions(0));
   store.set(REFRESH_COOKIE, "", cookieOptions(0, REFRESH_COOKIE_PATH));
+  store.set(ROLE_COOKIE, "", { ...cookieOptions(0), httpOnly: false });
 }
 
 export async function readAccessCookie(): Promise<string | null> {

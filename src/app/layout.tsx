@@ -17,6 +17,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="ru"
       data-scroll-behavior="smooth"
       className="h-full antialiased"
+      // The blocking script below stamps data-theme on this element before
+      // React arrives, so the client tree legitimately differs from the
+      // server one here — by design, and only on this one attribute.
+      suppressHydrationWarning
     >
       <head>
         {/* Applies the saved sheet colour before first paint. Inlined and

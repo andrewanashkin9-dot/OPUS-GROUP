@@ -163,7 +163,7 @@ export default function Home() {
                   colour or a moving surface. */}
               <article
                 className="plate flex h-full flex-col p-8"
-                style={{ borderColor: "rgba(228,210,172,0.45)" }}
+                style={{ borderColor: "rgba(255,215,0,0.45)" }}
               >
                 <span className="text-caption font-medium uppercase text-accent">
                   Подписка
@@ -193,7 +193,7 @@ export default function Home() {
           <div className="mt-12 grid gap-8 sm:grid-cols-3">
             {SOCIAL_PROOF.map((item, i) => (
               <Reveal key={item.name} index={i}>
-                <blockquote className="border-t border-[rgba(228,210,172,0.28)] pt-6">
+                <blockquote className="border-t border-[rgba(255,215,0,0.28)] pt-6">
                   <p className="text-body text-white">«{item.quote}»</p>
                   <footer className="mt-4 text-body-s text-dim">{item.name}</footer>
                 </blockquote>

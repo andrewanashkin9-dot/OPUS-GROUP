@@ -14,7 +14,7 @@
 export interface TitleBlockField {
   label: string;
   value: string;
-  /** Figures the reader is meant to act on — the rationed cream. */
+  /** Figures the reader is meant to act on — the rationed accent. */
   accent?: boolean;
   /**
    * Drop this field below `sm`. A six-field block is three rows deep on a
@@ -38,9 +38,9 @@ export function TitleBlock({ fields, className = "" }: TitleBlockProps) {
       {fields.map((field) => (
         <div
           key={field.label}
-          // Hairline rules between cells, drawn in cream at low alpha so the
+          // Hairline rules between cells, drawn in the accent at low alpha so the
           // block reads as ruled by the same hand that drew the sheet.
-          className={`border-b border-r border-[rgba(228,210,172,0.18)] px-4 py-2.5 last:border-r-0 sm:py-3 ${
+          className={`border-b border-r border-accent-line px-4 py-2.5 last:border-r-0 sm:py-3 ${
             field.secondary ? "hidden sm:block" : ""
           }`}
         >

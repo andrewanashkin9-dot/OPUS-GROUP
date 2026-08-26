@@ -30,7 +30,17 @@
   --white: #ffffff;
   --soft: rgba(255, 255, 255, 0.68);
   --dim: rgba(255, 255, 255, 0.42);
-  --cream: #e4d2ac;
+  /* The one accent. Gold, not beige: on the blueprint sheet a cream sat so
+     close to the paper's own warmth that it read as a lighter grey, and an
+     accent that has to be pointed out is not an accent. Contrast measured
+     against the composited plate rather than the sheet, because that is what
+     it is actually printed on: 7.22:1 on #133872 in blue and about 14:1 on
+     #1F1F1F in black, so it clears AAA for body text in both themes; black
+     on the filled version reads 13.3:1. */
+  --accent: #ffd700;
+  /* A lifted tint for edges and rules, where full-strength gold on a hairline
+     reads as a stray highlight rather than as a drawn line. */
+  --accent-line: rgba(255, 215, 0, 0.22);
 
   /* Graph-paper pitch: a fine line every 28px, a bold one every 5th. */
   --grid-cell: 28px;
@@ -118,15 +128,16 @@
   --color-plate-quiet: var(--plate-quiet);
   --color-plate-edge: var(--plate-edge);
 
-  /* Cream is the ONE accent and it is rationed: logo, primary CTA, active
+  /* The accent is rationed: logo, primary CTA, active
      state, key figures, title-block rules. It is reachable only through
      `accent`, so no component can casually tint body copy with it. */
-  --color-accent: var(--cream);
+  --color-accent: var(--accent);
+  --color-accent-line: var(--accent-line);
 
   /* Legacy names, remapped onto the blueprint. Pages not yet rebuilt keep
      working and land in the new world automatically — and because the old
-     `cream` body text now resolves to white, cream stops leaking everywhere
-     the moment the palette changes. */
+     `cream` body text now resolves to white, the accent stops leaking
+     everywhere the moment the palette changes. */
   --color-bg: var(--deep);
   --color-surface: var(--plate);
   --color-line: var(--plate-edge);
@@ -203,7 +214,7 @@ h3,
 }
 
 ::selection {
-  background: var(--cream);
+  background: var(--accent);
   color: var(--deep);
 }
 
@@ -211,11 +222,11 @@ h3,
    animates, so a focus ring inherits the site's 280ms fade — it drifts up from
    the element's own colour instead of appearing. A keyboard user needs to see
    where focus landed at the moment it lands, so transitions are switched off
-   for the focused element and the cream ring is simply there. */
+   for the focused element and the accent ring is simply there. */
 :focus-visible {
   outline-width: 2px;
   outline-style: solid;
-  outline-color: var(--cream);
+  outline-color: var(--accent);
   outline-offset: 3px;
   border-radius: 4px;
   transition-property: none;
@@ -486,7 +497,7 @@ h3,
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: var(--cream);
+  background: var(--accent);
   box-shadow: var(--lift-1);
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease);
@@ -497,7 +508,7 @@ h3,
   height: 18px;
   border: none;
   border-radius: 999px;
-  background: var(--cream);
+  background: var(--accent);
   box-shadow: var(--lift-1);
   cursor: pointer;
 }

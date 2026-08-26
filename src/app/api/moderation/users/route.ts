@@ -1,30 +1,29 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/server/auth/guard";
-import { query } from "@/lib/server/db";
 import { noStore } from "@/lib/server/auth/http";
+import { listUsers, type UserStatus } from "@/lib/server/moderation/queries";
 
-/**
- * Пример защищённого по роли маршрута: список людей, ждущих модерации.
- *
- * Образец для всех будущих защищённых обработчиков — первые две строки тела
- * одинаковые везде. Пока их не написали, обработчик открыт всем; написали —
- * закрыт независимо от того, что настроено снаружи.
- */
+/** Список пользователей для модерации. Каждый показ пишется в журнал 152-ФЗ. */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+const STATUSES = ["pending", "active", "blocked", "all"] as const;
+
+export async function GET(request: Request) {
   const auth = await requireRole(["moderator", "admin"]);
   if (!auth.ok) return auth.response;
 
-  const { rows } = await query(
-    `select id, role, status, email, display_name as "displayName", city,
-            created_at as "createdAt"
-       from users
-      where status = 'pending'
-      order by created_at
-      limit 100`,
-  );
+  const params = new URL(request.url).searchParams;
+  const rawStatus = params.get("status") ?? "all";
+  const status = (STATUSES as readonly string[]).includes(rawStatus)
+    ? (rawStatus as UserStatus | "all")
+    : "all";
 
-  return NextResponse.json({ users: rows }, noStore(200));
+  const users = await listUsers({
+    actorId: auth.user.id,
+    status,
+    search: params.get("q"),
+  });
+
+  return NextResponse.json({ users }, noStore(200));
 }

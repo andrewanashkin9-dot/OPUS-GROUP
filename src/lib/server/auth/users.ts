@@ -13,6 +13,8 @@ export interface PublicUser {
   displayName: string;
   city: string | null;
   createdAt: Date;
+  /** null — адрес не подтверждён. Нужно, чтобы напомнить об этом в кабинете. */
+  emailVerifiedAt: Date | null;
 }
 
 /** Строка целиком, включая хеш. Не покидает серверный код. */
@@ -28,7 +30,8 @@ const PUBLIC_COLUMNS = `
   email,
   display_name as "displayName",
   city,
-  created_at   as "createdAt"
+  created_at        as "createdAt",
+  email_verified_at as "emailVerifiedAt"
 `;
 
 export async function findUserForLogin(email: string): Promise<UserRow | null> {

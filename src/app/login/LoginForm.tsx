@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/Button";
@@ -185,6 +186,14 @@ export function LoginForm() {
         <Button type="submit" disabled={pending} className="w-full">
           {pending ? "Подождите…" : isRegister ? "Зарегистрироваться" : "Войти"}
         </Button>
+
+        {!isRegister && (
+          <p className="text-center text-body-s">
+            <Link href="/reset-password" className="text-cream-dim underline underline-offset-2 hover:text-cream-bright">
+              Забыли пароль?
+            </Link>
+          </p>
+        )}
       </form>
     </div>
   );

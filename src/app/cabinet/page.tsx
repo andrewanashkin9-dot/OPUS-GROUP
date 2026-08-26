@@ -5,6 +5,9 @@ import { findUserById } from "@/lib/server/auth/users";
 import { LogoutButton } from "./LogoutButton";
 import { RequestsPanel } from "./RequestsPanel";
 import { SubscriptionPanel } from "./SubscriptionPanel";
+import { ProfilePanel } from "./ProfilePanel";
+import { EmailNotice } from "./EmailNotice";
+import { getOwnProfile } from "@/lib/server/profiles/queries";
 import { query } from "@/lib/server/db";
 import { listClientRequests, listOpenRequests } from "@/lib/server/requests/queries";
 
@@ -58,7 +61,10 @@ export default async function CabinetPage() {
         </p>
       )}
 
+      {user.email && !user.emailVerifiedAt && <EmailNotice />}
+
       {user.role === "executor" && (await renderSubscription(user.id))}
+      {user.role === "executor" && (await renderProfile(user.id))}
 
       {(user.role === "client" || user.role === "executor") && (
         <RequestsPanel
@@ -104,6 +110,19 @@ async function renderSubscription(executorId: string) {
     <SubscriptionPanel
       status={current?.status ?? null}
       paidUntil={current ? new Date(current.paidUntil).toLocaleDateString("ru-RU") : null}
+    />
+  );
+}
+
+/** Профиль исполнителя — читается на сервере, редактируется на клиенте. */
+async function renderProfile(executorId: string) {
+  const profile = await getOwnProfile(executorId);
+  return (
+    <ProfilePanel
+      initialSpecialties={profile?.specialties ?? []}
+      initialBio={profile?.bio ?? null}
+      initialPriceHint={profile?.priceHint ?? null}
+      initialPortfolio={profile?.portfolio ?? []}
     />
   );
 }

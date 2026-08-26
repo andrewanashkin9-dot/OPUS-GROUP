@@ -4,6 +4,35 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { getModel3DProvider } from "./3d";
 import { withRecalculatedQuantities } from "./3d/metrics";
 import { productById, type MarketUnit, type Product } from "./marketplace";
+import {
+  DEFAULT_DOOR,
+  DEFAULT_ROOM_DIMENSIONS,
+  DEFAULT_WASTE_PCT,
+  DEFAULT_WINDOW,
+  ROOM_LIMITS,
+  reflowOpenings,
+  roomCartAdditions,
+  roomEstimate,
+  roomSurfaces,
+  suggestOffsetM,
+  validateDimensions,
+  validateOpening,
+  type OpeningKind,
+  type RoomDimensions,
+  type RoomEstimate,
+  type RoomModel,
+  type RoomNotch,
+  type RoomOpening,
+  type RoomShape,
+  type RoomSurface,
+  type SurfaceId,
+} from "./room";
+import {
+  getUsageLimitBackend,
+  readUsage,
+  usageSnapshot,
+  type UsageSnapshot,
+} from "./usage";
 import type {
   BomLine,
   FloorCount,
@@ -15,6 +44,29 @@ import type {
   SceneNode,
   Tier,
 } from "./3d/types";
+
+/** Шаги конфигуратора комнаты, в том порядке, в каком их проходят. */
+export type RoomStep = "size" | "openings" | "finish" | "estimate";
+
+export const ROOM_STEPS: { id: RoomStep; label: string }[] = [
+  { id: "size", label: "Размеры" },
+  { id: "openings", label: "Проёмы" },
+  { id: "finish", label: "Отделка" },
+  { id: "estimate", label: "Расчёт" },
+];
+
+/**
+ * Фотография комнаты как подсказка самому себе.
+ *
+ * Живёт только в этой вкладке и только в памяти: никуда не отправляется и
+ * не сохраняется. Обещание «фото остаются у вас» стоит ровно столько,
+ * сколько стоит отсутствие кода, который их куда-то кладёт.
+ */
+export interface RoomPhoto {
+  id: string;
+  name: string;
+  url: string;
+}
 
 interface AppState {
   tier: Tier;
@@ -36,6 +88,18 @@ interface AppState {
    */
   marketItems: Record<string, number>;
 
+  // ------------------------------------------------------------ комната
+  room: RoomModel | null;
+  roomStep: RoomStep;
+  /** Выбранная поверхность: она же подсвечена в 3D и открыта в панели. */
+  selectedSurfaceId: SurfaceId | null;
+  /** Камера внутри комнаты, а не снаружи в «кукольном домике». */
+  insideView: boolean;
+  roomError: string | null;
+  roomPhotos: RoomPhoto[];
+  /** Сколько проектов уже занято. null — ещё не спрашивали. */
+  usage: UsageSnapshot | null;
+
   setTier: (tier: Tier) => void;
   generateFromPhotos: (photos: File[]) => Promise<void>;
   selectNode: (nodeId: string | null) => void;
@@ -52,6 +116,27 @@ interface AppState {
   addMarketItem: (productId: string, quantity: number) => void;
   setMarketQuantity: (productId: string, quantity: number) => void;
   removeMarketItem: (productId: string) => void;
+
+  refreshUsage: () => Promise<void>;
+  /** Возвращает false, если свободный тариф уже исчерпан. */
+  createRoom: () => Promise<boolean>;
+  setRoomStep: (step: RoomStep) => void;
+  setRoomDimensions: (patch: Partial<RoomDimensions>) => void;
+  setRoomShape: (shape: RoomShape) => void;
+  setRoomNotch: (patch: Partial<RoomNotch>) => void;
+  addOpening: (kind: OpeningKind, wall: SurfaceId) => void;
+  updateOpening: (id: string, patch: Partial<RoomOpening>) => void;
+  removeOpening: (id: string) => void;
+  selectSurface: (id: SurfaceId | null) => void;
+  setInsideView: (inside: boolean) => void;
+  setFinish: (surfaceId: SurfaceId, productId: string | null) => void;
+  /** Один материал на все стены сразу — так их и выбирают в жизни. */
+  setWallFinish: (productId: string) => void;
+  setWastePct: (pct: number) => void;
+  addRoomPhotos: (files: File[]) => void;
+  removeRoomPhoto: (id: string) => void;
+  addRoomToCart: () => void;
+  resetRoom: () => Promise<void>;
 }
 
 /**
@@ -149,16 +234,42 @@ export const useAppStore = create<AppState>()(
       rebuilding: false,
       marketItems: {},
 
-      setTier: (tier) => set({ tier }),
+      room: null,
+      roomStep: "size",
+      selectedSurfaceId: null,
+      insideView: false,
+      roomError: null,
+      roomPhotos: [],
+      usage: null,
+
+      setTier: (tier) =>
+        set((state) => ({
+          tier,
+          usage: state.usage ? usageSnapshot(state.usage.used, tier) : null,
+        })),
 
       generateFromPhotos: async (photos) => {
+        // Дом и комната делят один лимит: это два способа описать один
+        // ремонт, а не два разных продукта.
+        const allowance = await readUsage(get().tier);
+        if (!allowance.allowed) {
+          set({
+            usage: allowance,
+            status: "error",
+            error:
+              "На свободном тарифе доступно три проекта. Удалите один, чтобы начать новый.",
+          });
+          return;
+        }
         set({ status: "generating", error: null });
         try {
           const model = await getModel3DProvider().generateFromPhotos(photos);
+          await getUsageLimitBackend().add(model.id);
           set({
             model,
             status: "ready",
             selectedNodeId: model.nodes[0]?.id ?? null,
+            usage: await readUsage(get().tier),
           });
         } catch (err) {
           set({
@@ -190,7 +301,15 @@ export const useAppStore = create<AppState>()(
           colorOverrides: { ...state.colorOverrides, [nodeId]: hex },
         })),
 
-      resetProject: () =>
+      resetProject: () => {
+        const { model, tier } = get();
+        // Удалённый проект освобождает место в лимите. Иначе три попытки
+        // разобраться в интерфейсе навсегда закрывали бы свободный тариф.
+        if (model) {
+          void getUsageLimitBackend()
+            .remove(model.id)
+            .then(async () => set({ usage: await readUsage(tier) }));
+        }
         set({
           model: null,
           status: "idle",
@@ -198,7 +317,8 @@ export const useAppStore = create<AppState>()(
           selectedNodeId: null,
           quantityOverrides: {},
           colorOverrides: {},
-        }),
+        });
+      },
 
       setFloors: async (floors) => {
         const { model } = get();
@@ -268,6 +388,242 @@ export const useAppStore = create<AppState>()(
 
       removeMarketItem: (productId) =>
         set((state) => ({ marketItems: without(state.marketItems, productId) })),
+
+      // ---------------------------------------------------------- комната
+
+      refreshUsage: async () => {
+        set({ usage: await readUsage(get().tier) });
+      },
+
+      createRoom: async () => {
+        // Уже начатая комната — это тот же проект, а не новый: возврат на
+        // экран выбора не должен съедать ещё одно место в лимите.
+        if (get().room) return true;
+
+        const allowance = await readUsage(get().tier);
+        if (!allowance.allowed) {
+          set({
+            usage: allowance,
+            roomError:
+              "На свободном тарифе доступно три проекта. Удалите один, чтобы начать новый.",
+          });
+          return false;
+        }
+
+        const id = `room-${Date.now().toString(36)}`;
+        await getUsageLimitBackend().add(id);
+        set({
+          room: {
+            id,
+            name: "Комната",
+            createdAt: new Date().toISOString(),
+            shape: "rect",
+            dimensions: { ...DEFAULT_ROOM_DIMENSIONS },
+            openings: [],
+            finishes: {},
+            wastePct: DEFAULT_WASTE_PCT,
+          },
+          roomStep: "size",
+          selectedSurfaceId: "floor",
+          insideView: false,
+          roomError: null,
+          usage: await readUsage(get().tier),
+        });
+        return true;
+      },
+
+      setRoomStep: (roomStep) => set({ roomStep }),
+
+      setRoomDimensions: (patch) =>
+        set((state) => {
+          if (!state.room) return {};
+          const dimensions = { ...state.room.dimensions };
+          for (const key of ["widthM", "lengthM", "heightM"] as const) {
+            const value = patch[key];
+            if (value === undefined) continue;
+            const limit = ROOM_LIMITS[key];
+            // Обрезка по границам живёт здесь, а черновик ввода — в поле:
+            // иначе набранная «1» в поле ширины прыгала бы к минимуму и
+            // дописать «12» стало бы невозможно.
+            dimensions[key] = Number.isFinite(value)
+              ? Math.min(limit.max, Math.max(limit.min, value))
+              : dimensions[key];
+          }
+          const room = { ...state.room, dimensions };
+          return {
+            room: { ...room, openings: reflowOpenings(room) },
+            roomError: validateDimensions(room),
+          };
+        }),
+
+      setRoomShape: (shape) =>
+        set((state) => {
+          if (!state.room || state.room.shape === shape) return {};
+          const { widthM, lengthM } = state.room.dimensions;
+          const room: RoomModel =
+            shape === "l"
+              ? {
+                  ...state.room,
+                  shape,
+                  notch: {
+                    corner: "ne",
+                    widthM: Math.min(1.2, widthM - 1),
+                    lengthM: Math.min(1, lengthM - 1),
+                  },
+                }
+              : { ...state.room, shape, notch: undefined };
+          return {
+            room: { ...room, openings: reflowOpenings(room) },
+            // Стен стало больше или меньше, и прежний выбор мог указывать на
+            // стену, которой уже нет.
+            selectedSurfaceId: "floor",
+            roomError: validateDimensions(room),
+          };
+        }),
+
+      setRoomNotch: (patch) =>
+        set((state) => {
+          if (!state.room?.notch) return {};
+          const room: RoomModel = {
+            ...state.room,
+            notch: { ...state.room.notch, ...patch },
+          };
+          return {
+            room: { ...room, openings: reflowOpenings(room) },
+            roomError: validateDimensions(room),
+          };
+        }),
+
+      addOpening: (kind, wall) =>
+        set((state) => {
+          if (!state.room) return {};
+          const preset = kind === "door" ? DEFAULT_DOOR : DEFAULT_WINDOW;
+          const offsetM = suggestOffsetM(state.room, wall, preset.widthM);
+          if (offsetM === null) {
+            return { roomError: "На этой стене не осталось места для проёма." };
+          }
+          const opening: RoomOpening = {
+            id: `op-${Date.now().toString(36)}-${state.room.openings.length}`,
+            kind,
+            wall,
+            offsetM,
+            ...preset,
+          };
+          return {
+            room: { ...state.room, openings: [...state.room.openings, opening] },
+            selectedSurfaceId: wall,
+            roomError: null,
+          };
+        }),
+
+      updateOpening: (id, patch) =>
+        set((state) => {
+          if (!state.room) return {};
+          const openings = state.room.openings.map((o) =>
+            o.id === id ? { ...o, ...patch } : o,
+          );
+          const room = { ...state.room, openings };
+          const edited = openings.find((o) => o.id === id);
+          // Правка применяется всегда, даже неудачная: подменённое за спиной
+          // значение читается как сломанный ползунок. Ошибка показывается
+          // рядом с проёмом, а перейти к расчёту с ней не дадут.
+          return { room, roomError: edited ? validateOpening(room, edited) : null };
+        }),
+
+      removeOpening: (id) =>
+        set((state) => {
+          if (!state.room) return {};
+          return {
+            room: {
+              ...state.room,
+              openings: state.room.openings.filter((o) => o.id !== id),
+            },
+            roomError: null,
+          };
+        }),
+
+      selectSurface: (selectedSurfaceId) => set({ selectedSurfaceId }),
+
+      setInsideView: (insideView) => set({ insideView }),
+
+      setFinish: (surfaceId, productId) =>
+        set((state) => {
+          if (!state.room) return {};
+          const finishes = { ...state.room.finishes };
+          if (productId) finishes[surfaceId] = productId;
+          else delete finishes[surfaceId];
+          return { room: { ...state.room, finishes } };
+        }),
+
+      setWallFinish: (productId) =>
+        set((state) => {
+          if (!state.room) return {};
+          const finishes = { ...state.room.finishes };
+          for (const surface of roomSurfaces(state.room)) {
+            if (surface.kind === "wall") finishes[surface.id] = productId;
+          }
+          return { room: { ...state.room, finishes } };
+        }),
+
+      setWastePct: (pct) =>
+        set((state) => {
+          if (!state.room) return {};
+          const { min, max } = ROOM_LIMITS.wastePct;
+          return {
+            room: {
+              ...state.room,
+              wastePct: Math.min(max, Math.max(min, Math.round(pct))),
+            },
+          };
+        }),
+
+      addRoomPhotos: (files) =>
+        set((state) => ({
+          roomPhotos: [
+            ...state.roomPhotos,
+            ...files.map((file, i) => ({
+              id: `photo-${Date.now().toString(36)}-${i}`,
+              name: file.name,
+              url: URL.createObjectURL(file),
+            })),
+          ],
+        })),
+
+      removeRoomPhoto: (id) =>
+        set((state) => {
+          const photo = state.roomPhotos.find((p) => p.id === id);
+          if (photo) URL.revokeObjectURL(photo.url);
+          return { roomPhotos: state.roomPhotos.filter((p) => p.id !== id) };
+        }),
+
+      addRoomToCart: () =>
+        set((state) => {
+          if (!state.room) return {};
+          // Количества назначаются, а не прибавляются: кнопку нажимают по
+          // второму разу, чтобы обновить расчёт после правки, а не чтобы
+          // купить всё дважды.
+          return {
+            marketItems: {
+              ...state.marketItems,
+              ...roomCartAdditions(state.room),
+            },
+          };
+        }),
+
+      resetRoom: async () => {
+        const { room, roomPhotos, tier } = get();
+        for (const photo of roomPhotos) URL.revokeObjectURL(photo.url);
+        if (room) await getUsageLimitBackend().remove(room.id);
+        set({
+          room: null,
+          roomStep: "size",
+          selectedSurfaceId: null,
+          insideView: false,
+          roomError: null,
+          roomPhotos: [],
+          usage: await readUsage(tier),
+        });
+      },
     }),
     {
       name: "opus-group-project",
@@ -297,6 +653,12 @@ export const useAppStore = create<AppState>()(
         colorOverrides: state.colorOverrides,
         dismissedEducationCardIds: state.dismissedEducationCardIds,
         marketItems: state.marketItems,
+        room: state.room,
+        roomStep: state.roomStep,
+        selectedSurfaceId: state.selectedSurfaceId,
+        // roomPhotos сознательно не сохраняются: они живут только в этой
+        // вкладке, и обещание «фото остаются у вас» держится именно тем,
+        // что их некуда записать.
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
@@ -411,4 +773,39 @@ export function nodeKindLabel(kind: NodeKind): string {
     case "door":
       return "Дверь";
   }
+}
+
+/**
+ * The room's estimate, memoized for the same reason as useBom: it is derived
+ * from the model rather than held in state, so computing it inline as a
+ * selector would hand zustand a new object on every render.
+ */
+export function useRoomEstimate(): RoomEstimate | null {
+  const room = useAppStore((s) => s.room);
+  return useMemo(() => (room ? roomEstimate(room) : null), [room]);
+}
+
+/** The room's surfaces, in the order they are worked through. */
+export function useRoomSurfaces(): RoomSurface[] {
+  const room = useAppStore((s) => s.room);
+  return useMemo(() => (room ? roomSurfaces(room) : []), [room]);
+}
+
+/**
+ * How much of the free tier is left.
+ *
+ * Read on mount rather than persisted with the project: the count lives
+ * behind the UsageLimit seam, and once that seam is a server call this hook
+ * is the only place that has to keep working — not every screen that shows
+ * the number.
+ */
+export function useUsage(): UsageSnapshot | null {
+  const usage = useAppStore((s) => s.usage);
+  const refreshUsage = useAppStore((s) => s.refreshUsage);
+
+  useEffect(() => {
+    void refreshUsage();
+  }, [refreshUsage]);
+
+  return usage;
 }

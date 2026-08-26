@@ -145,7 +145,10 @@ export function RoomShell() {
             <span aria-hidden="true">{sheetOpen ? "▾" : "▴"}</span>
           </button>
           {sheetOpen && (
-            <div className="max-h-[52dvh] overflow-y-auto px-4 pb-5">
+            // Keyed on the step so changing step remounts the scroller and
+            // starts it at the top; otherwise you arrive at a new panel
+            // already scrolled into the middle of it.
+            <div key={roomStep} className="max-h-[52dvh] overflow-y-auto px-4 pb-5">
               {panel}
               {notice && (
                 <p

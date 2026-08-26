@@ -90,8 +90,11 @@ export default function StartPage() {
                     <li key={point} className="flex gap-2.5 text-body-s text-soft">
                       <span
                         aria-hidden="true"
+                        // Neutral, not gold: the accent already carries the
+                        // headline requirement and the button on this card,
+                        // and a third gold thing turns it into decoration.
                         className="mt-2 h-1 w-1 shrink-0 rounded-full"
-                        style={{ background: "var(--accent)" }}
+                        style={{ background: "var(--dim)" }}
                       />
                       {point}
                     </li>

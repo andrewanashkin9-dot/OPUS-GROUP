@@ -252,7 +252,17 @@ function Wall({
   );
 }
 
-/** A door or window, drawn as the reveal around the hole in the wall. */
+/**
+ * A door or window: the lining around the hole, and the glass in it.
+ *
+ * Without the lining a doorway reads as a missing wall — from inside you look
+ * straight through it at the blueprint and the room seems unfinished. Real
+ * walls have thickness, and the откос is the whole reason a doorway looks
+ * like a doorway rather than a hole.
+ */
+const REVEAL_DEPTH_M = 0.14;
+const REVEAL_THICKNESS_M = 0.03;
+
 function OpeningFrame({
   opening,
   start,
@@ -274,25 +284,41 @@ function OpeningFrame({
     () => new THREE.PlaneGeometry(opening.widthM, opening.heightM),
     [opening.widthM, opening.heightM],
   );
-  const outline = useMemo(() => new THREE.EdgesGeometry(pane), [pane]);
+
+  const w = opening.widthM;
+  const h = opening.heightM;
+  const t = REVEAL_THICKNESS_M;
+  const d = REVEAL_DEPTH_M;
+
+  // Four slabs sitting just outside the hole's edges: a picture frame with
+  // depth, which is what an откос is.
+  const jambs: { args: [number, number, number]; at: [number, number, number] }[] = [
+    { args: [w + t * 2, t, d], at: [0, h / 2 + t / 2, 0] },
+    { args: [w + t * 2, t, d], at: [0, -h / 2 - t / 2, 0] },
+    { args: [t, h, d], at: [-w / 2 - t / 2, 0, 0] },
+    { args: [t, h, d], at: [w / 2 + t / 2, 0, 0] },
+  ];
 
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
-      <lineSegments geometry={outline} raycast={() => null}>
-        <lineBasicMaterial
-          color={opening.kind === "door" ? "#ffffff" : "#9fc4ff"}
-          transparent
-          opacity={0.85}
-        />
-      </lineSegments>
-      {/* A window is a pane; a doorway is an empty hole. Which is what each
-          of them still is once the finish goes on. */}
+      {jambs.map((jamb, i) => (
+        <mesh key={i} position={jamb.at} raycast={() => null} castShadow>
+          <boxGeometry args={jamb.args} />
+          {/* Opaque, and deliberately not part of the dollhouse fade: the
+              lining is what still says "opening" when the wall around it has
+              gone translucent. */}
+          <meshStandardMaterial color="#d7d2c9" roughness={0.9} metalness={0} />
+        </mesh>
+      ))}
+
+      {/* Glass in a window; a doorway stays an empty hole, which is what it
+          still is once the finish goes on. */}
       {opening.kind === "window" && (
         <mesh geometry={pane} raycast={() => null}>
           <meshStandardMaterial
             color="#bcd6ff"
             transparent
-            opacity={0.2}
+            opacity={0.22}
             roughness={0.1}
             metalness={0}
             side={THREE.DoubleSide}

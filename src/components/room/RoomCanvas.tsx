@@ -1,6 +1,11 @@
 "use client";
 
-import { Environment, Lightformer, OrbitControls } from "@react-three/drei";
+import {
+  Environment,
+  Lightformer,
+  OrbitControls,
+  PerspectiveCamera,
+} from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect } from "react";
 import * as THREE from "three";
@@ -26,7 +31,14 @@ export function RoomCanvas({
 }: RoomCanvasProps) {
   const { widthM, lengthM, heightM } = room.dimensions;
   const span = Math.max(widthM, lengthM, heightM);
-  const diagonal = Math.hypot(widthM, lengthM);
+  /**
+   * How far the camera may orbit from the middle of the room while staying
+   * inside it. Keyed on the SHORTER side, not the diagonal: an orbit radius
+   * taken from the diagonal sweeps straight through the long walls, and once
+   * the camera is outside one, that wall goes translucent and the reader is
+   * looking at their room through a ghost.
+   */
+  const insideReach = Math.min(widthM, lengthM) * 0.42;
 
   return (
     <Canvas
@@ -40,18 +52,19 @@ export function RoomCanvas({
         outputColorSpace: THREE.SRGBColorSpace,
       }}
       shadows={{ type: THREE.PCFSoftShadowMap }}
-      // A near plane close enough for the inside view, set once rather than
-      // swapped per view: at room scale, 5 cm to 2 km still leaves the depth
-      // buffer far more precision than anything here needs.
-      camera={{
-        position: [span * 1.5, span * 1.2, span * 1.5],
-        fov: 40,
-        near: 0.05,
-      }}
       className="!touch-none"
       frameloop="demand"
       dpr={[1, 2]}
     >
+      {/* Two focal lengths, because the two views are two different photographs.
+          A 40° lens frames the room as an object; standing inside it that same
+          lens shows a wall and little else, which is why every interior shot
+          ever taken is wide. The near plane is set once and low enough for
+          both: at room scale, 5 cm to 2 km still leaves the depth buffer far
+          more precision than anything here needs. Declared rather than
+          assigned so the projection matrix is rebuilt by the camera itself. */}
+      <PerspectiveCamera makeDefault fov={insideView ? 62 : 40} near={0.05} />
+
       {/* The same in-scene lighting the house editor uses: Poly Haven is
           unreachable from here and drei's HDRI presets pull from a CDN, so
           the environment is assembled from lightformers. Being image-based,
@@ -119,8 +132,8 @@ export function RoomCanvas({
         enablePan={false}
         // Inside, you turn on the spot and have to be able to get close to a
         // wall; outside, the room is an object you walk around.
-        minDistance={insideView ? 0.4 : span * 0.8}
-        maxDistance={insideView ? diagonal * 0.5 : span * 4}
+        minDistance={insideView ? 0.3 : span * 0.8}
+        maxDistance={insideView ? insideReach : span * 4}
         maxPolarAngle={insideView ? Math.PI - 0.2 : Math.PI / 2.05}
         minPolarAngle={insideView ? 0.2 : 0}
       />
@@ -155,10 +168,13 @@ function RoomCameraRig({
   useEffect(() => {
     const span = Math.max(widthM, lengthM, heightM);
     if (insideView) {
-      // Standing near a corner, looking across the room at eye height — the
-      // position from which anyone actually judges a room.
-      camera.position.set(-widthM * 0.34, EYE_M, lengthM * 0.34);
-      controls?.target.set(widthM * 0.2, EYE_M * 0.8, -lengthM * 0.2);
+      // Orbiting around the middle of the room at eye height, which is what
+      // "turning on the spot" amounts to with an orbit control. The offset
+      // is inside the reach the controls allow, so the first frame does not
+      // start out clamped.
+      const reach = Math.min(widthM, lengthM) * 0.3;
+      camera.position.set(reach, EYE_M, reach);
+      controls?.target.set(0, EYE_M * 0.9, 0);
     } else {
       const distance = span * 1.55;
       camera.position.set(distance, heightM + distance * 0.62, distance);

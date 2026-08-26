@@ -14,6 +14,7 @@ import {
   roomCartAdditions,
   roomEstimate,
   roomSurfaces,
+  strandedOpenings,
   suggestOffsetM,
   validateDimensions,
   validateOpening,
@@ -199,6 +200,35 @@ async function reconfigure(
         err instanceof Error ? err.message : "Не удалось перестроить модель.",
     });
   }
+}
+
+/**
+ * Keeps a notch inside the room it is cut out of.
+ *
+ * At least half a metre — below that it is a niche, not a plan — and never
+ * closer than a metre to the opposite wall, which is where the remaining
+ * strip of room stops being a room.
+ */
+function clampNotch(value: number, roomSideM: number): number {
+  return Math.min(Math.max(0.5, value), Math.max(0.5, roomSideM - 1));
+}
+
+/**
+ * What to say after a change that renumbers the walls.
+ *
+ * Cutting or moving a notch splits one wall into three and shifts every
+ * number after it, so an opening can land on a wall it no longer fits. The
+ * openings are not quietly deleted and not quietly resized — the reader is
+ * told, and the estimate stays blocked until they decide what to do.
+ */
+function strandedNotice(model: RoomModel): string | null {
+  const invalid = validateDimensions(model);
+  if (invalid) return invalid;
+  const stranded = strandedOpenings(model);
+  if (!stranded.length) return null;
+  return stranded.length === 1
+    ? "Один проём больше не помещается в свою стену — поправьте его на шаге «Проёмы»."
+    : `${stranded.length} проёма больше не помещаются в свои стены — поправьте их на шаге «Проёмы».`;
 }
 
 /** A copy of `items` without `key`. */
@@ -449,7 +479,16 @@ export const useAppStore = create<AppState>()(
               ? Math.min(limit.max, Math.max(limit.min, value))
               : dimensions[key];
           }
-          const room = { ...state.room, dimensions };
+          const room = { ...state.room, dimensions, notch: state.room.notch };
+          if (room.notch) {
+            // A notch wider than the room folds the plan polygon through
+            // itself, and every area downstream of it becomes nonsense.
+            room.notch = {
+              ...room.notch,
+              widthM: clampNotch(room.notch.widthM, dimensions.widthM),
+              lengthM: clampNotch(room.notch.lengthM, dimensions.lengthM),
+            };
+          }
           return {
             room: { ...room, openings: reflowOpenings(room) },
             roomError: validateDimensions(room),
@@ -472,25 +511,33 @@ export const useAppStore = create<AppState>()(
                   },
                 }
               : { ...state.room, shape, notch: undefined };
+          const next = { ...room, openings: reflowOpenings(room) };
           return {
-            room: { ...room, openings: reflowOpenings(room) },
+            room: next,
             // Стен стало больше или меньше, и прежний выбор мог указывать на
             // стену, которой уже нет.
             selectedSurfaceId: "floor",
-            roomError: validateDimensions(room),
+            roomError: strandedNotice(next),
           };
         }),
 
       setRoomNotch: (patch) =>
         set((state) => {
           if (!state.room?.notch) return {};
+          const merged = { ...state.room.notch, ...patch };
           const room: RoomModel = {
             ...state.room,
-            notch: { ...state.room.notch, ...patch },
+            notch: {
+              ...merged,
+              widthM: clampNotch(merged.widthM, state.room.dimensions.widthM),
+              lengthM: clampNotch(merged.lengthM, state.room.dimensions.lengthM),
+            },
           };
           return {
             room: { ...room, openings: reflowOpenings(room) },
-            roomError: validateDimensions(room),
+            // Moving the notch renumbers the walls around it, so an opening
+            // can end up on a wall it no longer fits.
+            roomError: strandedNotice(room),
           };
         }),
 

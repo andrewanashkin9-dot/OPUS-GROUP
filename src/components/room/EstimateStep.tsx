@@ -49,8 +49,8 @@ export function EstimateStep({ room }: { room: RoomModel }) {
                     <th
                       key={head}
                       scope="col"
-                      className={`py-2 text-caption font-medium uppercase text-dim ${
-                        i > 0 ? "text-right" : ""
+                      className={`whitespace-nowrap py-2 text-caption font-medium uppercase text-dim ${
+                        i > 0 ? "pl-3 text-right" : ""
                       }`}
                     >
                       {head}

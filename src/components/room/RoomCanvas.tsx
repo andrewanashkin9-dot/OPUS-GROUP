@@ -1,0 +1,174 @@
+"use client";
+
+import { Environment, Lightformer, OrbitControls } from "@react-three/drei";
+import { Canvas, useThree } from "@react-three/fiber";
+import { useEffect } from "react";
+import * as THREE from "three";
+import type { RoomModel, SurfaceId } from "@/lib/room";
+import { BlueprintGround } from "@/components/editor/BlueprintGround";
+import { RoomScene } from "./RoomScene";
+
+/** Eye height, for the view from inside. */
+const EYE_M = 1.6;
+
+interface RoomCanvasProps {
+  room: RoomModel;
+  selectedSurfaceId: SurfaceId | null;
+  insideView: boolean;
+  onSelect: (id: SurfaceId) => void;
+}
+
+export function RoomCanvas({
+  room,
+  selectedSurfaceId,
+  insideView,
+  onSelect,
+}: RoomCanvasProps) {
+  const { widthM, lengthM, heightM } = room.dimensions;
+  const span = Math.max(widthM, lengthM, heightM);
+  const diagonal = Math.hypot(widthM, lengthM);
+
+  return (
+    <Canvas
+      // Transparent, like the house editor: what surrounds the room is the
+      // page's own blueprint layers, so there is no seam where the canvas
+      // begins.
+      gl={{
+        alpha: true,
+        antialias: true,
+        toneMapping: THREE.ACESFilmicToneMapping,
+        outputColorSpace: THREE.SRGBColorSpace,
+      }}
+      shadows={{ type: THREE.PCFSoftShadowMap }}
+      // A near plane close enough for the inside view, set once rather than
+      // swapped per view: at room scale, 5 cm to 2 km still leaves the depth
+      // buffer far more precision than anything here needs.
+      camera={{
+        position: [span * 1.5, span * 1.2, span * 1.5],
+        fov: 40,
+        near: 0.05,
+      }}
+      className="!touch-none"
+      frameloop="demand"
+      dpr={[1, 2]}
+    >
+      {/* The same in-scene lighting the house editor uses: Poly Haven is
+          unreachable from here and drei's HDRI presets pull from a CDN, so
+          the environment is assembled from lightformers. Being image-based,
+          it also lights the inward faces of the walls, which a key light
+          alone would leave black the moment the camera steps inside. */}
+      <Environment resolution={256} frames={1}>
+        <Lightformer
+          form="rect"
+          intensity={2.4}
+          color="#eaf1ff"
+          position={[0, 8, 6]}
+          scale={[14, 8, 1]}
+          rotation={[-Math.PI / 6, 0, 0]}
+        />
+        <Lightformer
+          form="rect"
+          intensity={1.2}
+          color="#9fb6e0"
+          position={[-9, 5, -6]}
+          scale={[10, 6, 1]}
+          rotation={[0, Math.PI / 3, 0]}
+        />
+        <Lightformer
+          form="rect"
+          intensity={0.8}
+          color="#4a6ea8"
+          position={[0, -6, 0]}
+          scale={[16, 16, 1]}
+          rotation={[Math.PI / 2, 0, 0]}
+        />
+      </Environment>
+
+      <directionalLight
+        position={[span * 1.4, span * 2.2, span * 1.1]}
+        intensity={1.15}
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.02}
+      >
+        <orthographicCamera
+          attach="shadow-camera"
+          args={[-span * 1.8, span * 1.8, span * 1.8, -span * 1.8, 0.1, span * 6]}
+        />
+      </directionalLight>
+      <ambientLight intensity={0.45} />
+
+      {/* The sheet, and no contact shadow.
+          The house editor floats a baked shadow just above the ground because
+          the house stands ON the ground. A room's floor IS the ground plane,
+          so there is nothing for a contact shadow to be the shadow of — and
+          being transparent it sorted over the slab whatever height it was
+          given, blotting the middle of the very surface the reader is
+          choosing a finish for. */}
+      <BlueprintGround />
+
+      <RoomScene
+        room={room}
+        selectedSurfaceId={selectedSurfaceId}
+        onSelect={onSelect}
+      />
+
+      <OrbitControls
+        makeDefault
+        enablePan={false}
+        // Inside, you turn on the spot and have to be able to get close to a
+        // wall; outside, the room is an object you walk around.
+        minDistance={insideView ? 0.4 : span * 0.8}
+        maxDistance={insideView ? diagonal * 0.5 : span * 4}
+        maxPolarAngle={insideView ? Math.PI - 0.2 : Math.PI / 2.05}
+        minPolarAngle={insideView ? 0.2 : 0}
+      />
+      <RoomCameraRig room={room} insideView={insideView} />
+    </Canvas>
+  );
+}
+
+/**
+ * Places the camera for the two views, and re-frames when the room changes
+ * shape.
+ *
+ * Keyed on the dimensions and the view, not on the finishes: re-framing every
+ * time someone picks a floor would yank the view out from under them
+ * mid-comparison.
+ */
+function RoomCameraRig({
+  room,
+  insideView,
+}: {
+  room: RoomModel;
+  insideView: boolean;
+}) {
+  const camera = useThree((s) => s.camera);
+  const invalidate = useThree((s) => s.invalidate);
+  const controls = useThree((s) => s.controls) as
+    | { target: THREE.Vector3; update: () => void }
+    | null;
+
+  const { widthM, lengthM, heightM } = room.dimensions;
+
+  useEffect(() => {
+    const span = Math.max(widthM, lengthM, heightM);
+    if (insideView) {
+      // Standing near a corner, looking across the room at eye height — the
+      // position from which anyone actually judges a room.
+      camera.position.set(-widthM * 0.34, EYE_M, lengthM * 0.34);
+      controls?.target.set(widthM * 0.2, EYE_M * 0.8, -lengthM * 0.2);
+    } else {
+      const distance = span * 1.55;
+      camera.position.set(distance, heightM + distance * 0.62, distance);
+      controls?.target.set(0, heightM * 0.4, 0);
+    }
+    camera.updateProjectionMatrix();
+    controls?.update();
+    // Moving the camera imperatively has to request the frame that shows it.
+    invalidate();
+  }, [widthM, lengthM, heightM, insideView, camera, controls, invalidate]);
+
+  return null;
+}

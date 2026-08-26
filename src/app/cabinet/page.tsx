@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { NavBar } from "@/components/NavBar";
 import { requireUser } from "@/lib/server/auth/guard";
 import { findUserById } from "@/lib/server/auth/users";
 import { LogoutButton } from "./LogoutButton";
@@ -9,7 +10,10 @@ import { ProfilePanel } from "./ProfilePanel";
 import { EmailNotice } from "./EmailNotice";
 import { getOwnProfile } from "@/lib/server/profiles/queries";
 import { query } from "@/lib/server/db";
-import { listClientRequests, listOpenRequests } from "@/lib/server/requests/queries";
+import {
+  listClientRequests,
+  listOpenRequests,
+} from "@/lib/server/requests/queries";
 
 export const metadata: Metadata = {
   title: "Кабинет — OPUS GROUP",
@@ -38,52 +42,60 @@ export default async function CabinetPage() {
   if (!user || user.status !== "active") redirect("/login?next=/cabinet");
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-20 sm:px-6 lg:px-8">
-      <p className="text-body-s text-cream-dim">Кабинет</p>
-      <h1 className="font-display mt-2 text-h1 font-extrabold text-cream-bright">
-        {user.displayName}
-      </h1>
+    // Шапка здесь появилась вместе с уведомлениями: колокольчик ведёт на
+    // /cabinet#request-<id>, и без неё человек, перешедший по уведомлению,
+    // оказывался на странице без колокольчика — и без единой ссылки обратно
+    // на сайт.
+    <>
+      <NavBar />
+      <main className="mx-auto max-w-3xl px-4 py-20 sm:px-6 lg:px-8">
+        <p className="text-body-s text-cream-dim">Кабинет</p>
+        <h1 className="font-display mt-2 text-h1 font-extrabold text-cream-bright">
+          {user.displayName}
+        </h1>
 
-      <dl className="mt-10 divide-y divide-line border-y border-line">
-        <Row label="Роль" value={ROLE_LABELS[user.role] ?? user.role} />
-        <Row label="Почта" value={user.email ?? "—"} />
-        <Row label="Город" value={user.city ?? "не указан"} />
-        <Row
-          label="В системе с"
-          value={new Date(user.createdAt).toLocaleDateString("ru-RU")}
-        />
-      </dl>
+        <dl className="mt-10 divide-y divide-line border-y border-line">
+          <Row label="Роль" value={ROLE_LABELS[user.role] ?? user.role} />
+          <Row label="Почта" value={user.email ?? "—"} />
+          <Row label="Город" value={user.city ?? "не указан"} />
+          <Row
+            label="В системе с"
+            value={new Date(user.createdAt).toLocaleDateString("ru-RU")}
+          />
+        </dl>
 
-      {(user.role === "moderator" || user.role === "admin") && (
-        <p className="mt-8 rounded-2xl border border-line p-4 text-body-s text-cream-dim">
-          Вам доступен маршрут <code className="text-cream">/api/moderation/users</code> —
-          список тех, кто ждёт проверки. Остальным ролям он отвечает 403.
-        </p>
-      )}
+        {(user.role === "moderator" || user.role === "admin") && (
+          <p className="mt-8 rounded-2xl border border-line p-4 text-body-s text-cream-dim">
+            Вам доступен маршрут{" "}
+            <code className="text-cream">/api/moderation/users</code> — список
+            тех, кто ждёт проверки. Остальным ролям он отвечает 403.
+          </p>
+        )}
 
-      {user.email && !user.emailVerifiedAt && <EmailNotice />}
+        {user.email && !user.emailVerifiedAt && <EmailNotice />}
 
-      {user.role === "executor" && (await renderSubscription(user.id))}
-      {user.role === "executor" && (await renderProfile(user.id))}
+        {user.role === "executor" && (await renderSubscription(user.id))}
+        {user.role === "executor" && (await renderProfile(user.id))}
 
-      {(user.role === "client" || user.role === "executor") && (
-        <RequestsPanel
-          role={user.role}
-          // Сервер уже здесь, у базы — запрашивать те же данные вторым
-          // заходом из браузера значило бы показать пустой экран и сходить
-          // по сети за тем, что было под рукой.
-          initialRequests={
-            user.role === "executor"
-              ? await listOpenRequests(user.id)
-              : await listClientRequests(user.id)
-          }
-        />
-      )}
+        {(user.role === "client" || user.role === "executor") && (
+          <RequestsPanel
+            role={user.role}
+            // Сервер уже здесь, у базы — запрашивать те же данные вторым
+            // заходом из браузера значило бы показать пустой экран и сходить
+            // по сети за тем, что было под рукой.
+            initialRequests={
+              user.role === "executor"
+                ? await listOpenRequests(user.id)
+                : await listClientRequests(user.id)
+            }
+          />
+        )}
 
-      <div className="mt-14">
-        <LogoutButton />
-      </div>
-    </main>
+        <div className="mt-14">
+          <LogoutButton />
+        </div>
+      </main>
+    </>
   );
 }
 
@@ -109,7 +121,9 @@ async function renderSubscription(executorId: string) {
   return (
     <SubscriptionPanel
       status={current?.status ?? null}
-      paidUntil={current ? new Date(current.paidUntil).toLocaleDateString("ru-RU") : null}
+      paidUntil={
+        current ? new Date(current.paidUntil).toLocaleDateString("ru-RU") : null
+      }
     />
   );
 }

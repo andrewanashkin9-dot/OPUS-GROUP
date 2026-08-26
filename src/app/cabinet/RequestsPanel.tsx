@@ -192,7 +192,11 @@ function RequestCard({
   }
 
   return (
-    <li className="rounded-3xl border border-line p-6">
+    // Якорь для уведомлений: колокольчик ведёт на /cabinet#request-<id>, и без
+    // него человек попадал бы просто в кабинет, где заявку о которой речь
+    // нужно ещё найти глазами. scroll-mt отводит карточку из-под липкой
+    // шапки — иначе заголовок заявки окажется ровно под ней.
+    <li id={`request-${item.id}`} className="scroll-mt-20 rounded-3xl border border-line p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h3 className="text-body-l text-cream-bright">{item.title}</h3>

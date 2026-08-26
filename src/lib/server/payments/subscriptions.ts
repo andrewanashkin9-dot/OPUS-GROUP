@@ -1,6 +1,7 @@
 import "server-only";
 
 import { query, withTransaction } from "../db";
+import { createNotifications } from "../notifications/queries";
 import { getTKassaConfig, isBillingEnabled } from "./config";
 import { initPayment, rublesToKopecks } from "./tkassa";
 
@@ -252,11 +253,68 @@ export async function markPastDue(subscriptionId: string): Promise<void> {
 
 /** Периоды, которые давно истекли и не оплачены. */
 export async function expireStaleSubscriptions(graceDays = 3): Promise<number> {
-  const { rowCount } = await query(
-    `update subscriptions set status = 'expired'
-      where status = 'past_due'
-        and current_period_end < now() - make_interval(days => $1)`,
-    [graceDays],
-  );
-  return rowCount ?? 0;
+  return withTransaction(async (client) => {
+    const { rowCount, rows } = await client.query<{ executorId: string }>(
+      `update subscriptions set status = 'expired'
+        where status = 'past_due'
+          and current_period_end < now() - make_interval(days => $1)
+        returning executor_id as "executorId"`,
+      [graceDays],
+    );
+
+    // Уведомление — той же транзакцией, что и снятие доступа. Иначе
+    // исполнитель обнаруживает потерю подписки в тот момент, когда пытается
+    // откликнуться на заявку, и винит в этом площадку, а не свою карту.
+    await createNotifications(
+      client,
+      rows.map((r) => ({
+        userId: r.executorId,
+        kind: "subscription_expired" as const,
+        text: "Подписка закончилась — отклики на заявки временно недоступны",
+      })),
+    );
+
+    return rowCount ?? 0;
+  });
+}
+
+/**
+ * Предупреждение «подписка скоро кончится».
+ *
+ * Шлётся тем же ежедневным запуском. Повтор в тот же день гасит частичный
+ * уникальный индекс (миграция 0007) — поэтому здесь не нужно ни хранить
+ * «когда предупреждали в последний раз», ни бояться второго запуска скрипта.
+ */
+export async function notifyExpiringSubscriptions(daysAhead = 3): Promise<number> {
+  return withTransaction(async (client) => {
+    const { rows } = await client.query<{ executorId: string; days: number }>(
+      `select executor_id as "executorId",
+              greatest(0, ceil(extract(epoch from current_period_end - now()) / 86400))::int as days
+         from subscriptions
+        where status in ('active', 'past_due')
+          and cancel_at_period_end = false
+          and current_period_end > now()
+          and current_period_end <= now() + make_interval(days => $1)
+        limit 1000`,
+      [daysAhead],
+    );
+
+    return createNotifications(
+      client,
+      rows.map((r) => ({
+        userId: r.executorId,
+        kind: "subscription_expiring" as const,
+        text:
+          r.days <= 1
+            ? "Подписка заканчивается сегодня — продлите, чтобы не потерять доступ к откликам"
+            : `Подписка заканчивается через ${r.days} ${dayWord(r.days)} — продление спишется автоматически`,
+      })),
+    );
+  });
+}
+
+/** «через 2 дня», а не «через 2 день». */
+function dayWord(n: number): string {
+  const tail = n % 100 >= 11 && n % 100 <= 14 ? 2 : Math.min(n % 10, 5);
+  return tail === 1 ? "день" : tail >= 2 && tail <= 4 ? "дня" : "дней";
 }

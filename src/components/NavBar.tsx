@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ui/ThemeToggle";
 import { Wordmark } from "./Logo";
 import { canModerate } from "@/lib/auth/cookie-names";
@@ -106,6 +107,12 @@ export function NavBar() {
 
         <div className="flex items-center gap-2 sm:gap-3">
           <ThemeToggle />
+
+          {/* Только вошедшим: гостю уведомлять не о чем, а лишний запрос с
+              каждой страницы сайта ему тем более не нужен. Колокольчик
+              появляется после гидратации вместе с кнопкой «Кабинет» — обе
+              зависят от одной и той же cookie. */}
+          {signedIn && <NotificationBell />}
 
           {/* Плашка, а не акцент: золотая кнопка рядом — главное действие для
               нового посетителя, и второй такой же акцент отменил бы первый. */}

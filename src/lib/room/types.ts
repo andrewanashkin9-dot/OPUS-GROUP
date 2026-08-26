@@ -73,6 +73,11 @@ export interface RoomModel {
   openings: RoomOpening[];
   /** Выбранный материал для каждой поверхности, по id товара. */
   finishes: Partial<Record<SurfaceId, string>>;
+  /**
+   * Обстановка. На смету не влияет ничем: это декорация, по которой человек
+   * узнаёт свою комнату — и начинает доверять цифрам рядом с ней.
+   */
+  furniture: import("./furniture").FurnitureItem[];
   /** Запас на подрезку и брак, в процентах, на весь проект. */
   wastePct: number;
 }

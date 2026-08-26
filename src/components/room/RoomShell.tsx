@@ -17,6 +17,7 @@ import {
   type RoomStep,
 } from "@/lib/store";
 import { EstimateStep } from "./EstimateStep";
+import { FurnitureBar } from "./FurnitureBar";
 import { FinishStep } from "./FinishStep";
 import { OpeningsStep } from "./OpeningsStep";
 import { RoomCanvas } from "./RoomCanvas";
@@ -34,6 +35,7 @@ export function RoomShell() {
   const selectSurface = useAppStore((s) => s.selectSurface);
   const insideView = useAppStore((s) => s.insideView);
   const setInsideView = useAppStore((s) => s.setInsideView);
+  const draggingFurnitureId = useAppStore((s) => s.draggingFurnitureId);
   const roomError = useAppStore((s) => s.roomError);
   const surfaces = useRoomSurfaces();
   const estimate = useRoomEstimate();
@@ -86,8 +88,10 @@ export function RoomShell() {
             room={room}
             selectedSurfaceId={selectedSurfaceId}
             insideView={insideView}
+            dragging={draggingFurnitureId !== null}
             onSelect={selectSurface}
           />
+          <FurnitureBar room={room} />
           <SurfaceToolbar
             surfaces={surfaces}
             selectedId={selectedSurfaceId}

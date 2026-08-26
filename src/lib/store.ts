@@ -10,6 +10,10 @@ import {
   DEFAULT_WASTE_PCT,
   DEFAULT_WINDOW,
   ROOM_LIMITS,
+  clampToRoom,
+  defaultLayout,
+  freeSpot,
+  furnitureDef,
   reflowOpenings,
   roomCartAdditions,
   roomEstimate,
@@ -18,6 +22,8 @@ import {
   suggestOffsetM,
   validateDimensions,
   validateOpening,
+  type FurnitureItem,
+  type FurnitureKind,
   type OpeningKind,
   type RoomDimensions,
   type RoomEstimate,
@@ -96,6 +102,10 @@ interface AppState {
   selectedSurfaceId: SurfaceId | null;
   /** Камера внутри комнаты, а не снаружи в «кукольном домике». */
   insideView: boolean;
+  /** Выбранный предмет обстановки. Отдельно от поверхностей: это разные вещи. */
+  selectedFurnitureId: string | null;
+  /** Что сейчас тащат мышью. Пока не null, орбита камеры выключена. */
+  draggingFurnitureId: string | null;
   roomError: string | null;
   roomPhotos: RoomPhoto[];
   /** Сколько проектов уже занято. null — ещё не спрашивали. */
@@ -138,6 +148,16 @@ interface AppState {
   removeRoomPhoto: (id: string) => void;
   addRoomToCart: () => void;
   resetRoom: () => Promise<void>;
+
+  selectFurniture: (id: string | null) => void;
+  beginFurnitureDrag: (id: string) => void;
+  endFurnitureDrag: () => void;
+  moveFurniture: (id: string, x: number, z: number) => void;
+  rotateFurniture: (id: string) => void;
+  replaceFurniture: (id: string, variantId: string) => void;
+  removeFurniture: (id: string) => void;
+  addFurniture: (kind: FurnitureKind) => void;
+  resetFurniture: () => void;
 }
 
 /**
@@ -231,6 +251,32 @@ function strandedNotice(model: RoomModel): string | null {
     : `${stranded.length} проёма больше не помещаются в свои стены — поправьте их на шаге «Проёмы».`;
 }
 
+/**
+ * Pulls every piece back inside a room that has just changed shape.
+ *
+ * Nothing is deleted. A wardrobe that no longer fits ends up against the
+ * nearest wall it does fit against, which is where its owner would have
+ * shoved it — and is recoverable, which a silent deletion is not.
+ */
+function reflowFurniture(room: RoomModel): FurnitureItem[] {
+  const clamped = room.furniture.map((item) => {
+    const spot = clampToRoom(room, item, item.x, item.z);
+    return spot.x === item.x && spot.z === item.z
+      ? item
+      : { ...item, x: spot.x, z: spot.z };
+  });
+
+  // Only the pieces that actually had to move are parted from their
+  // neighbours. Sweeping every overlap would pull the chairs away from the
+  // table and take the vase off it — those overlaps are the arrangement.
+  return clamped.map((item, i) => {
+    if (item === room.furniture[i]) return item;
+    const others = clamped.filter((_, j) => j !== i);
+    const clear = freeSpot(room, item, others, { x: item.x, z: item.z });
+    return { ...item, x: clear.x, z: clear.z };
+  });
+}
+
 /** A copy of `items` without `key`. */
 function without(
   items: Record<string, number>,
@@ -268,6 +314,8 @@ export const useAppStore = create<AppState>()(
       roomStep: "size",
       selectedSurfaceId: null,
       insideView: false,
+      selectedFurnitureId: null,
+      draggingFurnitureId: null,
       roomError: null,
       roomPhotos: [],
       usage: null,
@@ -442,17 +490,19 @@ export const useAppStore = create<AppState>()(
 
         const id = `room-${Date.now().toString(36)}`;
         await getUsageLimitBackend().add(id);
+        const room: RoomModel = {
+          id,
+          name: "Комната",
+          createdAt: new Date().toISOString(),
+          shape: "rect",
+          dimensions: { ...DEFAULT_ROOM_DIMENSIONS },
+          openings: [],
+          finishes: {},
+          furniture: [],
+          wastePct: DEFAULT_WASTE_PCT,
+        };
         set({
-          room: {
-            id,
-            name: "Комната",
-            createdAt: new Date().toISOString(),
-            shape: "rect",
-            dimensions: { ...DEFAULT_ROOM_DIMENSIONS },
-            openings: [],
-            finishes: {},
-            wastePct: DEFAULT_WASTE_PCT,
-          },
+          room: { ...room, furniture: defaultLayout(room) },
           roomStep: "size",
           selectedSurfaceId: "floor",
           insideView: false,
@@ -490,7 +540,11 @@ export const useAppStore = create<AppState>()(
             };
           }
           return {
-            room: { ...room, openings: reflowOpenings(room) },
+            room: {
+              ...room,
+              openings: reflowOpenings(room),
+              furniture: reflowFurniture(room),
+            },
             roomError: validateDimensions(room),
           };
         }),
@@ -511,7 +565,11 @@ export const useAppStore = create<AppState>()(
                   },
                 }
               : { ...state.room, shape, notch: undefined };
-          const next = { ...room, openings: reflowOpenings(room) };
+          const next = {
+            ...room,
+            openings: reflowOpenings(room),
+            furniture: reflowFurniture(room),
+          };
           return {
             room: next,
             // Стен стало больше или меньше, и прежний выбор мог указывать на
@@ -534,7 +592,11 @@ export const useAppStore = create<AppState>()(
             },
           };
           return {
-            room: { ...room, openings: reflowOpenings(room) },
+            room: {
+              ...room,
+              openings: reflowOpenings(room),
+              furniture: reflowFurniture(room),
+            },
             // Moving the notch renumbers the walls around it, so an opening
             // can end up on a wall it no longer fits.
             roomError: strandedNotice(room),
@@ -589,7 +651,10 @@ export const useAppStore = create<AppState>()(
           };
         }),
 
-      selectSurface: (selectedSurfaceId) => set({ selectedSurfaceId }),
+      // Choosing a surface puts the furniture panel away: they are two
+      // different things to be doing, and one of them is the estimate.
+      selectSurface: (selectedSurfaceId) =>
+        set({ selectedSurfaceId, selectedFurnitureId: null }),
 
       setInsideView: (insideView) => set({ insideView }),
 
@@ -657,6 +722,100 @@ export const useAppStore = create<AppState>()(
           };
         }),
 
+      selectFurniture: (selectedFurnitureId) => set({ selectedFurnitureId }),
+
+      beginFurnitureDrag: (id) =>
+        set({ draggingFurnitureId: id, selectedFurnitureId: id }),
+
+      endFurnitureDrag: () => set({ draggingFurnitureId: null }),
+
+      moveFurniture: (id, x, z) =>
+        set((state) => {
+          if (!state.room) return {};
+          const furniture = state.room.furniture.map((item) => {
+            if (item.id !== id) return item;
+            const spot = clampToRoom(state.room!, item, x, z);
+            return { ...item, x: spot.x, z: spot.z };
+          });
+          return { room: { ...state.room, furniture } };
+        }),
+
+      rotateFurniture: (id) =>
+        set((state) => {
+          if (!state.room) return {};
+          const room = state.room;
+          const furniture = room.furniture.map((item) => {
+            if (item.id !== id) return item;
+            // A quarter turn swaps the footprint, so what fitted along a wall
+            // may not fit across the room — re-clamp against the new one.
+            const turned = {
+              ...item,
+              rotationY: (item.rotationY + Math.PI / 2) % (Math.PI * 2),
+            };
+            const spot = clampToRoom(room, turned, turned.x, turned.z);
+            return { ...turned, x: spot.x, z: spot.z };
+          });
+          return { room: { ...room, furniture } };
+        }),
+
+      replaceFurniture: (id, variantId) =>
+        set((state) => {
+          if (!state.room) return {};
+          const room = state.room;
+          const furniture = room.furniture.map((item) => {
+            if (item.id !== id) return item;
+            const swapped = { ...item, variant: variantId };
+            const spot = clampToRoom(room, swapped, swapped.x, swapped.z);
+            return { ...swapped, x: spot.x, z: spot.z };
+          });
+          return { room: { ...room, furniture } };
+        }),
+
+      removeFurniture: (id) =>
+        set((state) => {
+          if (!state.room) return {};
+          return {
+            room: {
+              ...state.room,
+              furniture: state.room.furniture.filter((item) => item.id !== id),
+            },
+            selectedFurnitureId:
+              state.selectedFurnitureId === id ? null : state.selectedFurnitureId,
+          };
+        }),
+
+      addFurniture: (kind) =>
+        set((state) => {
+          if (!state.room) return {};
+          const room = state.room;
+          const def = furnitureDef(kind);
+          const item: FurnitureItem = {
+            id: `f-${Date.now().toString(36)}-${room.furniture.length}`,
+            kind,
+            variant: def.variants[0].id,
+            x: 0,
+            z: 0,
+            rotationY: 0,
+          };
+          const spot = def.ceiling
+            ? { x: 0, z: 0 }
+            : freeSpot(room, item, room.furniture);
+          const placed = { ...item, x: spot.x, z: spot.z };
+          return {
+            room: { ...room, furniture: [...room.furniture, placed] },
+            selectedFurnitureId: placed.id,
+          };
+        }),
+
+      resetFurniture: () =>
+        set((state) => {
+          if (!state.room) return {};
+          return {
+            room: { ...state.room, furniture: defaultLayout(state.room) },
+            selectedFurnitureId: null,
+          };
+        }),
+
       resetRoom: async () => {
         const { room, roomPhotos, tier } = get();
         for (const photo of roomPhotos) URL.revokeObjectURL(photo.url);
@@ -666,6 +825,8 @@ export const useAppStore = create<AppState>()(
           roomStep: "size",
           selectedSurfaceId: null,
           insideView: false,
+          selectedFurnitureId: null,
+          draggingFurnitureId: null,
           roomError: null,
           roomPhotos: [],
           usage: await readUsage(tier),
@@ -709,6 +870,15 @@ export const useAppStore = create<AppState>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
+        // A room saved before there was furniture has none, and every piece
+        // of code downstream expects an array. Seeding beats a version bump
+        // that would throw the reader's measurements away over scenery.
+        if (state.room && !Array.isArray(state.room.furniture)) {
+          state.room = {
+            ...state.room,
+            furniture: defaultLayout({ ...state.room, furniture: [] }),
+          };
+        }
         if (state.model) {
           // A restored model never passed through generateFromPhotos, so the
           // provider holds no session for it and applyMaterial would throw.

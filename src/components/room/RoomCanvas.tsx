@@ -20,6 +20,8 @@ interface RoomCanvasProps {
   room: RoomModel;
   selectedSurfaceId: SurfaceId | null;
   insideView: boolean;
+  /** True while a piece of furniture is under the pointer. */
+  dragging: boolean;
   onSelect: (id: SurfaceId) => void;
 }
 
@@ -27,6 +29,7 @@ export function RoomCanvas({
   room,
   selectedSurfaceId,
   insideView,
+  dragging,
   onSelect,
 }: RoomCanvasProps) {
   const { widthM, lengthM, heightM } = room.dimensions;
@@ -139,6 +142,9 @@ export function RoomCanvas({
 
       <OrbitControls
         makeDefault
+        // Off while a piece is being dragged, or the same pointer would spin
+        // the camera and slide the chair at once.
+        enabled={!dragging}
         enablePan={false}
         // Inside, you turn on the spot and have to be able to get close to a
         // wall; outside, the room is an object you walk around.

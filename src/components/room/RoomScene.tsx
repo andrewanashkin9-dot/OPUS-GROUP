@@ -1,14 +1,15 @@
 "use client";
 
-import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useFrame, type ThreeEvent } from "@react-three/fiber";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { productById, type Product } from "@/lib/marketplace";
 import {
   openingsOnWall,
   roomCorners,
   roomWalls,
-  tileSizeM,
+  interiorTexture,
+  interiorTileM,
   type PlanPoint,
   type RoomModel,
   type RoomOpening,
@@ -177,12 +178,8 @@ function Surface({
   useFrame(({ camera, invalidate }, delta) => {
     const mat = material.current;
     if (!mat) return;
-    const side =
-      (camera.position.x - anchor[0]) * inward[0] +
-      (camera.position.y - anchor[1]) * inward[1] +
-      (camera.position.z - anchor[2]) * inward[2];
     const target =
-      side < 0
+      isOutside(camera.position, anchor, inward)
         ? selected
           ? OUTSIDE_OPACITY_SELECTED
           : OUTSIDE_OPACITY
@@ -204,6 +201,13 @@ function Surface({
         geometry={geometry}
         receiveShadow
         onClick={(e: ThreeEvent<MouseEvent>) => {
+          // A faded surface does not take the click. From outside, the two
+          // near walls stand between the camera and everything else, and
+          // being all but invisible they were swallowing every click meant
+          // for the floor or for a chair — the pointer would land on a wall
+          // nobody could see. Not stopping propagation lets the click carry
+          // on to whatever is actually behind it.
+          if (isOutside(e.camera.position, anchor, inward)) return;
           e.stopPropagation();
           onSelect(id);
         }}
@@ -240,67 +244,6 @@ function Surface({
       )}
     </group>
   );
-}
-
-/**
- * The catalogue photograph, tiled at the size of the real material.
- *
- * Cached across surfaces because the same product is usually on all four
- * walls, and decoding the same WebP four times is four times the work for
- * one picture. The load is asynchronous, so the hook re-renders when it
- * lands rather than suspending the whole canvas.
- */
-const textureCache = new Map<string, THREE.Texture>();
-
-function useSurfaceTexture(product: Product | undefined): THREE.Texture | null {
-  const invalidate = useThree((s) => s.invalidate);
-  const id = product?.id;
-
-  // The loaded texture is held in state rather than read back out of the
-  // cache by a memo. Reading the cache was the bug: after the image landed
-  // the memo's dependencies had not changed — same product — so it kept
-  // handing back the null it had computed before the load, and the one
-  // surface that started the load was the one surface that never got its
-  // texture. Picking a floor looked like it did nothing at all.
-  const [seenId, setSeenId] = useState(id);
-  const [loaded, setLoaded] = useState<THREE.Texture | null>(
-    () => (id && textureCache.get(id)) || null,
-  );
-  if (id !== seenId) {
-    setSeenId(id);
-    setLoaded((id && textureCache.get(id)) || null);
-  }
-
-  useEffect(() => {
-    if (!id || textureCache.has(id)) return;
-    let cancelled = false;
-    new THREE.TextureLoader().load(`/assets/materials/${id}.webp`, (texture) => {
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.RepeatWrapping;
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.anisotropy = 8;
-      textureCache.set(id, texture);
-      if (cancelled) return;
-      setLoaded(texture);
-      // On-demand rendering has already stopped by the time the image
-      // decodes, so the frame that shows it has to be asked for.
-      invalidate();
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [id, invalidate]);
-
-  return useMemo(() => {
-    if (!product || !loaded) return null;
-    // Every surface is a ShapeGeometry built in metres, and three writes its
-    // UVs straight from those coordinates — so UV space IS metres, and one
-    // repeat figure tiles every surface at true scale. Shared across the
-    // surfaces using this product, which all want the same figure anyway.
-    const tile = tileSizeM(product.category);
-    loaded.repeat.set(1 / tile.widthM, 1 / tile.heightM);
-    return loaded;
-  }, [product, loaded]);
 }
 
 interface WallProps {
@@ -436,7 +379,42 @@ function OpeningFrame({
   );
 }
 
-// ------------------------------------------------------------------ helpers
+/**
+ * The tiling surface for a finish.
+ *
+ * Drawn, not photographed. The catalogue photograph has a vignette and a
+ * defocused band baked into it — it is a product shot — so tiling it across a
+ * wall repeated those gradients into a grid of squares. See
+ * lib/room/interior-textures for how the drawn ones are made seamless.
+ */
+function useSurfaceTexture(product: Product | undefined): THREE.Texture | null {
+  return useMemo(() => {
+    if (!product) return null;
+    const texture = interiorTexture(product.photo.kind, product.photo.tint);
+    if (!texture) return null;
+    // Every surface is a ShapeGeometry built in metres, and three writes its
+    // UVs straight from those coordinates — so UV space IS metres, and the
+    // repeat is simply one over the metres a tile spans. The density is the
+    // real material's on a 2 m wall and on a 9 m one alike.
+    const tile = interiorTileM(product.photo.kind);
+    texture.repeat.set(1 / tile, 1 / tile);
+    return texture;
+  }, [product]);
+}
+
+/** Whether the camera is behind this surface, looking at its back. */
+function isOutside(
+  camera: THREE.Vector3,
+  anchor: [number, number, number],
+  inward: [number, number, number],
+): boolean {
+  return (
+    (camera.x - anchor[0]) * inward[0] +
+      (camera.y - anchor[1]) * inward[1] +
+      (camera.z - anchor[2]) * inward[2] <
+    0
+  );
+}
 
 /** The plan polygon as a slab, ready to be rotated flat. */
 function planGeometry(corners: PlanPoint[]): THREE.ShapeGeometry {

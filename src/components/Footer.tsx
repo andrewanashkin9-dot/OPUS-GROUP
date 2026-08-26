@@ -9,7 +9,7 @@ export function Footer() {
           <div>
             {/* Подпись рядом убрана намеренно: название написано на самом
                 контейнере, и повторять его текстом — значит сказать дважды. */}
-            <ContainerMark className="h-36 text-accent" />
+            <ContainerMark className="h-36 text-brand-cream" />
             <p className="mt-4 max-w-xs text-body-s text-dim">
               От фото дома до бригады на объекте — в одном месте.
             </p>

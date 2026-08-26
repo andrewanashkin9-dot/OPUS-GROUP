@@ -38,6 +38,12 @@
      #1F1F1F in black, so it clears AAA for body text in both themes; black
      on the filled version reads 13.3:1. */
   --accent: #ffd700;
+  /* Фирменный кремовый — цвет чернил на исходных знаках. Взят из самих
+     файлов: у надписи пик #f6f2e1, у контейнера #f1e4d3; здесь тон между
+     ними. Отдельным токеном, а не через --cream (тот давно стал псевдонимом
+     белого и красит обычный текст — перекрасив его, мы бы затонировали
+     половину сайта). */
+  --brand-cream: #f2e7d4;
   /* A lifted tint for edges and rules, where full-strength gold on a hairline
      reads as a stray highlight rather than as a drawn line. */
   --accent-line: rgba(255, 215, 0, 0.22);
@@ -132,6 +138,7 @@
      state, key figures, title-block rules. It is reachable only through
      `accent`, so no component can casually tint body copy with it. */
   --color-accent: var(--accent);
+  --color-brand-cream: var(--brand-cream);
   --color-accent-line: var(--accent-line);
 
   /* Legacy names, remapped onto the blueprint. Pages not yet rebuilt keep

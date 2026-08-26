@@ -65,7 +65,7 @@ export function NavBar() {
           className="flex shrink-0 items-center"
           onClick={() => setOpen(false)}
         >
-          <Wordmark className="h-3 text-white min-[360px]:h-3.5 sm:h-4" />
+          <Wordmark className="h-3 text-brand-cream min-[360px]:h-3.5 sm:h-4" />
         </Link>
 
         <nav className="hidden items-center gap-6 lg:flex xl:gap-8">

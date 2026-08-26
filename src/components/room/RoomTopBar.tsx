@@ -17,7 +17,7 @@ export function RoomTopBar() {
     <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-[var(--plate-edge)] bg-[var(--bar)] px-4 backdrop-blur-md sm:px-6">
       <div className="flex min-w-0 items-center gap-4">
         <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="На главную">
-          <Logo className="h-8 w-8 text-accent" />
+          <Logo className="h-8 w-8 text-brand-cream" />
         </Link>
         <span className="truncate text-body-s font-medium text-dim">
           {room?.name ?? "Комната"}

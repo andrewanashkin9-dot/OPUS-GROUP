@@ -151,7 +151,7 @@ export default function Home() {
                     <FeatureRow key={f}>{f}</FeatureRow>
                   ))}
                 </ul>
-                <ButtonLink href="/editor" variant="secondary" className="mt-8 w-full">
+                <ButtonLink href="/start" variant="secondary" className="mt-8 w-full">
                   Начать бесплатно
                 </ButtonLink>
               </article>
@@ -180,7 +180,7 @@ export default function Home() {
                     <FeatureRow key={f}>{f}</FeatureRow>
                   ))}
                 </ul>
-                <ButtonLink href="/editor" className="mt-8 w-full">
+                <ButtonLink href="/start" className="mt-8 w-full">
                   Оформить подписку
                 </ButtonLink>
               </article>

@@ -48,7 +48,7 @@ export function NavBar() {
         <div className="flex items-center gap-2 sm:gap-3">
           <ThemeToggle />
           <Link
-            href="/editor"
+            href="/start"
             className="hidden items-center rounded-full bg-accent px-5 py-2.5 text-ui font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 sm:inline-flex"
           >
             Начать бесплатно
@@ -105,7 +105,7 @@ export function NavBar() {
             ))}
           </ul>
           <Link
-            href="/editor"
+            href="/start"
             onClick={() => setOpen(false)}
             className="mt-4 flex items-center justify-center rounded-full bg-accent px-5 py-3 text-ui font-bold text-deep"
           >

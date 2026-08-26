@@ -265,11 +265,11 @@ export function ScrollScrubHero() {
                   Ваш дом в 3D — из четырёх фотографий
                 </h1>
                 <p className="prose-measure mx-auto mt-4 text-body-l text-soft">
-                  Загрузите фото дома — и настройте крышу, фасад и забор прямо в
-                  модели. Материалы и стоимость считаются сами.
+                  Дом целиком — по фотографиям; комнату — по вашим замерам.
+                  Материалы и стоимость считаются сами.
                 </p>
                 <div className="hero-cta mt-7 flex flex-wrap justify-center gap-3">
-                  <ButtonLink href="/editor">Загрузить фото дома</ButtonLink>
+                  <ButtonLink href="/start">Начать расчёт</ButtonLink>
                   <ButtonLink href="/#how-it-works" variant="secondary">
                     Как это работает
                   </ButtonLink>

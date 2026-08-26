@@ -18,6 +18,7 @@ import {
 
 export default function CartPage() {
   const model = useAppStore((s) => s.model);
+  const room = useAppStore((s) => s.room);
   const bom = useBom();
   const materialsTotal = useCartTotal(bom);
   const marketLines = useMarketLines();
@@ -41,11 +42,12 @@ export default function CartPage() {
         {empty ? (
           <div className="plate mt-12 p-10 text-center">
             <p className="text-body-l text-cream-dim">
-              Корзина пока пуста — соберите дом в конструкторе, и материалы
-              появятся здесь сами. Или добавьте позиции из магазина.
+              Корзина пока пуста — соберите дом или комнату в конструкторе,
+              и материалы появятся здесь сами. Или добавьте позиции из
+              магазина.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <ButtonLink href="/editor">Перейти в конструктор</ButtonLink>
+              <ButtonLink href="/start">Перейти в конструктор</ButtonLink>
               <ButtonLink href="/market" variant="secondary">
                 Открыть магазин
               </ButtonLink>
@@ -182,9 +184,16 @@ export default function CartPage() {
               <ButtonLink href="/market" variant="secondary">
                 Добавить материалы
               </ButtonLink>
+              {/* Two configurators now, and someone who came from the room
+                  should be offered the room back, not the house. */}
               {model && (
                 <ButtonLink href="/editor" variant="ghost">
-                  Вернуться в конструктор
+                  Вернуться к дому
+                </ButtonLink>
+              )}
+              {room && (
+                <ButtonLink href="/editor/room" variant="ghost">
+                  Вернуться к комнате
                 </ButtonLink>
               )}
             </div>

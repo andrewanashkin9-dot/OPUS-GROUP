@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ThemeToggle } from "./ui/ThemeToggle";
 import { Logo } from "./Logo";
+import { ModerationLink } from "./ModerationLink";
 
 const links = [
   { href: "/#how-it-works", label: "Как это работает" },
@@ -43,6 +44,9 @@ export function NavBar() {
               {link.label}
             </Link>
           ))}
+          {/* Появляется только у модераторов и администраторов. Остальные
+              не увидят его в разметке вовсе — компонент возвращает null. */}
+          <ModerationLink className="text-body-s font-medium text-cream transition-colors hover:text-cream-bright" />
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">

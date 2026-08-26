@@ -1,18 +1,20 @@
 "use client";
 
-import { useFrame, type ThreeEvent } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { productById } from "@/lib/marketplace";
+import { productById, type Product } from "@/lib/marketplace";
 import {
   openingsOnWall,
   roomCorners,
   roomWalls,
+  tileSizeM,
   type PlanPoint,
   type RoomModel,
   type RoomOpening,
   type SurfaceId,
 } from "@/lib/room";
+import { RoomProps } from "./RoomProps";
 
 /** The accent, lifted: on a lit surface pure gold reads dull. */
 const SELECTED = "#ffe14d";
@@ -26,6 +28,12 @@ const SELECTED = "#ffe14d";
  * wall and every surface has the camera on its inward side.
  */
 const OUTSIDE_OPACITY = 0.16;
+/**
+ * A selected surface the camera is behind stays more visible than its
+ * neighbours. At 16% the accent outline was the only sign anything had been
+ * picked, which on a near wall reads as the click having missed.
+ */
+const OUTSIDE_OPACITY_SELECTED = 0.42;
 const INSIDE_OPACITY = 1;
 /** How fast a surface fades as the camera swings past it. */
 const FADE_PER_SECOND = 6;
@@ -46,9 +54,9 @@ interface RoomSceneProps {
 /**
  * The room, built from the numbers the reader typed.
  *
- * No furniture: the question on this screen is how much floor and how much
- * wall, and a sofa in the corner answers a different one while making the
- * measurement harder to read.
+ * The furniture in it is scenery and nothing else — see RoomProps. It is not
+ * selectable, not priced and not counted; it is there because bare walls give
+ * the eye nothing to measure 2,7 m against, and every room looks alike.
  */
 export function RoomScene({ room, selectedSurfaceId, onSelect }: RoomSceneProps) {
   const walls = useMemo(() => roomWalls(room), [room]);
@@ -66,7 +74,8 @@ export function RoomScene({ room, selectedSurfaceId, onSelect }: RoomSceneProps)
         rotation={[-Math.PI / 2, 0, 0]}
         inward={[0, 1, 0]}
         anchor={[0, 0, 0]}
-        colour={finishColour(room, "floor", "floor")}
+        product={finishOf(room, "floor")}
+        fallback={DEFAULT_COLOUR.floor}
         selected={selectedSurfaceId === "floor"}
         onSelect={onSelect}
       />
@@ -78,7 +87,8 @@ export function RoomScene({ room, selectedSurfaceId, onSelect }: RoomSceneProps)
         rotation={[-Math.PI / 2, 0, 0]}
         inward={[0, -1, 0]}
         anchor={[0, heightM, 0]}
-        colour={finishColour(room, "ceiling", "ceiling")}
+        product={finishOf(room, "ceiling")}
+        fallback={DEFAULT_COLOUR.ceiling}
         selected={selectedSurfaceId === "ceiling"}
         onSelect={onSelect}
       />
@@ -94,11 +104,14 @@ export function RoomScene({ room, selectedSurfaceId, onSelect }: RoomSceneProps)
           rotationY={wall.rotationY}
           inward={[wall.inward.x, 0, wall.inward.z]}
           openings={openingsOnWall(room, wall.id)}
-          colour={finishColour(room, wall.id, "wall")}
+          product={finishOf(room, wall.id)}
+          fallback={DEFAULT_COLOUR.wall}
           selected={selectedSurfaceId === wall.id}
           onSelect={onSelect}
         />
       ))}
+
+      <RoomProps room={room} />
 
       {/* Openings get their own frames rather than being left as holes: a gap
           in a translucent wall is indistinguishable from the wall. */}
@@ -128,7 +141,10 @@ interface SurfaceProps {
   inward: [number, number, number];
   /** A point on the surface, for deciding which side the camera is on. */
   anchor: [number, number, number];
-  colour: string;
+  /** The chosen finish, if there is one. */
+  product: Product | undefined;
+  /** What the surface looks like before anything is chosen. */
+  fallback: string;
   selected: boolean;
   onSelect: (id: SurfaceId) => void;
 }
@@ -140,11 +156,14 @@ function Surface({
   rotation,
   inward,
   anchor,
-  colour,
+  product,
+  fallback,
   selected,
   onSelect,
 }: SurfaceProps) {
   const material = useRef<THREE.MeshStandardMaterial>(null);
+  const map = useSurfaceTexture(product);
+  const outline = useMemo(() => new THREE.EdgesGeometry(geometry), [geometry]);
 
   // Fades the surface out when the camera passes to its outside.
   //
@@ -162,7 +181,12 @@ function Surface({
       (camera.position.x - anchor[0]) * inward[0] +
       (camera.position.y - anchor[1]) * inward[1] +
       (camera.position.z - anchor[2]) * inward[2];
-    const target = side < 0 ? OUTSIDE_OPACITY : INSIDE_OPACITY;
+    const target =
+      side < 0
+        ? selected
+          ? OUTSIDE_OPACITY_SELECTED
+          : OUTSIDE_OPACITY
+        : INSIDE_OPACITY;
     const next = THREE.MathUtils.damp(mat.opacity, target, FADE_PER_SECOND, delta);
     if (Math.abs(next - target) > 0.001) {
       mat.opacity = next;
@@ -175,29 +199,108 @@ function Surface({
   });
 
   return (
-    <mesh
-      geometry={geometry}
-      position={position}
-      rotation={rotation}
-      receiveShadow
-      onClick={(e: ThreeEvent<MouseEvent>) => {
-        e.stopPropagation();
-        onSelect(id);
-      }}
-    >
-      <meshStandardMaterial
-        ref={material}
-        color={selected ? SELECTED : colour}
-        emissive={selected ? SELECTED : "#000000"}
-        emissiveIntensity={selected ? 0.3 : 0}
-        roughness={0.86}
-        metalness={0}
-        side={THREE.DoubleSide}
-        transparent
-        depthWrite={false}
-      />
-    </mesh>
+    <group position={position} rotation={rotation}>
+      <mesh
+        geometry={geometry}
+        receiveShadow
+        onClick={(e: ThreeEvent<MouseEvent>) => {
+          e.stopPropagation();
+          onSelect(id);
+        }}
+      >
+        <meshStandardMaterial
+          ref={material}
+          map={map}
+          // The material's own colour under the photograph, so an unchosen
+          // surface still reads as floor or wall — and never as the accent.
+          // Painting the selected surface gold hid the very finish the
+          // reader had just picked, which is what made choosing a material
+          // look like it had done nothing at all.
+          color={map ? "#ffffff" : fallback}
+          emissive={selected ? SELECTED : "#000000"}
+          // Barely there. At any strength that reads as a highlight it also
+          // tints the photograph, and a grey porcelain floor came out the
+          // same cream as an oak one — the outline does the job on its own.
+          emissiveIntensity={selected ? 0.05 : 0}
+          roughness={0.86}
+          metalness={0}
+          side={THREE.DoubleSide}
+          transparent
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Selection is an edge, not a coat of paint. Drawn without depth
+          testing so it still reads when the wall it belongs to has faded
+          out behind another one. */}
+      {selected && (
+        <lineSegments geometry={outline} raycast={() => null} renderOrder={10}>
+          <lineBasicMaterial color={SELECTED} depthTest={false} transparent />
+        </lineSegments>
+      )}
+    </group>
   );
+}
+
+/**
+ * The catalogue photograph, tiled at the size of the real material.
+ *
+ * Cached across surfaces because the same product is usually on all four
+ * walls, and decoding the same WebP four times is four times the work for
+ * one picture. The load is asynchronous, so the hook re-renders when it
+ * lands rather than suspending the whole canvas.
+ */
+const textureCache = new Map<string, THREE.Texture>();
+
+function useSurfaceTexture(product: Product | undefined): THREE.Texture | null {
+  const invalidate = useThree((s) => s.invalidate);
+  const id = product?.id;
+
+  // The loaded texture is held in state rather than read back out of the
+  // cache by a memo. Reading the cache was the bug: after the image landed
+  // the memo's dependencies had not changed — same product — so it kept
+  // handing back the null it had computed before the load, and the one
+  // surface that started the load was the one surface that never got its
+  // texture. Picking a floor looked like it did nothing at all.
+  const [seenId, setSeenId] = useState(id);
+  const [loaded, setLoaded] = useState<THREE.Texture | null>(
+    () => (id && textureCache.get(id)) || null,
+  );
+  if (id !== seenId) {
+    setSeenId(id);
+    setLoaded((id && textureCache.get(id)) || null);
+  }
+
+  useEffect(() => {
+    if (!id || textureCache.has(id)) return;
+    let cancelled = false;
+    new THREE.TextureLoader().load(`/assets/materials/${id}.webp`, (texture) => {
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = 8;
+      textureCache.set(id, texture);
+      if (cancelled) return;
+      setLoaded(texture);
+      // On-demand rendering has already stopped by the time the image
+      // decodes, so the frame that shows it has to be asked for.
+      invalidate();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, invalidate]);
+
+  return useMemo(() => {
+    if (!product || !loaded) return null;
+    // Every surface is a ShapeGeometry built in metres, and three writes its
+    // UVs straight from those coordinates — so UV space IS metres, and one
+    // repeat figure tiles every surface at true scale. Shared across the
+    // surfaces using this product, which all want the same figure anyway.
+    const tile = tileSizeM(product.category);
+    loaded.repeat.set(1 / tile.widthM, 1 / tile.heightM);
+    return loaded;
+  }, [product, loaded]);
 }
 
 interface WallProps {
@@ -209,7 +312,8 @@ interface WallProps {
   rotationY: number;
   inward: [number, number, number];
   openings: RoomOpening[];
-  colour: string;
+  product: Product | undefined;
+  fallback: string;
   selected: boolean;
   onSelect: (id: SurfaceId) => void;
 }
@@ -223,7 +327,8 @@ function Wall({
   rotationY,
   inward,
   openings,
-  colour,
+  product,
+  fallback,
   selected,
   onSelect,
 }: WallProps) {
@@ -245,7 +350,8 @@ function Wall({
       rotation={[0, rotationY, 0]}
       inward={inward}
       anchor={mid}
-      colour={colour}
+      product={product}
+      fallback={fallback}
       selected={selected}
       onSelect={onSelect}
     />
@@ -382,13 +488,8 @@ function wallGeometry(
   return geometry;
 }
 
-/** The colour a surface renders in: the chosen material's, else a neutral. */
-function finishColour(
-  room: RoomModel,
-  id: SurfaceId,
-  kind: "floor" | "wall" | "ceiling",
-): string {
+/** The finish chosen for a surface, if one has been. */
+function finishOf(room: RoomModel, id: SurfaceId): Product | undefined {
   const productId = room.finishes[id];
-  const product = productId ? productById(productId) : undefined;
-  return product?.photo.tint ?? DEFAULT_COLOUR[kind];
+  return productId ? productById(productId) : undefined;
 }

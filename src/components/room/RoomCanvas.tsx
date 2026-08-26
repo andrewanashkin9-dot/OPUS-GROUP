@@ -49,6 +49,12 @@ export function RoomCanvas({
         alpha: true,
         antialias: true,
         toneMapping: THREE.ACESFilmicToneMapping,
+        // Stopped down. With the environment, a key light and the pendant all
+        // adding up, every pale finish clipped to white and the catalogue
+        // texture on it stopped being visible at all — the wall tile read as
+        // blank plaster. Under-exposing slightly is what keeps the material
+        // the reader just chose actually legible.
+        toneMappingExposure: 0.78,
         outputColorSpace: THREE.SRGBColorSpace,
       }}
       shadows={{ type: THREE.PCFSoftShadowMap }}
@@ -73,7 +79,7 @@ export function RoomCanvas({
       <Environment resolution={256} frames={1}>
         <Lightformer
           form="rect"
-          intensity={2.4}
+          intensity={1.6}
           color="#eaf1ff"
           position={[0, 8, 6]}
           scale={[14, 8, 1]}
@@ -81,16 +87,20 @@ export function RoomCanvas({
         />
         <Lightformer
           form="rect"
-          intensity={1.2}
+          intensity={0.8}
           color="#9fb6e0"
           position={[-9, 5, -6]}
           scale={[10, 6, 1]}
           rotation={[0, Math.PI / 3, 0]}
         />
+        {/* The bounce off the floor. It was a cold blue, inherited from the
+            house editor where it is light coming off the ground — indoors it
+            painted the ceiling the colour of the sheet, and a white stretch
+            ceiling rendered navy. */}
         <Lightformer
           form="rect"
-          intensity={0.8}
-          color="#4a6ea8"
+          intensity={0.6}
+          color="#c9bda8"
           position={[0, -6, 0]}
           scale={[16, 16, 1]}
           rotation={[Math.PI / 2, 0, 0]}
@@ -99,7 +109,7 @@ export function RoomCanvas({
 
       <directionalLight
         position={[span * 1.4, span * 2.2, span * 1.1]}
-        intensity={1.15}
+        intensity={0.75}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-bias={-0.0004}
@@ -110,7 +120,7 @@ export function RoomCanvas({
           args={[-span * 1.8, span * 1.8, span * 1.8, -span * 1.8, 0.1, span * 6]}
         />
       </directionalLight>
-      <ambientLight intensity={0.45} />
+      <ambientLight intensity={0.34} />
 
       {/* The sheet, and no contact shadow.
           The house editor floats a baked shadow just above the ground because

@@ -27,3 +27,39 @@ export function Logo({ className }: LogoProps) {
     />
   );
 }
+
+/**
+ * Надпись «OPUS GROUP®» — фирменное начертание, а не текст шрифтом сайта.
+ *
+ * Отдельным знаком, потому что буквы здесь нарисованы: у них плоские бока и
+ * прямая перекладина в «G», чего ни один шрифт проекта не повторяет. Набрать
+ * её Unbounded значило бы поставить в шапку похожую, но чужую надпись.
+ *
+ * Высота задаётся снаружи, ширину считает aspect-ratio: у надписи пропорция
+ * почти 16:1, и заданная одновременно ширина расплющила бы её.
+ */
+export function Wordmark({ className }: LogoProps) {
+  return (
+    <span
+      role="img"
+      aria-label="OPUS GROUP"
+      className={`logo-wordmark inline-block shrink-0 ${className ?? ""}`}
+    />
+  );
+}
+
+/**
+ * Контейнер на крюке с надписью на боку — полный знак для подвала.
+ *
+ * В отличие от `Logo`, это законченный логотип: название уже написано на
+ * самом контейнере, поэтому подпись рядом с ним не нужна и была бы повтором.
+ */
+export function ContainerMark({ className }: LogoProps) {
+  return (
+    <span
+      role="img"
+      aria-label="OPUS GROUP"
+      className={`logo-container inline-block shrink-0 ${className ?? ""}`}
+    />
+  );
+}

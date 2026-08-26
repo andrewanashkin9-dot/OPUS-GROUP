@@ -602,6 +602,45 @@ h3,
 
 /* The brand mark. Painted as `currentColor` through a mask of the artwork, so
    it inherits the accent from its context and needs no per-theme variant. */
+/* Три фирменных знака, один приём.
+
+   Каждый — маска по currentColor, а не <img>: графика одноцветная, поэтому
+   один файл обслуживает любой контекст. Цвет он берёт у того, во что вложен,
+   то есть сам следует за темой между синей и чёрной бумагой и за акцентом,
+   если тот поменяется, — без второго файла и без ручного переключения.
+
+   Исходники приходили светлой графикой на тёмном фоне, без прозрачности.
+   Она вырезана заранее: яркость исходника стала альфа-каналом, фон и сор
+   фактуры отсечены по порогу, тонкие линии подняты до полной плотности —
+   иначе в шапке они читались бы серой мутью рядом с плотным шрифтом. */
+
+.logo-wordmark,
+.logo-container {
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+/* Надпись «OPUS GROUP®». Пропорция 15.7:1 — задавать ей ширину и высоту
+   одновременно нельзя, иначе она растянется; в вёрстке фиксируется высота. */
+.logo-wordmark {
+  -webkit-mask-image: url("/assets/brand/opus-wordmark.png");
+  mask-image: url("/assets/brand/opus-wordmark.png");
+  aspect-ratio: 1284 / 82;
+}
+
+/* Контейнер с надписью на боку — самостоятельный знак, подпись рядом с ним
+   уже лишняя. Пропорция 4:5, вертикальная: сверху уходит трос крана. */
+.logo-container {
+  -webkit-mask-image: url("/assets/brand/opus-container.png");
+  mask-image: url("/assets/brand/opus-container.png");
+  aspect-ratio: 400 / 500;
+}
+
 .logo-mark {
   background-color: currentColor;
   -webkit-mask-image: url("/assets/brand/opus-mark.png");

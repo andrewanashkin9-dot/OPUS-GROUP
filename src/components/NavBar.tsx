@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ThemeToggle } from "./ui/ThemeToggle";
-import { Logo } from "./Logo";
+import { Wordmark } from "./Logo";
 import { canModerate } from "@/lib/auth/cookie-names";
 import { useRoleCookie } from "@/lib/auth/useRoleCookie";
 import { useBom, useMarketLines } from "@/lib/store";
@@ -53,15 +53,19 @@ export function NavBar() {
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--plate-edge)] bg-[var(--bar)] backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Цельная фирменная надпись вместо знака с набранным рядом текстом:
+            начертание здесь нарисованное, и шрифтом сайта оно не повторяется.
+
+            Три высоты, потому что пропорция 16:1 наказывает за каждый лишний
+            пиксель: на 320 px шестнадцатипиксельная надпись вместе с кнопками
+            не помещалась в строку и растягивала документ на 3 px — экран
+            начинал ездить вбок. */}
         <Link
           href="/"
-          className="flex shrink-0 items-center gap-2"
+          className="flex shrink-0 items-center"
           onClick={() => setOpen(false)}
         >
-          <Logo className="h-9 w-9 text-accent" />
-          <span className="font-display text-[20px] font-semibold tracking-tight text-white">
-            OPUS GROUP
-          </span>
+          <Wordmark className="h-3 text-white min-[360px]:h-3.5 sm:h-4" />
         </Link>
 
         <nav className="hidden items-center gap-6 lg:flex xl:gap-8">

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { ThemeToggle } from "./ui/ThemeToggle";
 import { Logo } from "./Logo";
-import { ModerationLink } from "./ModerationLink";
+import { canModerate } from "@/lib/auth/cookie-names";
+import { useRoleCookie } from "@/lib/auth/useRoleCookie";
 
 const links = [
   { href: "/#how-it-works", label: "Как это работает" },
@@ -19,6 +20,21 @@ export function NavBar() {
   // left a phone with no route to the shop, the crews or the knowledge base
   // at all — only the logo. They fold into a disclosure instead.
   const [open, setOpen] = useState(false);
+
+  // Роль читается один раз на всю шапку. Она нужна в двух местах — кнопке
+  // входа и пункте «Модерация», — и отдельные компоненты для каждого
+  // означали бы, что пустой пункт всё равно занимает место в разметке
+  // мобильного меню: рамка есть, ссылки внутри нет.
+  const role = useRoleCookie();
+  const signedIn = role !== null;
+  const showModeration = canModerate(role);
+
+  // Гостю — вход, вошедшему — кабинет. Ошибиться нестрашно: /cabinet всё
+  // равно развернёт на форму входа того, у кого нет настоящей сессии.
+  const account = {
+    href: signedIn ? "/cabinet" : "/login",
+    label: signedIn ? "Кабинет" : "Войти",
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--plate-edge)] bg-[var(--bar)] backdrop-blur-md">
@@ -44,13 +60,31 @@ export function NavBar() {
               {link.label}
             </Link>
           ))}
-          {/* Появляется только у модераторов и администраторов. Остальные
-              не увидят его в разметке вовсе — компонент возвращает null. */}
-          <ModerationLink className="text-body-s font-medium text-cream transition-colors hover:text-cream-bright" />
+          {/* Только у модераторов и администраторов; остальные не увидят
+              его в разметке вовсе. Это подсказка интерфейса, а не право:
+              подделавшего cookie /moderation развернёт на форму входа. */}
+          {showModeration && (
+            <Link
+              href="/moderation"
+              className="text-body-s font-medium text-accent transition-colors hover:brightness-110"
+            >
+              Модерация
+            </Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
           <ThemeToggle />
+
+          {/* Плашка, а не акцент: золотая кнопка рядом — главное действие для
+              нового посетителя, и второй такой же акцент отменил бы первый. */}
+          <Link
+            href={account.href}
+            className="hidden items-center rounded-full border border-[var(--plate-edge)] px-4 py-2.5 text-ui font-bold text-white transition-colors hover:border-[var(--plate-edge-hi)] hover:bg-[var(--blue-lift)] sm:inline-flex"
+          >
+            {account.label}
+          </Link>
+
           <Link
             href="/start"
             className="hidden items-center rounded-full bg-accent px-5 py-2.5 text-ui font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 sm:inline-flex"
@@ -107,6 +141,17 @@ export function NavBar() {
                 </Link>
               </li>
             ))}
+            {showModeration && (
+              <li className="border-b border-[var(--plate-edge)] last:border-b-0">
+                <Link
+                  href="/moderation"
+                  onClick={() => setOpen(false)}
+                  className="block py-3 text-body font-medium text-accent"
+                >
+                  Модерация
+                </Link>
+              </li>
+            )}
           </ul>
           <Link
             href="/start"
@@ -121,6 +166,15 @@ export function NavBar() {
             className="mt-2 flex items-center justify-center rounded-full border border-[var(--plate-edge)] px-5 py-3 text-ui font-bold text-white transition-colors hover:border-[var(--plate-edge-hi)]"
           >
             Смета
+          </Link>
+          {/* Обязательно и здесь: на узком экране верхняя кнопка скрыта, и без
+              этой строки с телефона в аккаунт было бы не попасть. */}
+          <Link
+            href={account.href}
+            onClick={() => setOpen(false)}
+            className="mt-2 flex items-center justify-center rounded-full border border-[var(--plate-edge)] px-5 py-3 text-ui font-bold text-white transition-colors hover:border-[var(--plate-edge-hi)]"
+          >
+            {account.label}
           </Link>
         </nav>
       )}

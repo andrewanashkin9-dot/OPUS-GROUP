@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/Button";
 import { useApiFetch } from "@/lib/auth/useApiFetch";
 
@@ -42,6 +43,7 @@ const WORK_KINDS = [
 
 interface RequestItem {
   id: string;
+  hasReview?: boolean;
   status: Status;
   title: string;
   description: string | null;
@@ -82,6 +84,8 @@ export function RequestsPanel({
 
   const [requests, setRequests] = useState<RequestItem[]>(initialRequests);
   const [error, setError] = useState<string | null>(null);
+  /** Отдельно от обычной ошибки: тут нужна не жалоба, а ссылка на оплату. */
+  const [limitReached, setLimitReached] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -95,13 +99,20 @@ export function RequestsPanel({
     async (url: string, body?: unknown) => {
       setBusy(true);
       setError(null);
-      const { ok, data } = await call<{ error?: string }>(url, {
+      const { ok, status, data } = await call<{ error?: string }>(url, {
         method: "POST",
         headers: body ? { "content-type": "application/json" } : undefined,
         body: body ? JSON.stringify(body) : undefined,
       });
-      if (!ok) setError(data.error ?? "Не получилось");
-      else await load();
+      if (!ok) {
+        // 402 Payment Required — кончился бесплатный лимит. Это не поломка,
+        // а развилка: человеку нужна ссылка на оплату, а не красная плашка.
+        if (status === 402) setLimitReached(true);
+        else setError(data.error ?? "Не получилось");
+      } else {
+        setLimitReached(false);
+        await load();
+      }
       setBusy(false);
       return ok;
     },
@@ -118,6 +129,24 @@ export function RequestsPanel({
         <p role="alert" className="mt-4 rounded-2xl border border-error/40 px-4 py-3 text-body-s text-error">
           {error}
         </p>
+      )}
+
+      {limitReached && (
+        <div
+          role="alert"
+          className="mt-4 rounded-2xl border p-4"
+          style={{ borderColor: "rgba(255,215,0,0.45)" }}
+        >
+          <p className="text-body-s text-white">
+            Первый отклик бесплатный, для следующих нужна подписка.
+          </p>
+          <Link
+            href="/subscribe"
+            className="mt-3 inline-flex items-center rounded-full bg-accent px-4 py-2 text-body-s font-bold text-deep transition-[filter] hover:brightness-108"
+          >
+            Оформить подписку за 700 ₽/мес
+          </Link>
+        </div>
       )}
 
       {isClient && <NewRequestForm busy={busy} onCreate={(body) => act("/api/requests", body)} />}
@@ -151,6 +180,7 @@ function RequestCard({
   const call = useApiFetch();
   const [responses, setResponses] = useState<ResponseItem[] | null>(null);
   const [open, setOpen] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
 
   async function toggle() {
     const next = !open;
@@ -162,7 +192,11 @@ function RequestCard({
   }
 
   return (
-    <li className="rounded-3xl border border-line p-6">
+    // Якорь для уведомлений: колокольчик ведёт на /cabinet#request-<id>, и без
+    // него человек попадал бы просто в кабинет, где заявку о которой речь
+    // нужно ещё найти глазами. scroll-mt отводит карточку из-под липкой
+    // шапки — иначе заголовок заявки окажется ровно под ней.
+    <li id={`request-${item.id}`} className="scroll-mt-20 rounded-3xl border border-line p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h3 className="text-body-l text-cream-bright">{item.title}</h3>
@@ -203,6 +237,21 @@ function RequestCard({
                 Работа выполнена
               </Button>
             )}
+            {/* Отзыв — только по завершённой заявке и только один раз.
+                Здесь это прячет форму, а не запрещает: настоящий запрет
+                стоит в базе, и запрос мимо интерфейса получит отказ. */}
+            {item.status === "completed" && !item.hasReview && (
+              <button
+                type="button"
+                onClick={() => setReviewing((v) => !v)}
+                className="text-ui font-bold text-accent transition-[filter] hover:brightness-110"
+              >
+                {reviewing ? "Не оставлять отзыв" : "Оставить отзыв"}
+              </button>
+            )}
+            {item.status === "completed" && item.hasReview && (
+              <span className="text-body-s text-cream-dim">Отзыв оставлен</span>
+            )}
             {(item.status === "published" || item.status === "in_progress") && (
               <Button
                 variant="ghost"
@@ -217,6 +266,17 @@ function RequestCard({
           <RespondForm busy={busy} onSend={(body) => act(`/api/requests/${item.id}/responses`, body)} />
         )}
       </div>
+
+      {reviewing && (
+        <ReviewForm
+          busy={busy}
+          onSend={async (body) => {
+            const sent = await act(`/api/requests/${item.id}/review`, body);
+            if (sent) setReviewing(false);
+            return sent;
+          }}
+        />
+      )}
 
       {open && responses !== null && (
         <ul className="mt-5 space-y-3 border-t border-line pt-5">
@@ -382,3 +442,66 @@ function RespondForm({
 const inputClass =
   "w-full rounded-2xl border border-line bg-surface px-4 py-3 text-body text-cream-bright " +
   "placeholder:text-cream-dim focus:border-cream-dim focus:outline-none";
+
+/**
+ * Форма отзыва: оценка и текст.
+ *
+ * Оценка обязательна, текст нет. Так и в жизни: поставить пять звёзд легко,
+ * а расписывать почему — работа, и требовать её значит не получить ни одного
+ * отзыва. Зато оценка без текста всё равно попадает в средний рейтинг.
+ */
+function ReviewForm({
+  busy,
+  onSend,
+}: {
+  busy: boolean;
+  onSend: (body: unknown) => Promise<boolean>;
+}) {
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSend({ rating, comment });
+      }}
+      className="mt-5 space-y-3 border-t border-[var(--plate-edge)] pt-5"
+    >
+      <fieldset>
+        <legend className="mb-2 text-body-s text-cream-dim">Оценка работы</legend>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setRating(value)}
+              aria-pressed={rating === value}
+              aria-label={`${value} из 5`}
+              className={`h-9 w-9 rounded-full border text-ui font-bold transition-colors ${
+                value <= rating
+                  ? "border-accent bg-accent text-deep"
+                  : "border-[var(--plate-edge)] text-cream-dim hover:border-[var(--plate-edge-hi)]"
+              }`}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      <textarea
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        rows={2}
+        maxLength={2000}
+        placeholder="Что понравилось, что нет (необязательно)"
+        className={inputClass}
+      />
+
+      <Button type="submit" disabled={busy || rating === 0}>
+        Отправить отзыв
+      </Button>
+    </form>
+  );
+}

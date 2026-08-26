@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ui/ThemeToggle";
 import { Wordmark } from "./Logo";
 import { canModerate } from "@/lib/auth/cookie-names";
@@ -68,7 +69,12 @@ export function NavBar() {
           <Wordmark className="h-3 text-brand-cream min-[360px]:h-3.5 sm:h-4" />
         </Link>
 
-        <nav className="hidden items-center gap-6 lg:flex xl:gap-8">
+        {/* Разворачивается с 1280, а не с 1024: после появления вкладки
+            «Смета» шести ссылкам вместе с надписью и кнопками перестало
+            хватать ширины, и они переносились на вторую строку, разрывая
+            шапку. Ниже этого порога всё уходит в свёрнутое меню — там те же
+            пункты, ничего не теряется. */}
+        <nav className="hidden items-center gap-6 xl:flex xl:gap-8">
           {links.map((link) => (
             <Link
               key={link.href}
@@ -102,6 +108,12 @@ export function NavBar() {
         <div className="flex items-center gap-2 sm:gap-3">
           <ThemeToggle />
 
+          {/* Только вошедшим: гостю уведомлять не о чем, а лишний запрос с
+              каждой страницы сайта ему тем более не нужен. Колокольчик
+              появляется после гидратации вместе с кнопкой «Кабинет» — обе
+              зависят от одной и той же cookie. */}
+          {signedIn && <NotificationBell />}
+
           {/* Плашка, а не акцент: золотая кнопка рядом — главное действие для
               нового посетителя, и второй такой же акцент отменил бы первый. */}
           <Link
@@ -123,7 +135,7 @@ export function NavBar() {
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
             aria-controls="mobile-nav"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)] lg:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)] xl:hidden"
           >
             <span className="sr-only">
               {open ? "Закрыть меню" : "Открыть меню"}
@@ -150,7 +162,7 @@ export function NavBar() {
       {open && (
         <nav
           id="mobile-nav"
-          className="border-t border-[var(--plate-edge)] px-4 pb-4 pt-2 lg:hidden"
+          className="border-t border-[var(--plate-edge)] px-4 pb-4 pt-2 xl:hidden"
         >
           <ul>
             {links.map((link) => (

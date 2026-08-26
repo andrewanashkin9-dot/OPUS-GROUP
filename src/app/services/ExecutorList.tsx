@@ -22,6 +22,14 @@ import type { NodeKind } from "@/lib/3d/types";
  * там чинили горизонтальную прокрутку на узких экранах.
  */
 
+export interface ReviewCard {
+  id: string;
+  rating: number;
+  comment: string | null;
+  authorName: string;
+  createdAt: string | Date;
+}
+
 export interface ExecutorCard {
   id: string;
   displayName: string;
@@ -33,6 +41,9 @@ export interface ExecutorCard {
   cancelledDeals: number;
   completionRate: number | null;
   hasActiveSubscription: boolean;
+  ratingAverage: number | null;
+  reviewCount: number;
+  reviews: ReviewCard[];
 }
 
 export function ExecutorList({
@@ -136,13 +147,42 @@ export function ExecutorList({
                       )}
                     </div>
 
-                    <Reputation completed={crew.completedDeals} rate={crew.completionRate} />
+                    <Reputation
+                  completed={crew.completedDeals}
+                  rate={crew.completionRate}
+                  average={crew.ratingAverage}
+                  reviewCount={crew.reviewCount}
+                />
 
                     {crew.bio && (
                       <p className="mt-4 flex-1 text-body-s text-cream-dim">{crew.bio}</p>
                     )}
 
-                    {crew.specialties.length > 0 && (
+                    {crew.reviews.length > 0 && (
+                  <ul className="mt-4 space-y-3 border-t border-[var(--plate-edge)] pt-4">
+                    {crew.reviews.map((review) => (
+                      <li key={review.id}>
+                        <p className="text-caption text-cream-dim">
+                          {/* Звёзды — картинка, и голосом «★★★★★» ничего не
+                              значит. Программе чтения отдаётся фраза, а сами
+                              символы от неё скрыты целиком. */}
+                          <span aria-label={`Оценка ${review.rating} из 5`} role="img">
+                            <span aria-hidden="true" className="font-bold text-accent">
+                              {"★".repeat(review.rating)}
+                            </span>
+                            <span aria-hidden="true">{"★".repeat(5 - review.rating)}</span>
+                          </span>{" "}
+                          {review.authorName}
+                        </p>
+                        {review.comment && (
+                          <p className="mt-1 text-body-s text-cream-dim">«{review.comment}»</p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {crew.specialties.length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-1.5">
                         {crew.specialties.map((kind) => (
                           <span
@@ -193,26 +233,57 @@ export function ExecutorList({
 }
 
 /**
- * Репутация словами, а не звёздами.
+ * Репутация: оценка людей и сухая статистика по заявкам.
  *
- * У новой бригады сделок нет — и честнее написать «пока без завершённых
- * заявок», чем показать ей ноль звёзд, который читается как «плохая».
+ * Двумя строками, потому что это разные вещи. Рейтинг — мнение заказчиков,
+ * доля завершённых — факт из базы. Слепить их в одно число значит выдать
+ * оценку там, где её никто не ставил.
+ *
+ * Ни у одной из строк нет вида по умолчанию «ноль»: у новой бригады написано
+ * «пока нет отзывов», а не пять пустых звёзд — пустые звёзды читаются как
+ * «плохая», хотя её просто ещё никто не нанимал.
  */
-function Reputation({ completed, rate }: { completed: number; rate: number | null }) {
-  if (completed === 0) {
-    return (
-      <p className="mt-3 text-body-s text-cream-dim">
-        Пока без завершённых заявок
-      </p>
-    );
-  }
+function Reputation({
+  completed,
+  rate,
+  average,
+  reviewCount,
+}: {
+  completed: number;
+  rate: number | null;
+  average: number | null;
+  reviewCount: number;
+}) {
   return (
-    <p className="mt-3 text-body-s text-cream">
-      {completed} {plural(completed, "завершённая заявка", "завершённые заявки", "завершённых заявок")}
-      {rate !== null && rate < 1 && (
-        <span className="text-cream-dim"> · доведено до конца {Math.round(rate * 100)}%</span>
+    <div className="mt-3 space-y-1">
+      {average === null ? (
+        <p className="text-body-s text-cream-dim">Пока нет отзывов</p>
+      ) : (
+        <p className="text-body-s text-cream">
+          <span className="font-bold text-accent" aria-hidden="true">
+            ★
+          </span>{" "}
+          <span className="font-bold tabular-nums">
+            {/* toFixed(1), потому что «4,7» человек читает, а «4,7000000001» нет */}
+            {average.toFixed(1)}
+          </span>
+          <span className="text-cream-dim">
+            {" · "}
+            {reviewCount} {plural(reviewCount, "отзыв", "отзыва", "отзывов")}
+          </span>
+        </p>
       )}
-    </p>
+
+      {completed === 0 ? (
+        <p className="text-body-s text-cream-dim">Пока без завершённых заявок</p>
+      ) : (
+        <p className="text-body-s text-cream-dim">
+          {completed}{" "}
+          {plural(completed, "завершённая заявка", "завершённые заявки", "завершённых заявок")}
+          {rate !== null && rate < 1 && <> · доведено до конца {Math.round(rate * 100)}%</>}
+        </p>
+      )}
+    </div>
   );
 }
 

@@ -1,7 +1,11 @@
 import "server-only";
 
+import type { PoolClient } from "pg";
+
 import { query, withTransaction } from "../db";
+import { createNotifications } from "../notifications/queries";
 import { recordDealCommission } from "../payments/commission";
+import { LIMIT_MESSAGE, canRespondSql, readAccessState } from "../payments/access";
 import { canTransition, transitionError, type RequestStatus } from "./status";
 
 /**
@@ -29,6 +33,8 @@ export interface RequestRow {
   publishedAt: Date | null;
   createdAt: Date;
   responsesCount?: number;
+  /** Оставлен ли отзыв по этой заявке — чтобы не показывать форму дважды. */
+  hasReview?: boolean;
 }
 
 /**
@@ -84,7 +90,8 @@ export async function listClientRequests(clientId: string): Promise<RequestRow[]
   const { rows } = await query<RequestRow>(
     `select ${requestColumns()},
             (select count(*) from responses rs
-              where rs.request_id = r.id and rs.status <> 'withdrawn')::int as "responsesCount"
+              where rs.request_id = r.id and rs.status <> 'withdrawn')::int as "responsesCount",
+            exists (select 1 from reviews v where v.request_id = r.id) as "hasReview"
        from requests r
       where r.client_id = $1
       order by r.created_at desc
@@ -141,7 +148,22 @@ export interface ResponseRow {
 }
 
 export async function listResponses(requestId: string): Promise<ResponseRow[]> {
-  const { rows } = await query<ResponseRow>(
+  return listResponsesIn(null, requestId);
+}
+
+/**
+ * То же самое, но внутри уже открытой транзакции.
+ *
+ * Обычный `query` берёт из пула **другое** соединение, а значит не видит
+ * незакоммиченную вставку: только что созданный отклик из него просто не
+ * читается. Поэтому чтение после записи идёт тем же клиентом.
+ */
+async function listResponsesIn(
+  client: PoolClient | null,
+  requestId: string,
+): Promise<ResponseRow[]> {
+  const run = client ? client.query.bind(client) : query;
+  const { rows } = await run<ResponseRow>(
     `select rs.id,
             rs.request_id  as "requestId",
             rs.executor_id as "executorId",
@@ -186,24 +208,70 @@ export async function createResponse(input: {
   leadTimeDays: number | null;
 }): Promise<ResponseRow> {
   try {
-    const { rows } = await query<{ id: string }>(
-      `insert into responses (request_id, executor_id, message, price_amount, lead_time_days)
-       select r.id, $2, $3, $4, $5
-         from requests r
-        where r.id = $1 and r.status = 'published'
-       returning id`,
-      [input.requestId, input.executorId, input.message, input.priceAmount, input.leadTimeDays],
-    );
+    return await withTransaction(async (client) => {
+      const { rows } = await client.query<{
+        id: string;
+        clientId: string;
+        title: string;
+        executorName: string;
+      }>(
+        // Право на отклик проверяется внутри самой вставки, а не запросом
+        // перед ней: между «проверили» и «записали» помещается второй такой же
+        // запрос, и исполнитель без подписки получил бы два бесплатных отклика.
+        //
+        // Владелец заявки и её название возвращаются той же вставкой — чтобы
+        // текст уведомления не пришлось добирать вторым запросом, за время
+        // которого заявку успевают переименовать.
+        `with inserted as (
+           insert into responses (request_id, executor_id, message, price_amount, lead_time_days)
+           select r.id, $2, $3, $4, $5
+             from requests r
+            where r.id = $1
+              and r.status = 'published'
+              and ${canRespondSql("$2")}
+           returning id, request_id
+         )
+         select inserted.id,
+                r.client_id    as "clientId",
+                r.title,
+                u.display_name as "executorName"
+           from inserted
+           join requests r on r.id = inserted.request_id
+           join users u on u.id = $2`,
+        [input.requestId, input.executorId, input.message, input.priceAmount, input.leadTimeDays],
+      );
 
-    if (rows.length === 0) {
-      // Ноль строк означает, что источник вставки пуст: заявки нет или она
-      // уже не «новая». Снаружи это одно и то же — подсказывать, что заявка
-      // существует, но занята, незачем.
-      throw new DomainError("Заявка не найдена или больше не принимает отклики", 409);
-    }
+      if (rows.length === 0) {
+        // Ноль строк — либо заявка не принимает отклики, либо кончился лимит.
+        // Это разные вещи для человека: во втором случае ему нужна ссылка на
+        // оплату, а не «попробуйте другую заявку». Разбираем, что именно.
+        const access = await readAccessState(input.executorId);
+        if (!access.allowed) {
+          // 402 Payment Required — ровно этот случай: запрос корректен,
+          // не хватает оплаты. Клиент по коду понимает, что показать.
+          throw new DomainError(LIMIT_MESSAGE, 402);
+        }
+        throw new DomainError("Заявка не найдена или больше не принимает отклики", 409);
+      }
 
-    const responses = await listResponses(input.requestId);
-    return responses.find((r) => r.id === rows[0].id)!;
+      const created = rows[0];
+
+      // Уведомление — той же транзакцией, что и отклик. Отклик, о котором
+      // клиенту не сообщили, для клиента не существует: он видит «никто не
+      // откликнулся» и уходит к другим.
+      await createNotifications(client, [
+        {
+          userId: created.clientId,
+          kind: "response_received",
+          text: `Новый отклик на заявку «${created.title}» — ${created.executorName}`,
+          requestId: input.requestId,
+          responseId: created.id,
+        },
+      ]);
+
+      const responses = await listResponsesIn(client, input.requestId);
+      return responses.find((r) => r.id === created.id)!;
+    });
   } catch (error) {
     if (error instanceof DomainError) throw error;
     // 23505 — уникальность: этот исполнитель уже откликался.
@@ -228,8 +296,13 @@ export async function acceptResponse(responseId: string, clientId: string): Prom
     // `for update` держит строку заявки до конца транзакции. Без него два
     // одновременных подтверждения двух разных откликов оба прочитали бы
     // «новая» и оба прошли бы проверку.
-    const { rows } = await client.query<{ requestId: string; status: RequestStatus }>(
-      `select r.id as "requestId", r.status
+    const { rows } = await client.query<{
+      requestId: string;
+      status: RequestStatus;
+      title: string;
+      executorId: string;
+    }>(
+      `select r.id as "requestId", r.status, r.title, rs.executor_id as "executorId"
          from responses rs
          join requests r on r.id = rs.request_id
         where rs.id = $1 and r.client_id = $2 and rs.status = 'pending'
@@ -244,13 +317,36 @@ export async function acceptResponse(responseId: string, clientId: string): Prom
     }
 
     await client.query(`update responses set status = 'accepted' where id = $1`, [responseId]);
-    await client.query(
+    // returning — чтобы узнать, кого именно отклонили, не читая таблицу
+    // повторно: после этого же UPDATE строк со статусом 'pending' уже нет.
+    const { rows: rejected } = await client.query<{ id: string; executorId: string }>(
       `update responses set status = 'rejected'
-        where request_id = $1 and id <> $2 and status = 'pending'`,
+        where request_id = $1 and id <> $2 and status = 'pending'
+        returning id, executor_id as "executorId"`,
       [found.requestId, responseId],
     );
     await client.query(`update requests set status = 'in_progress' where id = $1`, [
       found.requestId,
+    ]);
+
+    // Уведомления — той же транзакцией. Отказ приходит сразу, а не молчанием:
+    // исполнитель, которому не сообщили, продолжает держать сроки под заявку,
+    // которую уже отдали другому.
+    await createNotifications(client, [
+      {
+        userId: found.executorId,
+        kind: "response_accepted",
+        text: `Ваш отклик на заявку «${found.title}» принят — можно приступать`,
+        requestId: found.requestId,
+        responseId,
+      },
+      ...rejected.map((r) => ({
+        userId: r.executorId,
+        kind: "response_rejected" as const,
+        text: `По заявке «${found.title}» выбрали другого исполнителя`,
+        requestId: found.requestId,
+        responseId: r.id,
+      })),
     ]);
   });
 }
@@ -271,9 +367,10 @@ export async function changeRequestStatus(
   );
 
   await withTransaction(async (client) => {
-    const { rowCount } = await client.query(
+    const { rowCount, rows } = await client.query<{ title: string }>(
       `update requests set status = $3
-        where id = $1 and client_id = $2 and status = any($4::request_status[])`,
+        where id = $1 and client_id = $2 and status = any($4::request_status[])
+        returning title`,
       [requestId, clientId, to, allowedFrom],
     );
 
@@ -294,5 +391,35 @@ export async function changeRequestStatus(
     if (to === "completed") {
       await recordDealCommission(client, requestId);
     }
+
+    // Кого касается смена статуса, кроме самого клиента.
+    //
+    // При завершении это исполнитель, чей отклик приняли. При отмене —
+    // ещё и те, кто откликнулся и ждёт ответа: иначе они держат сроки под
+    // заявку, которой больше нет.
+    const { rows: affected } = await client.query<{ executorId: string }>(
+      `select distinct executor_id as "executorId"
+         from responses
+        where request_id = $1
+          and status = any($2::response_status[])`,
+      [requestId, to === "completed" ? ["accepted"] : ["accepted", "pending"]],
+    );
+
+    const title = rows[0].title;
+    await createNotifications(
+      client,
+      affected.map((a) => ({
+        userId: a.executorId,
+        kind: to === "completed" ? ("request_completed" as const) : ("request_cancelled" as const),
+        text:
+          to === "completed"
+            ? `Клиент принял работу по заявке «${title}»`
+            : `Заявка «${title}» отменена клиентом`,
+        requestId,
+      })),
+    );
+    // Самому клиенту уведомления нет: он и есть тот, кто сейчас нажал кнопку,
+    // и сообщать человеку о его собственном действии — шум, который приучает
+    // не открывать колокольчик вовсе.
   });
 }

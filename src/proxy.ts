@@ -19,7 +19,7 @@ import { ACCESS_COOKIE } from "@/lib/auth/cookie-names";
  * работающей ровно до первого маршрута, который забыли внести в matcher.
  */
 
-const PROTECTED_PAGES = ["/cabinet", "/moderation"];
+const PROTECTED_PAGES = ["/cabinet", "/moderation", "/subscribe"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

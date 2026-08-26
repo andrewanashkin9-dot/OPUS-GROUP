@@ -180,7 +180,10 @@ export default function Home() {
                     <FeatureRow key={f}>{f}</FeatureRow>
                   ))}
                 </ul>
-                <ButtonLink href="/start" className="mt-8 w-full">
+                {/* Вело на /start — экран выбора, что строить. Тарифный блок
+                    написали раньше, чем появилась оплата: вести было некуда, и
+                    кнопку скопировали с соседней «Начать бесплатно». */}
+                <ButtonLink href="/subscribe" className="mt-8 w-full">
                   Оформить подписку
                 </ButtonLink>
               </article>

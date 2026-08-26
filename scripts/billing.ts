@@ -24,9 +24,12 @@ async function main(): Promise<void> {
   const { initPayment, chargeRecurrent, rublesToKopecks, TKassaError } = await import(
     "../src/lib/server/payments/tkassa"
   );
-  const { listDueSubscriptions, markPastDue, expireStaleSubscriptions } = await import(
-    "../src/lib/server/payments/subscriptions"
-  );
+  const {
+    listDueSubscriptions,
+    markPastDue,
+    expireStaleSubscriptions,
+    notifyExpiringSubscriptions,
+  } = await import("../src/lib/server/payments/subscriptions");
   const { query, getPool } = await import("../src/lib/server/db");
 
   const pool = getPool();
@@ -95,8 +98,13 @@ async function main(): Promise<void> {
     }
 
     const expired = await expireStaleSubscriptions(3);
+    // Предупреждения — после списаний: у тех, кто только что оплатился,
+    // период уже сдвинулся, и предупреждать их не о чем.
+    const warned = await notifyExpiringSubscriptions(3);
 
-    console.log(`\nПринято к списанию: ${charged}, не удалось: ${failed}, истекло: ${expired}`);
+    console.log(
+      `\nПринято к списанию: ${charged}, не удалось: ${failed}, истекло: ${expired}, предупреждено: ${warned}`,
+    );
   } finally {
     await pool.end();
   }

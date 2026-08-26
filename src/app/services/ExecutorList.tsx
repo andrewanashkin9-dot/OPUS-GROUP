@@ -35,10 +35,25 @@ export interface ExecutorCard {
   hasActiveSubscription: boolean;
 }
 
-export function ExecutorList({ executors }: { executors: ExecutorCard[] }) {
+export function ExecutorList({
+  executors,
+  unavailable,
+}: {
+  executors: ExecutorCard[];
+  /** Список не приехал: база не настроена или не отвечает. */
+  unavailable: boolean;
+}) {
   const model = useAppStore((s) => s.model);
-  const [showAll, setShowAll] = useState(!model);
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
+
+  // The switch holds the reader's override, not the state itself. Seeding
+  // useState from `model` looked equivalent and was not: the project store
+  // hydrates from localStorage in an effect, so on the first render `model`
+  // is always null — the initial value was captured as "show everything" and
+  // never changed. The page then said it was showing only the crews that fit
+  // your house while listing every crew there is.
+  const [showAllOverride, setShowAllOverride] = useState<boolean | null>(null);
+  const showAll = showAllOverride ?? !model;
 
   const requiredKinds = useMemo<NodeKind[]>(() => {
     if (!model) return [];
@@ -54,15 +69,17 @@ export function ExecutorList({ executors }: { executors: ExecutorCard[] }) {
   return (
     <>
       <p className="prose-measure mt-4 text-body-l text-cream-dim">
-        {model
-          ? "Показаны бригады, которые закрывают именно те работы, что есть в вашей модели."
-          : "Постройте модель дома в конструкторе — и здесь останутся только нужные вам бригады."}
+        {unavailable
+          ? "Бригады подбираются под работы из вашей модели дома."
+          : model
+            ? "Показаны бригады, которые закрывают именно те работы, что есть в вашей модели."
+            : "Постройте модель дома в конструкторе — и здесь останутся только нужные вам бригады."}
       </p>
 
-      {model && (
+      {model && !unavailable && (
         <button
           type="button"
-          onClick={() => setShowAll((v) => !v)}
+          onClick={() => setShowAllOverride(!showAll)}
           className="mt-6 text-body-s font-medium text-cream underline underline-offset-2 hover:text-cream-bright"
         >
           {showAll ? "Показать только нужные для моей модели" : "Показать все бригады"}
@@ -70,11 +87,29 @@ export function ExecutorList({ executors }: { executors: ExecutorCard[] }) {
       )}
 
       {visible.length === 0 ? (
-        <p className="mt-10 text-body-s text-cream-dim">
-          {executors.length === 0
-            ? "Бригады ещё не зарегистрировались."
-            : "Под вашу модель пока никто не подходит — посмотрите всех."}
-        </p>
+        <div className="mt-10">
+          {unavailable ? (
+            // Не «бригад нет»: мы не знаем, есть ли они. Пустой список из-за
+            // нашей поломки нельзя выдавать за факт о рынке — человек уйдёт
+            // искать подрядчика в другом месте, решив, что здесь никого нет.
+            <>
+              <p className="text-body-s" style={{ color: "var(--warning)" }}>
+                Список бригад сейчас недоступен — мы не смогли его загрузить.
+                Попробуйте обновить страницу через несколько минут.
+              </p>
+              <p className="mt-3 text-body-s text-cream-dim">
+                Смета по материалам считается без этого: она собирается прямо
+                в браузере и никуда не делась.
+              </p>
+            </>
+          ) : (
+            <p className="text-body-s text-cream-dim">
+              {executors.length === 0
+                ? "Бригады ещё не зарегистрировались."
+                : "Под вашу модель пока никто не подходит — посмотрите всех."}
+            </p>
+          )}
+        </div>
       ) : (
         <ul className="mt-10 grid gap-6 sm:grid-cols-2">
           {visible.map((crew, i) => {

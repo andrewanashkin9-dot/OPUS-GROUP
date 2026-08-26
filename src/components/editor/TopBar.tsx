@@ -17,7 +17,7 @@ export function TopBar() {
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--plate-edge)] bg-[var(--bar)] px-4 backdrop-blur-md sm:px-6">
       <div className="flex items-center gap-4 min-w-0">
         <Link href="/" className="flex items-center gap-2 shrink-0" aria-label="На главную">
-          <Logo className="h-8 w-8 text-accent" />
+          <Logo className="h-8 w-8 text-brand-cream" />
         </Link>
         <span className="truncate text-body-s font-medium text-dim">
           {model?.name ?? "Новый проект"}
@@ -62,7 +62,7 @@ export function TopBar() {
           href="/cart"
           className="inline-flex items-center rounded-full bg-accent px-4 py-2 text-body-s font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108"
         >
-          В корзину
+          В смету
         </Link>
       </div>
     </header>

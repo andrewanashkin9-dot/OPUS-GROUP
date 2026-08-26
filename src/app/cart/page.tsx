@@ -42,7 +42,7 @@ export default function CartPage() {
         {empty ? (
           <div className="plate mt-12 p-10 text-center">
             <p className="text-body-l text-cream-dim">
-              Корзина пока пуста — соберите дом или комнату в конструкторе,
+              Смета пока пуста — соберите дом или комнату в конструкторе,
               и материалы появятся здесь сами. Или добавьте позиции из
               магазина.
             </p>

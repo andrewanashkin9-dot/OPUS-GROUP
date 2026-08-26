@@ -168,13 +168,13 @@ export function EstimateStep({ room }: { room: RoomModel }) {
           disabled={estimate.purchases.length === 0}
           className="flex-1 rounded-full bg-accent px-5 py-3 text-ui font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 disabled:opacity-40"
         >
-          Перенести в корзину
+          Перенести в смету
         </button>
         <Link
           href="/cart"
           className="rounded-full border border-[var(--plate-edge)] px-5 py-3 text-ui font-medium text-white transition-colors hover:border-[var(--plate-edge-hi)]"
         >
-          Открыть корзину
+          Открыть смету
         </Link>
       </div>
     </section>

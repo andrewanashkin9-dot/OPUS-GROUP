@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Logo } from "./Logo";
+import { ContainerMark } from "./Logo";
 
 export function Footer() {
   return (
@@ -7,10 +7,9 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <div className="flex items-center gap-2">
-              <Logo className="h-8 w-8 text-accent" />
-              <span className="font-display text-[18px] font-semibold text-white">OPUS GROUP</span>
-            </div>
+            {/* Подпись рядом убрана намеренно: название написано на самом
+                контейнере, и повторять его текстом — значит сказать дважды. */}
+            <ContainerMark className="h-36 text-brand-cream" />
             <p className="mt-4 max-w-xs text-body-s text-dim">
               От фото дома до бригады на объекте — в одном месте.
             </p>

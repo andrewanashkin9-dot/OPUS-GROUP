@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/server/auth/guard";
 import { findUserById } from "@/lib/server/auth/users";
 import { LogoutButton } from "./LogoutButton";
 import { RequestsPanel } from "./RequestsPanel";
+import { ResponsesPanel } from "./ResponsesPanel";
 import { SubscriptionPanel } from "./SubscriptionPanel";
 import { ProfilePanel } from "./ProfilePanel";
 import { EmailNotice } from "./EmailNotice";
@@ -17,6 +18,8 @@ import { query } from "@/lib/server/db";
 import { readAccessState } from "@/lib/server/payments/access";
 import {
   listClientRequests,
+  listExecutorResponses,
+  listExecutorWork,
   listOpenRequests,
 } from "@/lib/server/requests/queries";
 
@@ -89,6 +92,11 @@ export default async function CabinetPage() {
         {user.role === "executor" && (await renderSubscription(user.id))}
         {user.role === "executor" && (await renderProfile(user.id))}
 
+        {/* История исполнителя идёт выше ленты новых заявок: свои дела
+            важнее чужих предложений, и человек приходит в кабинет обычно за
+            ними. */}
+        {user.role === "executor" && (await renderExecutorHistory(user.id))}
+
         {(user.role === "client" || user.role === "executor") && (
           <RequestsPanel
             role={user.role}
@@ -118,6 +126,17 @@ function Row({ label, value }: { label: string; value: string }) {
       <dd className="text-body text-cream-bright">{value}</dd>
     </div>
   );
+}
+
+/** История исполнителя: принятая работа и все его отклики. */
+async function renderExecutorHistory(executorId: string) {
+  // Оба запроса разом: они независимы, и последовательное ожидание удвоило
+  // бы задержку страницы на ровном месте.
+  const [responses, work] = await Promise.all([
+    listExecutorResponses(executorId),
+    listExecutorWork(executorId),
+  ]);
+  return <ResponsesPanel responses={responses} work={work} />;
 }
 
 /**

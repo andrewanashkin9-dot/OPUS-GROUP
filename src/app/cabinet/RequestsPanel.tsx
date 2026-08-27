@@ -1,9 +1,18 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/Button";
+import { StatusFilter } from "@/components/cabinet/StatusFilter";
 import { useApiFetch } from "@/lib/auth/useApiFetch";
+import {
+  REQUEST_STATUS_LABELS as STATUS_LABELS,
+  REQUEST_STATUS_STYLES as STATUS_STYLES,
+  WORK_KINDS,
+  formatDate,
+  plural,
+  type RequestStatus as Status,
+} from "@/lib/requests-ui";
 
 /**
  * Заявки в кабинете. Один компонент на обе роли: клиент видит свои заявки и
@@ -14,35 +23,10 @@ import { useApiFetch } from "@/lib/auth/useApiFetch";
  * действительно нечем.
  */
 
-type Status = "draft" | "published" | "in_progress" | "completed" | "cancelled";
-
-const STATUS_LABELS: Record<Status, string> = {
-  draft: "Черновик",
-  published: "Новая",
-  in_progress: "В работе",
-  completed: "Завершена",
-  cancelled: "Отменена",
-};
-
-const STATUS_STYLES: Record<Status, string> = {
-  draft: "border-line text-cream-dim",
-  published: "border-cream-dim text-cream-bright",
-  in_progress: "border-warning/50 text-warning",
-  completed: "border-success/50 text-success",
-  cancelled: "border-line text-cream-dim",
-};
-
-const WORK_KINDS = [
-  { id: "roof", label: "Кровля" },
-  { id: "facade", label: "Фасад" },
-  { id: "fence", label: "Забор" },
-  { id: "foundation", label: "Фундамент" },
-  { id: "window", label: "Окна" },
-  { id: "door", label: "Двери" },
-] as const;
-
 interface RequestItem {
   id: string;
+  /** С сервера приезжает Date, через JSON — строка. formatDate ест обе. */
+  createdAt: string | Date;
   hasReview?: boolean;
   status: Status;
   title: string;
@@ -83,6 +67,7 @@ export function RequestsPanel({
   const isClient = role === "client";
 
   const [requests, setRequests] = useState<RequestItem[]>(initialRequests);
+  const [filter, setFilter] = useState<Status | "all">("all");
   const [error, setError] = useState<string | null>(null);
   /** Отдельно от обычной ошибки: тут нужна не жалоба, а ссылка на оплату. */
   const [limitReached, setLimitReached] = useState(false);
@@ -119,11 +104,36 @@ export function RequestsPanel({
     [call, load],
   );
 
+  // Порядок статусов — жизненный путь заявки, а не алфавит: новая, в работе,
+  // завершена, отменена. По нему человек читает свою историю сверху вниз.
+  const ORDER: Status[] = ["published", "in_progress", "completed", "cancelled", "draft"];
+  const counts = useMemo(
+    () => ORDER.map((id) => ({ id, count: requests.filter((r) => r.status === id).length })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [requests],
+  );
+  const visible = useMemo(
+    () => (filter === "all" ? requests : requests.filter((r) => r.status === filter)),
+    [requests, filter],
+  );
+
   return (
     <section className="mt-16">
       <h2 className="font-display text-h3 font-extrabold text-cream-bright">
         {isClient ? "Мои заявки" : "Новые заявки"}
       </h2>
+
+      {/* Сортировка одна и та же везде — сначала новые. Отдельного
+          переключателя нет намеренно: «сначала старые» в списке заявок
+          нужно примерно никогда, а лишний орган управления читается как
+          обещание, что тут есть что настраивать. */}
+      <StatusFilter
+        value={filter}
+        onChange={setFilter}
+        counts={counts}
+        labels={STATUS_LABELS}
+        total={requests.length}
+      />
 
       {error && (
         <p role="alert" className="mt-4 rounded-2xl border border-error/40 px-4 py-3 text-body-s text-error">
@@ -151,13 +161,17 @@ export function RequestsPanel({
 
       {isClient && <NewRequestForm busy={busy} onCreate={(body) => act("/api/requests", body)} />}
 
-      {requests.length === 0 ? (
+      {visible.length === 0 ? (
         <p className="mt-8 text-body-s text-cream-dim">
-          {isClient ? "Заявок пока нет — создайте первую." : "Свободных заявок сейчас нет."}
+          {requests.length > 0
+            ? "В этом статусе заявок нет."
+            : isClient
+              ? "Заявок пока нет — создайте первую."
+              : "Свободных заявок сейчас нет."}
         </p>
       ) : (
         <ul className="mt-8 space-y-4">
-          {requests.map((item) => (
+          {visible.map((item) => (
             <RequestCard key={item.id} item={item} isClient={isClient} busy={busy} act={act} />
           ))}
         </ul>
@@ -199,7 +213,17 @@ function RequestCard({
     <li id={`request-${item.id}`} className="scroll-mt-20 rounded-3xl border border-line p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 className="text-body-l text-cream-bright">{item.title}</h3>
+          {/* Заголовок — ссылка на страницу заявки. Раньше заявка жила
+              только внутри этой карточки, и переслать её кому-то или
+              вернуться к ней по ссылке было нельзя. */}
+          <h3 className="text-body-l text-cream-bright">
+            <Link
+              href={`/requests/${item.id}`}
+              className="underline decoration-transparent underline-offset-4 transition-colors hover:decoration-current"
+            >
+              {item.title}
+            </Link>
+          </h3>
           <p className="mt-1 text-body-s text-cream-dim">
             {[
               item.city,
@@ -208,6 +232,16 @@ function RequestCard({
             ]
               .filter(Boolean)
               .join(" · ")}
+          </p>
+          <p className="mt-1 text-caption text-cream-dim">
+            {formatDate(item.createdAt)}
+            {isClient && (
+              <>
+                {" · "}
+                {item.responsesCount ?? 0}{" "}
+                {plural(item.responsesCount ?? 0, "отклик", "отклика", "откликов")}
+              </>
+            )}
           </p>
         </div>
         <span

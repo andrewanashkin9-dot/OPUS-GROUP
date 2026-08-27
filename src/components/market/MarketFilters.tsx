@@ -9,6 +9,9 @@ import {
   PRICE_MIN,
   type CategoryId,
 } from "@/lib/marketplace";
+import { getDictionary } from "@/lib/i18n/dictionary";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locale";
+import { brandLabel, categoryText } from "@/lib/i18n/product-text";
 
 /**
  * Category, brand and price filters.
@@ -53,6 +56,7 @@ interface MarketFiltersProps {
   /** Shown only when there is a model to match against. */
   hasModel: boolean;
   resultCount: number;
+  locale?: Locale;
 }
 
 function toggle<T>(list: T[], item: T): T[] {
@@ -64,7 +68,9 @@ export function MarketFilters({
   onChange,
   hasModel,
   resultCount,
+  locale = DEFAULT_LOCALE,
 }: MarketFiltersProps) {
+  const t = getDictionary(locale).market;
   const [allBrands, setAllBrands] = useState(false);
   // Fourteen brands is four rows of chips on a phone — more height than the
   // catalogue itself gets above the fold. Any brand already picked stays
@@ -86,10 +92,10 @@ export function MarketFilters({
 
   return (
     <section
-      aria-label="Фильтры каталога"
+      aria-label={t.filtersLabel}
       className="plate p-5 sm:p-6"
     >
-      <FilterGroup label="Категория">
+      <FilterGroup label={t.category}>
         {CATEGORIES.map((category) => (
           <Chip
             key={category.id}
@@ -98,19 +104,19 @@ export function MarketFilters({
               onChange({ ...value, categories: toggle(value.categories, category.id) })
             }
           >
-            {category.label}
+            {categoryText(category.id, locale)}
           </Chip>
         ))}
       </FilterGroup>
 
-      <FilterGroup label="Производитель">
+      <FilterGroup label={t.brand}>
         {brands.map((brand) => (
           <Chip
             key={brand}
             active={value.brands.includes(brand)}
             onClick={() => onChange({ ...value, brands: toggle(value.brands, brand) })}
           >
-            {brand}
+            {brandLabel(brand, locale)}
           </Chip>
         ))}
         {brands.length < BRANDS.length && (
@@ -119,7 +125,7 @@ export function MarketFilters({
             onClick={() => setAllBrands(true)}
             className="rounded-full px-3.5 py-1.5 text-body-s font-medium text-cream underline underline-offset-2 transition-colors hover:text-cream-bright"
           >
-            Ещё {BRANDS.length - brands.length}
+            {t.more(BRANDS.length - brands.length)}
           </button>
         )}
       </FilterGroup>
@@ -127,7 +133,7 @@ export function MarketFilters({
       <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-4">
         <label className="flex min-w-64 flex-1 flex-col gap-2">
           <span className="text-caption font-medium uppercase text-cream-dim">
-            Цена — до {formatRub(value.maxPrice)}
+            {t.priceUpTo(formatRub(value.maxPrice))}
           </span>
           <input
             type="range"
@@ -146,12 +152,12 @@ export function MarketFilters({
             active={value.onlyForModel}
             onClick={() => onChange({ ...value, onlyForModel: !value.onlyForModel })}
           >
-            Только для моей модели
+            {t.onlyMyModel}
           </Chip>
         )}
 
         <p role="status" className="text-body-s text-cream-dim">
-          Найдено: <span className="tabular-nums text-cream">{resultCount}</span>
+          {t.found} <span className="tabular-nums text-cream">{resultCount}</span>
         </p>
 
         {!isDefault && (
@@ -160,7 +166,7 @@ export function MarketFilters({
             onClick={() => onChange(INITIAL_FILTER)}
             className="text-body-s font-medium text-cream underline underline-offset-2 transition-colors hover:text-cream-bright"
           >
-            Сбросить
+            {t.reset}
           </button>
         )}
       </div>

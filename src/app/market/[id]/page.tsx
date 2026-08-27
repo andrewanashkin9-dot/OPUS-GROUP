@@ -21,6 +21,10 @@ export async function generateMetadata({
   return {
     title: `${product.name} — OPUS GROUP`,
     description: product.summary,
+    alternates: {
+      canonical: `/market/${id}`,
+      languages: { ru: `/market/${id}`, en: `/en/market/${id}` },
+    },
   };
 }
 
@@ -28,5 +32,5 @@ export default async function ProductPage({ params }: PageProps<"/market/[id]">)
   const { id } = await params;
   const product = productById(id);
   if (!product) notFound();
-  return <ProductDetail product={product} />;
+  return <ProductDetail product={product} locale="ru" />;
 }

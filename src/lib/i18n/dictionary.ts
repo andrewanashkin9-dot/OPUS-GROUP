@@ -83,6 +83,34 @@ export interface Dictionary {
     reviewsFrom: string;
     empty: string;
   };
+  market: {
+    title: string;
+    introWithModel: string;
+    introPlain: string;
+    filtersLabel: string;
+    category: string;
+    brand: string;
+    priceUpTo: (price: string) => string;
+    onlyMyModel: string;
+    found: string;
+    reset: string;
+    more: (n: number) => string;
+    nothing: string;
+    fitsModel: string;
+    addToEstimate: string;
+    inEstimate: string;
+    breadcrumb: string;
+    specs: string;
+    related: (category: string) => string;
+    reviews: string;
+    noReviews: string;
+    suggestion: (qty: string, from: string) => string;
+    quantity: string;
+    decrease: string;
+    increase: string;
+    alreadyIn: (amount: string) => string;
+    inEstimateShort: (amount: string) => string;
+  };
   footer: {
     tagline: string;
     product: string;
@@ -214,6 +242,37 @@ const ru: Dictionary = {
     onlyMine: "Показать только нужные для моей модели",
     reviewsFrom: "Отзывы",
     empty: "Под вашу модель пока никто не подходит — посмотрите всех.",
+  },
+  market: {
+    title: "Магазин материалов",
+    introWithModel:
+      "Всё, что нужно докупить сверх сметы по модели: изоляция, крепёж, смеси. Позиции, которые подходят вашему дому, отмечены — количество подставится из его геометрии.",
+    introPlain:
+      "Кровля, фасад, утепление и изоляция от поставщиков, с которыми работают наши бригады. Соберите модель дома — и количество подставится из его геометрии.",
+    filtersLabel: "Фильтры каталога",
+    category: "Категория",
+    brand: "Производитель",
+    priceUpTo: (price) => `Цена — до ${price}`,
+    onlyMyModel: "Только для моей модели",
+    found: "Найдено:",
+    reset: "Сбросить",
+    more: (n) => `Ещё ${n}`,
+    nothing: "По этим условиям ничего нет — снимите часть фильтров.",
+    fitsModel: "Подходит вашей модели",
+    addToEstimate: "В смету",
+    inEstimate: "В смете ✓",
+    breadcrumb: "Магазин материалов",
+    specs: "Характеристики",
+    related: (category) => `Ещё в разделе «${category}»`,
+    reviews: "Отзывы",
+    noReviews: "Этот материал ещё никто не оценил",
+    suggestion: (qty, from) =>
+      `По вашей модели нужно ${qty} — посчитано по геометрии: ${from}. Количество можно изменить.`,
+    quantity: "Количество",
+    decrease: "Уменьшить количество",
+    increase: "Увеличить количество",
+    alreadyIn: (amount) => `Уже в смете: ${amount}`,
+    inEstimateShort: (amount) => `В смете · ${amount}`,
   },
   footer: {
     tagline: "От фото дома до бригады на объекте — в одном месте.",
@@ -353,6 +412,37 @@ const en: Dictionary = {
     onlyMine: "Show only the ones my model needs",
     reviewsFrom: "Reviews",
     empty: "Nobody matches your model yet — take a look at everyone.",
+  },
+  market: {
+    title: "Materials shop",
+    introWithModel:
+      "Everything to buy beyond what the model already estimates: insulation, fixings, mixes. Items that suit your house are marked — quantities come from its geometry.",
+    introPlain:
+      "Roofing, façade, insulation and waterproofing from the suppliers our crews work with. Build your house and quantities will come from its geometry.",
+    filtersLabel: "Catalogue filters",
+    category: "Category",
+    brand: "Manufacturer",
+    priceUpTo: (price) => `Price — up to ${price}`,
+    onlyMyModel: "Only for my model",
+    found: "Found:",
+    reset: "Reset",
+    more: (n) => `${n} more`,
+    nothing: "Nothing matches these filters — drop a few of them.",
+    fitsModel: "Suits your model",
+    addToEstimate: "Add to estimate",
+    inEstimate: "In the estimate ✓",
+    breadcrumb: "Materials shop",
+    specs: "Specification",
+    related: (category) => `More in “${category}”`,
+    reviews: "Reviews",
+    noReviews: "Nobody has rated this material yet",
+    suggestion: (qty, from) =>
+      `Your model needs ${qty} — worked out from the geometry: ${from}. You can change the amount.`,
+    quantity: "Quantity",
+    decrease: "Decrease the amount",
+    increase: "Increase the amount",
+    alreadyIn: (amount) => `Already in the estimate: ${amount}`,
+    inEstimateShort: (amount) => `In estimate · ${amount}`,
   },
   footer: {
     tagline: "From a photo of the house to a crew on site — in one place.",

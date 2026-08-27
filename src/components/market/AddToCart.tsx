@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/Button";
-import {
-  marketUnitLabel,
-  suggestedQuantity,
-  type Product,
-} from "@/lib/marketplace";
+import { suggestedQuantity, type Product } from "@/lib/marketplace";
+import { getDictionary } from "@/lib/i18n/dictionary";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locale";
+import { unitText } from "@/lib/i18n/product-text";
 import { quantityStep } from "@/lib/quantity-step";
 import { useAppStore } from "@/lib/store";
 
@@ -19,9 +18,11 @@ import { useAppStore } from "@/lib/store";
 interface AddToCartProps {
   product: Product;
   compact?: boolean;
+  locale?: Locale;
 }
 
-export function AddToCart({ product, compact = false }: AddToCartProps) {
+export function AddToCart({ product, compact = false, locale = DEFAULT_LOCALE }: AddToCartProps) {
+  const t = getDictionary(locale).market;
   const model = useAppStore((s) => s.model);
   const addMarketItem = useAppStore((s) => s.addMarketItem);
   const inCart = useAppStore((s) => s.marketItems[product.id]);
@@ -46,7 +47,7 @@ export function AddToCart({ product, compact = false }: AddToCartProps) {
         onClick={() => addMarketItem(product.id, quantity)}
         className="relative z-10 shrink-0 rounded-full border border-[var(--plate-edge)] px-3 py-1.5 text-body-s font-medium text-cream transition-colors hover:border-cream-dim hover:text-cream-bright"
       >
-        {inCart ? `В смете · ${inCart}` : "В смету"}
+        {inCart ? t.inEstimateShort(String(inCart)) : t.addToEstimate}
       </button>
     );
   }
@@ -56,14 +57,14 @@ export function AddToCart({ product, compact = false }: AddToCartProps) {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          aria-label="Уменьшить количество"
+          aria-label={t.decrease}
           onClick={() => setQuantity(quantity - quantityStep(quantity))}
           className="h-10 w-10 rounded-full border border-[var(--plate-edge)] text-cream-dim transition-colors hover:border-cream-dim hover:text-cream-bright"
         >
           −
         </button>
         <label className="flex items-center gap-2">
-          <span className="sr-only">Количество</span>
+          <span className="sr-only">{t.quantity}</span>
           <input
             type="number"
             min={1}
@@ -74,24 +75,24 @@ export function AddToCart({ product, compact = false }: AddToCartProps) {
         </label>
         <button
           type="button"
-          aria-label="Увеличить количество"
+          aria-label={t.increase}
           onClick={() => setQuantity(quantity + quantityStep(quantity))}
           className="h-10 w-10 rounded-full border border-[var(--plate-edge)] text-cream-dim transition-colors hover:border-cream-dim hover:text-cream-bright"
         >
           +
         </button>
         <span className="text-body-s text-cream-dim">
-          {marketUnitLabel(product.unit)}
+          {unitText(product.unit, locale)}
         </span>
       </div>
 
       <Button onClick={() => addMarketItem(product.id, quantity)}>
-        Добавить в смету
+        {t.addToEstimate}
       </Button>
 
       {inCart ? (
         <span role="status" className="text-body-s text-cream-dim">
-          Уже в смете: {inCart} {marketUnitLabel(product.unit)}
+          {t.alreadyIn(`${inCart} ${unitText(product.unit, locale)}`)}
         </span>
       ) : null}
     </div>

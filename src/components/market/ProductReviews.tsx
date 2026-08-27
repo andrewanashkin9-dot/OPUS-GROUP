@@ -5,6 +5,8 @@ import { DemoDataBadge } from "@/components/DemoDataBadge";
 import { RatingLine, Stars } from "@/components/Rating";
 import { formatDate } from "@/lib/requests-ui";
 import { useProductRatings } from "@/lib/product-ratings";
+import { getDictionary } from "@/lib/i18n/dictionary";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locale";
 
 /**
  * Отзывы о товаре на его странице.
@@ -32,7 +34,14 @@ interface Review {
 /** ⚠️ ВРЕМЕННО: метка, которой сид помечает свои тексты в базе. */
 const DEMO_PREFIX = "[демо] ";
 
-export function ProductReviews({ productId }: { productId: string }) {
+export function ProductReviews({
+  productId,
+  locale = DEFAULT_LOCALE,
+}: {
+  productId: string;
+  locale?: Locale;
+}) {
+  const t = getDictionary(locale).market;
   const rating = useProductRatings()[productId];
   const [reviews, setReviews] = useState<Review[] | null>(null);
 
@@ -59,11 +68,12 @@ export function ProductReviews({ productId }: { productId: string }) {
   return (
     <section className="mt-20 border-t border-[var(--plate-edge)] pt-10">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className="font-display text-h2 font-medium text-cream-bright">Отзывы</h2>
+        <h2 className="font-display text-h2 font-medium text-cream-bright">{t.reviews}</h2>
         <RatingLine
           average={rating?.average ?? null}
           count={rating?.count ?? 0}
-          empty="Этот материал ещё никто не оценил"
+          empty={t.noReviews}
+          locale={locale}
         />
       </div>
 
@@ -71,7 +81,7 @@ export function ProductReviews({ productId }: { productId: string }) {
           показанные отзывы заведены сид-скриптом; как только появится хоть
           один настоящий, подпись пропадёт сама. Удалять вместе с сидом. */}
       {reviews.length > 0 && reviews.every((r) => r.isDemo) && (
-        <DemoDataBadge className="mt-4" />
+        <DemoDataBadge locale={locale} className="mt-4" />
       )}
 
       {reviews.length > 0 && (
@@ -81,7 +91,7 @@ export function ProductReviews({ productId }: { productId: string }) {
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <Stars rating={review.rating} className="text-body-s" />
                 <span className="text-caption text-cream-dim">
-                  {formatDate(review.createdAt)}
+                  {formatDate(review.createdAt, locale)}
                 </span>
               </div>
               <p className="mt-1 text-caption text-cream-dim">{review.authorName}</p>

@@ -6,24 +6,33 @@ import { NavBar } from "@/components/NavBar";
 import { RatingLine } from "@/components/Rating";
 import { formatRub } from "@/lib/format";
 import { useProductRatings } from "@/lib/product-ratings";
+import { matchesModel, PRODUCTS, suggestedQuantity, type Product } from "@/lib/marketplace";
+import { getDictionary } from "@/lib/i18n/dictionary";
+import { DEFAULT_LOCALE, localePath, type Locale } from "@/lib/i18n/locale";
 import {
-  categoryLabel,
-  marketUnitLabel,
-  matchesModel,
-  priceUnitLabel,
-  PRODUCTS,
-  suggestedQuantity,
-  type Product,
-} from "@/lib/marketplace";
+  brandLabel,
+  categoryText,
+  priceUnitText,
+  productText,
+  unitText,
+} from "@/lib/i18n/product-text";
 import { useAppStore } from "@/lib/store";
 import { AddToCart } from "./AddToCart";
 import { ProductCard } from "./ProductCard";
 import { ProductPhoto } from "./ProductPhoto";
 import { ProductReviews } from "./ProductReviews";
 
-export function ProductDetail({ product }: { product: Product }) {
+export function ProductDetail({
+  product,
+  locale = DEFAULT_LOCALE,
+}: {
+  product: Product;
+  locale?: Locale;
+}) {
   const model = useAppStore((s) => s.model);
   const rating = useProductRatings()[product.id];
+  const t = getDictionary(locale).market;
+  const text = productText(product, locale);
   const suggestion = suggestedQuantity(product, model);
 
   const related = PRODUCTS.filter(
@@ -32,16 +41,19 @@ export function ProductDetail({ product }: { product: Product }) {
 
   return (
     <>
-      <NavBar />
+      <NavBar locale={locale} />
       <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <nav aria-label="Хлебные крошки" className="text-body-s text-cream-dim">
-          <Link href="/market" className="transition-colors hover:text-cream-bright">
-            Магазин материалов
+          <Link
+            href={localePath(locale, "/market")}
+            className="transition-colors hover:text-cream-bright"
+          >
+            {t.breadcrumb}
           </Link>
           <span aria-hidden="true" className="px-2">
             /
           </span>
-          <span className="text-cream">{categoryLabel(product.category)}</span>
+          <span className="text-cream">{categoryText(product.category, locale)}</span>
         </nav>
 
         <div className="mt-8 grid gap-10 lg:grid-cols-2 lg:gap-14">
@@ -56,19 +68,24 @@ export function ProductDetail({ product }: { product: Product }) {
 
           <div>
             <p className="text-caption uppercase text-cream-dim">
-              {product.brand} · {categoryLabel(product.category)}
+              {brandLabel(product.brand, locale)} · {categoryText(product.category, locale)}
             </p>
             <h1 className="font-display mt-2 text-h1 font-extrabold text-white">
-              {product.name}
+              {text.name}
             </h1>
             {/* Оценка сразу под названием, до цены: сначала «стоит ли
                 смотреть», потом «сколько стоит». */}
             {rating && (
-              <RatingLine average={rating.average} count={rating.count} className="mt-3" />
+              <RatingLine
+                average={rating.average}
+                count={rating.count}
+                locale={locale}
+                className="mt-3"
+              />
             )}
 
             <p className="prose-measure mt-4 text-body-l text-cream-dim">
-              {product.summary}
+              {text.summary}
             </p>
 
             <div className="mt-8 flex items-end gap-3">
@@ -76,31 +93,29 @@ export function ProductDetail({ product }: { product: Product }) {
                 {formatRub(product.price)}
               </span>
               <span className="pb-1.5 text-body-l text-cream-dim">
-                {priceUnitLabel(product.unit)}
+                {priceUnitText(product.unit, locale)}
               </span>
             </div>
 
             {suggestion && (
               <p className="plate mt-6 p-4 text-body-s text-soft">
-                По вашей модели нужно{" "}
-                <span className="font-bold tabular-nums text-cream-bright">
-                  {suggestion.quantity} {marketUnitLabel(product.unit)}
-                </span>{" "}
-                — посчитано по геометрии: {suggestion.from}. Количество можно
-                изменить.
+                {t.suggestion(
+                  `${suggestion.quantity} ${unitText(product.unit, locale)}`,
+                  suggestion.from,
+                )}
               </p>
             )}
 
             <div className="mt-8">
-              <AddToCart product={product} />
+              <AddToCart product={product} locale={locale} />
             </div>
 
             <table className="mt-10 w-full border-t border-[var(--plate-edge)] text-body-s">
               <caption className="pb-3 text-left text-caption font-medium uppercase text-cream-dim">
-                Характеристики
+                {t.specs}
               </caption>
               <tbody className="divide-y divide-[var(--plate-edge)]">
-                {product.specs.map(([key, value]) => (
+                {text.specs.map(([key, value]) => (
                   <tr key={key}>
                     <th
                       scope="row"
@@ -116,24 +131,28 @@ export function ProductDetail({ product }: { product: Product }) {
           </div>
         </div>
 
-        <ProductReviews productId={product.id} />
+        <ProductReviews productId={product.id} locale={locale} />
 
         {related.length > 0 && (
           <section className="mt-20 border-t border-[var(--plate-edge)] pt-10">
             <h2 className="font-display text-h2 font-medium text-cream-bright">
-              Ещё в разделе «{categoryLabel(product.category)}»
+              {t.related(categoryText(product.category, locale))}
             </h2>
             <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {related.map((other) => (
                 <li key={other.id} className="h-full">
-                  <ProductCard product={other} fitsModel={matchesModel(other, model)} />
+                  <ProductCard
+                    product={other}
+                    fitsModel={matchesModel(other, model)}
+                    locale={locale}
+                  />
                 </li>
               ))}
             </ul>
           </section>
         )}
       </main>
-      <Footer />
+      <Footer locale={locale} />
     </>
   );
 }

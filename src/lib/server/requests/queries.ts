@@ -126,6 +126,75 @@ export async function listOpenRequests(executorId: string): Promise<RequestRow[]
   return rows;
 }
 
+/**
+ * История откликов исполнителя — все, включая отклонённые.
+ *
+ * Отклонённые не прячутся: «я откликался, и меня не выбрали» — это факт,
+ * который человек имеет право видеть. Список, где неудачи молча исчезают,
+ * оставляет ощущение, что отклик просто не отправился.
+ *
+ * Заголовок и статус заявки достаются тем же запросом: без них строка
+ * «отклонён, 240 000 ₽» не значит ничего.
+ */
+export interface ExecutorResponseRow {
+  id: string;
+  requestId: string;
+  requestTitle: string;
+  requestStatus: RequestStatus;
+  requestCity: string | null;
+  status: "pending" | "accepted" | "rejected" | "withdrawn";
+  message: string | null;
+  priceAmount: string | null;
+  leadTimeDays: number | null;
+  createdAt: Date;
+}
+
+export async function listExecutorResponses(executorId: string): Promise<ExecutorResponseRow[]> {
+  const { rows } = await query<ExecutorResponseRow>(
+    `select rs.id,
+            rs.request_id     as "requestId",
+            r.title           as "requestTitle",
+            r.status          as "requestStatus",
+            r.city            as "requestCity",
+            rs.status,
+            rs.message,
+            rs.price_amount   as "priceAmount",
+            rs.lead_time_days as "leadTimeDays",
+            rs.created_at     as "createdAt"
+       from responses rs
+       join requests r on r.id = rs.request_id
+      where rs.executor_id = $1
+      order by rs.created_at desc
+      limit 200`,
+    [executorId],
+  );
+  return rows;
+}
+
+/**
+ * Работа исполнителя: заявки, где его отклик приняли.
+ *
+ * Отдельно от списка откликов, хотя данные те же: отклик — это заявка о
+ * себе, а принятая заявка — обязательство. Смешанные в одном списке, они
+ * заставляют человека каждый раз глазами отделять «я предложил» от «я
+ * должен сделать».
+ */
+export async function listExecutorWork(executorId: string): Promise<RequestRow[]> {
+  const { rows } = await query<RequestRow>(
+    `select ${requestColumns()},
+            (select count(*) from responses rs2
+              where rs2.request_id = r.id and rs2.status <> 'withdrawn')::int as "responsesCount"
+       from requests r
+       join responses rs on rs.request_id = r.id
+      where rs.executor_id = $1
+        and rs.status = 'accepted'
+      order by r.created_at desc
+      limit 200`,
+    [executorId],
+  );
+  return rows;
+}
+
 export async function findRequest(id: string): Promise<RequestRow | null> {
   const { rows } = await query<RequestRow>(
     `select ${requestColumns()} from requests r where r.id = $1`,

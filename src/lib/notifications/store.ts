@@ -142,5 +142,9 @@ export function notificationHref(n: Notification): string {
   if (n.kind === "subscription_expiring" || n.kind === "subscription_expired") {
     return "/subscribe";
   }
+  // Сообщение ведёт на саму заявку, а не в кабинет: разговор там, и
+  // «откройте кабинет и найдите заявку» после уведомления о сообщении —
+  // это два лишних шага до текста, который человеку и показывали.
+  if (n.kind === "message_received" && n.requestId) return `/requests/${n.requestId}`;
   return n.requestId ? `/cabinet#request-${n.requestId}` : "/cabinet";
 }

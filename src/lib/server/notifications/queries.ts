@@ -22,6 +22,7 @@ export type NotificationKind =
   | "response_accepted"
   | "response_rejected"
   | "request_completed"
+  | "message_received"
   | "request_cancelled"
   | "subscription_expiring"
   | "subscription_expired";

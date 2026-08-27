@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { RatingLine, Stars } from "@/components/Rating";
 import { Reveal } from "@/components/ui/Reveal";
 // ⚠️ ВРЕМЕННОЕ ТЕСТОВОЕ ПОСЛАБЛЕНИЕ — удалить вместе с миграцией 0010.
 import { DemoReviewForm } from "@/components/demo/DemoReviewForm";
@@ -168,12 +169,7 @@ export function ExecutorList({
                           {/* Звёзды — картинка, и голосом «★★★★★» ничего не
                               значит. Программе чтения отдаётся фраза, а сами
                               символы от неё скрыты целиком. */}
-                          <span aria-label={`Оценка ${review.rating} из 5`} role="img">
-                            <span aria-hidden="true" className="font-bold text-accent">
-                              {"★".repeat(review.rating)}
-                            </span>
-                            <span aria-hidden="true">{"★".repeat(5 - review.rating)}</span>
-                          </span>{" "}
+                          <Stars rating={review.rating} />{" "}
                           {review.authorName}
                         </p>
                         {review.comment && (
@@ -265,23 +261,7 @@ function Reputation({
 }) {
   return (
     <div className="mt-3 space-y-1">
-      {average === null ? (
-        <p className="text-body-s text-cream-dim">Пока нет отзывов</p>
-      ) : (
-        <p className="text-body-s text-cream">
-          <span className="font-bold text-accent" aria-hidden="true">
-            ★
-          </span>{" "}
-          <span className="font-bold tabular-nums">
-            {/* toFixed(1), потому что «4,7» человек читает, а «4,7000000001» нет */}
-            {average.toFixed(1)}
-          </span>
-          <span className="text-cream-dim">
-            {" · "}
-            {reviewCount} {plural(reviewCount, "отзыв", "отзыва", "отзывов")}
-          </span>
-        </p>
-      )}
+      <RatingLine average={average} count={reviewCount} />
 
       {completed === 0 ? (
         <p className="text-body-s text-cream-dim">Пока без завершённых заявок</p>

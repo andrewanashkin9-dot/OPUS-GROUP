@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { RatingLine } from "@/components/Rating";
 import { formatRub } from "@/lib/format";
+import { useProductRatings } from "@/lib/product-ratings";
 import { categoryLabel, priceUnitLabel, type Product } from "@/lib/marketplace";
 import { AddToCart } from "./AddToCart";
 import { ProductPhoto } from "./ProductPhoto";
@@ -23,6 +25,12 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, fitsModel = false, priority }: ProductCardProps) {
+  // Оценка приезжает после отрисовки, поэтому карточка и вся страница
+  // каталога остаются заранее собранными. Пока не приехала — строки нет
+  // вовсе, а не «пока нет отзывов»: у товара без единого отзыва и у товара,
+  // чью оценку ещё везут, разный смысл, и мигать между ними некрасиво.
+  const rating = useProductRatings()[product.id];
+
   return (
     <article className="plate plate-lift relative flex h-full flex-col overflow-hidden">
       <div className="relative aspect-[4/3] overflow-hidden border-b border-[var(--plate-edge)] bg-bg">
@@ -49,6 +57,10 @@ export function ProductCard({ product, fitsModel = false, priority }: ProductCar
             {product.name}
           </Link>
         </h3>
+
+        {rating && (
+          <RatingLine average={rating.average} count={rating.count} className="mt-2" />
+        )}
 
         <p className="mt-2 line-clamp-3 flex-1 text-body-s text-cream-dim">
           {product.summary}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { StoreHydrator } from "@/components/StoreHydrator";
 import { WelcomeAchievement } from "@/components/WelcomeAchievement";
 // TODO: удалить перед запуском — временная демо-вставка, см. TODO_BEFORE_LAUNCH.md
+import { DemoAutoGuest } from "@/components/demo/DemoAutoGuest";
 import { DemoModeCorner } from "@/components/demo/DemoModeCorner";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { BlueprintSpace } from "@/components/ui/BlueprintSpace";
@@ -53,7 +54,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             рисует и никуда не ходит. */}
         <WelcomeAchievement />
 
-{/* TODO: удалить перед запуском — переключатель «Посетитель /
+        {/* TODO: удалить перед запуском — тихий вход гостем, чтобы демо
+            работало без регистрации. Ничего не рисует. */}
+        <DemoAutoGuest />
+
+        {/* TODO: удалить перед запуском — переключатель «Посетитель /
             Модератор» в углу. Включён всегда, без переменных окружения:
             выключателя у него больше нет, и убирается он только удалением
             этих двух строк и самого компонента. */}

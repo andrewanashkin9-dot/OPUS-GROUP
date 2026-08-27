@@ -561,6 +561,64 @@ const PRODUCT_REVIEWS: { productId: string; showcase: string; items: [number, st
   },
 ];
 
+/**
+ * ⚠️ ВРЕМЕННО: очередь на модерацию.
+ *
+ * Настоящих регистраций пока нет, а экран модерации без единой строки не
+ * показывает ничего. Эти люди выдуманы: их можно блокировать и
+ * разблокировать по-настоящему — записи в базе настоящие, журнал решений
+ * ведётся, — просто сами люди ненастоящие.
+ *
+ * Статусы разные нарочно: `pending` — те, кого ещё не проверяли, `blocked` —
+ * чтобы было видно и разблокировку, и уже записанную причину.
+ */
+const MODERATION_QUEUE: {
+  slug: string;
+  name: string;
+  role: "client" | "executor";
+  status: "pending" | "active" | "blocked";
+  city: string | null;
+  /** Причина блокировки — только для тех, кто заведён уже заблокированным. */
+  blockedFor?: string;
+}[] = [
+  { slug: "mod-1", name: "Аркадий Пестов", role: "client", status: "pending", city: "Пермь" },
+  { slug: "mod-2", name: "Бригада «Скорая кровля»", role: "executor", status: "pending", city: "Челябинск" },
+  { slug: "mod-3", name: "Лидия Кравец", role: "client", status: "pending", city: "Екатеринбург" },
+  { slug: "mod-4", name: "ООО «СтройГарант-96»", role: "executor", status: "pending", city: "Екатеринбург" },
+  { slug: "mod-5", name: "Тимур Ахметов", role: "client", status: "active", city: "Тюмень" },
+  {
+    slug: "mod-6",
+    name: "Бригада «Дешёвый фасад»",
+    role: "executor",
+    status: "blocked",
+    city: "Курган",
+    blockedFor:
+      "Три жалобы на предоплату без выхода на объект. Заблокирован до выяснения, обращения по спорным заявкам — на support@opus-group.ru.",
+  },
+  {
+    slug: "mod-7",
+    name: "Реклама Стройбаза24",
+    role: "client",
+    status: "blocked",
+    city: null,
+    blockedFor: "Рассылка рекламы в переписке по чужим заявкам. Блокировка бессрочная.",
+  },
+];
+
+/**
+ * ⚠️ ВРЕМЕННО: менеджеры поставщиков для тестового чата.
+ *
+ * Роль `client`, а не `executor`, намеренно: исполнители попадают в выдачу
+ * бригад на «Услугах», и менеджер поставщика стоял бы там среди кровельщиков.
+ * Для переписки роль не важна вовсе — право писать выводится из заявки, а не
+ * из роли.
+ */
+const MANAGERS: { slug: string; name: string; city: string; about: string }[] = [
+  { slug: "manager-roof", name: "Марина Соловьёва", city: "Пермь", about: "Кровля и фасад" },
+  { slug: "manager-interior", name: "Олег Батурин", city: "Екатеринбург", about: "Отделка и полы" },
+  { slug: "manager-base", name: "Ирина Козлова", city: "Челябинск", about: "Фундамент, забор, окна" },
+];
+
 type Db = {
   query: (text: string, values?: unknown[]) => Promise<{ rows: { id: string }[]; rowCount: number | null }>;
 };
@@ -578,6 +636,15 @@ async function main(): Promise<void> {
       await removeDemoData();
       return;
     }
+
+    // Сначала убираем прошлый прогон, потом заводим заново.
+    //
+    // Иначе второй запуск падал на уникальности отзывов: пользователей
+    // скрипт обновлял, а отзывы и заявки вставлял заново. Падение было
+    // безобидным — всё в одной транзакции, база не менялась, — но
+    // бесполезным: «запусти сид ещё раз» это ровно то, что делают, когда
+    // хотят вернуть демо-данные в исходное состояние.
+    await removeDemoData({ quiet: true });
 
     const passwordHash = await hashPassword(DEMO_PASSWORD);
 
@@ -599,8 +666,9 @@ async function main(): Promise<void> {
       }
 
       // Модератор — чтобы раздел «Модерация» можно было открыть, не правя
-      // роль в базе руками (пункт 2 временных вставок).
-      await upsertUser(db, {
+      // роль в базе руками (пункт 2 временных вставок). Его id нужен ниже:
+      // от его имени записаны причины блокировок в очереди.
+      const moderatorId = await upsertUser(db, {
         email: `moderator${DEMO_EMAIL_SUFFIX}`,
         displayName: "Демо-модератор",
         role: "moderator",
@@ -697,6 +765,44 @@ async function main(): Promise<void> {
         }
       }
 
+      // ⚠️ ВРЕМЕННО: очередь на модерацию и менеджеры для тестового чата.
+      for (const person of MODERATION_QUEUE) {
+        const id = await upsertUser(db, {
+          email: `${person.slug}${DEMO_EMAIL_SUFFIX}`,
+          displayName: person.name,
+          role: person.role,
+          city: person.city,
+          passwordHash,
+          status: person.status,
+        });
+
+        // У заблокированного должна быть записанная причина — иначе экран
+        // модерации показывает «заблокирован» без объяснения, а по 289-ФЗ
+        // блокировка обязана быть объяснимой.
+        if (person.status === "blocked" && person.blockedFor) {
+          await db.query(
+            `insert into moderation_actions
+               (actor_id, target_id, action, reason, previous_status, new_status)
+             select $1, $2, 'block', $3, 'active', 'blocked'
+              where not exists (
+                select 1 from moderation_actions
+                 where target_id = $2 and action = 'block'
+              )`,
+            [moderatorId, id, person.blockedFor],
+          );
+        }
+      }
+
+      for (const manager of MANAGERS) {
+        await upsertUser(db, {
+          email: `${manager.slug}${DEMO_EMAIL_SUFFIX}`,
+          displayName: manager.name,
+          role: "client",
+          city: manager.city,
+          passwordHash,
+        });
+      }
+
       // Отзывы о товарах. Авторы — те же демо-заказчики: человек, который
       // строил дом, вполне мог заодно оценить черепицу, которой его крыл.
       const catalogIds = new Set(PRODUCTS.map((p) => p.id));
@@ -758,6 +864,15 @@ async function main(): Promise<void> {
       console.log(`  ${entry.productId.padEnd(26)} ★ ${avg}  отзывов: ${String(n).padStart(2)}  — ${entry.showcase}`);
     }
 
+    console.log("\nОчередь на модерацию (⚠️ временно):");
+    for (const person of MODERATION_QUEUE) {
+      console.log(`  ${person.name.padEnd(26)} ${person.status.padEnd(8)} ${person.slug}${DEMO_EMAIL_SUFFIX}`);
+    }
+    console.log("\nМенеджеры для тестового чата (⚠️ временно):");
+    for (const m of MANAGERS) {
+      console.log(`  ${m.name.padEnd(20)} ${m.about.padEnd(24)} ${m.slug}${DEMO_EMAIL_SUFFIX}`);
+    }
+
     console.log(`\nВход в любую из них: <slug>${DEMO_EMAIL_SUFFIX}, пароль ${DEMO_PASSWORD}`);
     console.log(`Заказчики: client1…client${CLIENTS.length}${DEMO_EMAIL_SUFFIX}`);
     console.log(`Модератор: moderator${DEMO_EMAIL_SUFFIX}`);
@@ -781,18 +896,20 @@ async function upsertUser(
     role: string;
     city: string | null;
     passwordHash: string;
+    /** По умолчанию active. Очередь на модерацию заводится pending/blocked. */
+    status?: "pending" | "active" | "blocked";
   },
 ): Promise<string> {
   const { rows } = await db.query(
     `insert into users (email, password_hash, display_name, role, status, city, email_verified_at)
-     values ($1, $2, $3, $4::user_role, 'active', $5, now())
+     values ($1, $2, $3, $4::user_role, $6::user_status, $5, now())
      on conflict (lower(email)) where email is not null
        do update set display_name = excluded.display_name,
                      role         = excluded.role,
-                     status       = 'active',
+                     status       = excluded.status,
                      city         = excluded.city
      returning id`,
-    [input.email, input.passwordHash, input.displayName, input.role, input.city],
+    [input.email, input.passwordHash, input.displayName, input.role, input.city, input.status ?? "active"],
   );
   return rows[0].id;
 }
@@ -811,7 +928,7 @@ async function upsertUser(
  * демо-данные. Снимается ровно на одну транзакцию и тут же возвращается;
  * если транзакция сорвётся, откатится и снятие.
  */
-async function removeDemoData(): Promise<void> {
+async function removeDemoData(options: { quiet?: boolean } = {}): Promise<void> {
   const { withTransaction } = await import("../src/lib/server/db");
 
   await withTransaction(async (db) => {
@@ -863,7 +980,11 @@ async function removeDemoData(): Promise<void> {
     const { rowCount } = await db.query(
       `delete from users where email like '%${DEMO_EMAIL_SUFFIX}'`,
     );
-    console.log(`Удалено демо-пользователей: ${rowCount ?? 0}. База чистая.`);
+    if (!options.quiet) {
+      console.log(`Удалено демо-пользователей: ${rowCount ?? 0}. База чистая.`);
+    } else if ((rowCount ?? 0) > 0) {
+      console.log(`Прошлый прогон убран: ${rowCount} демо-пользователей.\n`);
+    }
   });
 }
 

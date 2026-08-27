@@ -21,7 +21,7 @@ import { AddToCart } from "./AddToCart";
 import { ProductCard } from "./ProductCard";
 import { ProductPhoto } from "./ProductPhoto";
 import { ProductReviews } from "./ProductReviews";
-// ⚠️ ВРЕМЕННАЯ ДЕМО-ВСТАВКА — см. TODO_BEFORE_LAUNCH.md
+// TODO: удалить перед запуском — см. TODO_BEFORE_LAUNCH.md
 import { DemoManagerChat } from "@/components/demo/DemoManagerChat";
 
 export function ProductDetail({
@@ -112,7 +112,7 @@ export function ProductDetail({
               <AddToCart product={product} locale={locale} />
             </div>
 
-            {/* ⚠️ ВРЕМЕННО: чат с демо-менеджером поставщика. */}
+            {/* TODO: удалить перед запуском — чат с демо-менеджером поставщика. */}
             <DemoManagerChat productId={product.id} />
 
             <table className="mt-10 w-full border-t border-[var(--plate-edge)] text-body-s">

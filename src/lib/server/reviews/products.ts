@@ -70,7 +70,7 @@ export async function listProductReviews(
             v.comment,
             u.display_name as "authorName",
             v.created_at   as "createdAt",
-            -- ⚠️ ВРЕМЕННО: пометка демо-отзывов. Удаляется вместе с
+            -- TODO: удалить перед запуском — пометка демо-отзывов. Удаляется вместе с
             -- сид-скриптом, когда появятся настоящие покупатели.
             (u.email like '%@demo.opusgroup') as "isDemo"
        from product_reviews v

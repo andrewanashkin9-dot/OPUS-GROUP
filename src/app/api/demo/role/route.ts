@@ -4,22 +4,22 @@ import { noStore, requestMeta } from "@/lib/server/auth/http";
 import { readJson } from "@/lib/server/auth/validate";
 import { createSession, setSessionCookies } from "@/lib/server/auth/session";
 import { query } from "@/lib/server/db";
-import { isDemoMode } from "@/lib/demo-mode";
 import type { UserRole } from "@/lib/server/auth/tokens";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * ⚠️ ВРЕМЕННАЯ ДЕМО-ВСТАВКА — удаляется одним коммитом (см. README).
+ * TODO: удалить перед запуском — временная демо-вставка.
  *
  * Смена собственной роли, чтобы раздел «Модерация» можно было открыть, не
  * правя базу руками.
  *
- * Это, разумеется, дыра: любой вошедший делает себя модератором. Поэтому
- * маршрут закрыт флагом DEMO_MODE и без него отвечает 404 — не 403.
- * 404 означает «такого маршрута нет», и по ответу нельзя узнать, что где-то
- * есть выключенная возможность повысить себе права.
+ * ⚠️ Маршрут работает всегда: выключателя у него нет по прямой просьбе.
+ * Это значит, что **любой вошедший на боевом сайте может сделать себя
+ * модератором** — открыть чужие анкеты и блокировать людей. Убирается это
+ * не настройкой, а удалением файла: маршрут, кнопка в кабинете
+ * (DemoRoleSwitch) и плашка в углу (DemoModeCorner).
  *
  * `admin` в списке нет: у него шире права, чем у модератора, и «на посмотреть»
  * он не нужен. Чем меньше умеет временный маршрут, тем меньше он стоит, если
@@ -28,10 +28,6 @@ export const dynamic = "force-dynamic";
 const SWITCHABLE: UserRole[] = ["client", "executor", "moderator"];
 
 export async function POST(request: Request) {
-  if (!isDemoMode()) {
-    return NextResponse.json({ error: "not_found" }, noStore(404));
-  }
-
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
 

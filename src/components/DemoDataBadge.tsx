@@ -2,7 +2,7 @@ import { getDictionary } from "@/lib/i18n/dictionary";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locale";
 
 /**
- * ⚠️ ВРЕМЕННАЯ ДЕМО-ВСТАВКА — удаляется вместе с сид-скриптом (см. README).
+ * TODO: удалить перед запуском — вместе с сид-скриптом (см. README).
  *
  * Подпись «демо-данные» рядом с блоком отзывов.
  *

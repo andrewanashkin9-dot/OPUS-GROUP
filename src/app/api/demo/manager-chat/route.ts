@@ -3,14 +3,13 @@ import { requireUser } from "@/lib/server/auth/guard";
 import { noStore } from "@/lib/server/auth/http";
 import { readJson } from "@/lib/server/auth/validate";
 import { withTransaction } from "@/lib/server/db";
-import { isDemoMode } from "@/lib/demo-mode";
 import { productById } from "@/lib/marketplace";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * ⚠️⚠️ ВРЕМЕННАЯ ДЕМО-ВСТАВКА — удалить перед запуском
+ * TODO: удалить перед запуском — временная демо-вставка
  * (см. TODO_BEFORE_LAUNCH.md).
  *
  * Чат с менеджером поставщика прямо из карточки товара, без настоящей
@@ -28,13 +27,11 @@ export const dynamic = "force-dynamic";
  * как было — удалить этот маршрут и кнопку, а сами заявки уйдут вместе с
  * демо-данными.
  *
- * Закрыт флагом DEMO_MODE: без него 404, как и переключатель роли.
+ * Выключателя нет: маршрут доступен всем вошедшим. Прав он никому не
+ * повышает — заводит заявку от имени самого спрашивающего, — но заявки эти
+ * настоящие и лежат в общей базе. Убирается удалением файла и кнопки.
  */
 export async function POST(request: Request) {
-  if (!isDemoMode()) {
-    return NextResponse.json({ error: "not_found" }, noStore(404));
-  }
-
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
 

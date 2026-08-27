@@ -10,9 +10,8 @@ import { SubscriptionPanel } from "./SubscriptionPanel";
 import { ProfilePanel } from "./ProfilePanel";
 import { EmailNotice } from "./EmailNotice";
 import { FreeQuotaNote } from "./FreeQuotaNote";
-// ⚠️ ВРЕМЕННЫЕ ДЕМО-ВСТАВКИ — удаляются одним коммитом (см. README).
+// TODO: удалить перед запуском — демо-вставки (см. README).
 import { DemoRoleSwitch } from "@/components/demo/DemoRoleSwitch";
-import { isDemoMode } from "@/lib/demo-mode";
 import { getOwnProfile } from "@/lib/server/profiles/queries";
 import { query } from "@/lib/server/db";
 import { readAccessState } from "@/lib/server/payments/access";
@@ -82,8 +81,8 @@ export default async function CabinetPage() {
 
         {user.email && !user.emailVerifiedAt && <EmailNotice />}
 
-        {/* ⚠️ ВРЕМЕННАЯ ДЕМО-ВСТАВКА — удалить вместе с остальными. */}
-        {isDemoMode() && <DemoRoleSwitch currentRole={user.role} />}
+{/* TODO: удалить перед запуском — переключатель роли. */}
+        <DemoRoleSwitch currentRole={user.role} />
 
         {/* Остаток бесплатных откликов — на том же экране, где исполнитель
             откликается. ⚠️ Помечено как временная вставка (см. README). */}
@@ -142,7 +141,7 @@ async function renderExecutorHistory(executorId: string) {
 /**
  * Остаток бесплатных откликов.
  *
- * ⚠️ ВРЕМЕННАЯ ДЕМО-ВСТАВКА — см. README.
+ * TODO: удалить перед запуском — демо-вставка (см. README).
  */
 async function renderFreeQuota(executorId: string) {
   const access = await readAccessState(executorId);

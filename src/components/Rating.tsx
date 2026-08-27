@@ -1,4 +1,5 @@
-import { plural } from "@/lib/requests-ui";
+import { getDictionary } from "@/lib/i18n/dictionary";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locale";
 
 /**
  * Оценка — одинаково у бригад и у товаров.
@@ -16,17 +17,21 @@ import { plural } from "@/lib/requests-ui";
 export function RatingLine({
   average,
   count,
-  empty = "Пока нет отзывов",
+  empty,
+  locale = DEFAULT_LOCALE,
   className = "",
 }: {
   average: number | null;
   count: number;
   /** Что писать, когда отзывов нет. У товара и у бригады формулировка своя. */
   empty?: string;
+  locale?: Locale;
   className?: string;
 }) {
+  const t = getDictionary(locale).services;
+
   if (average === null || count === 0) {
-    return <p className={`text-body-s text-cream-dim ${className}`}>{empty}</p>;
+    return <p className={`text-body-s text-cream-dim ${className}`}>{empty ?? t.noReviews}</p>;
   }
 
   return (
@@ -37,7 +42,7 @@ export function RatingLine({
       <span className="font-bold tabular-nums">{average.toFixed(1)}</span>
       <span className="text-cream-dim">
         {" · "}
-        {count} {plural(count, "отзыв", "отзыва", "отзывов")}
+        {t.reviews(count)}
       </span>
     </p>
   );

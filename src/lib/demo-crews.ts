@@ -1,4 +1,4 @@
-import type { ExecutorCard } from "@/app/services/ExecutorList";
+import type { ExecutorCard } from "@/components/pages/ExecutorList";
 
 /**
  * Пять бригад-примеров для раздела «Услуги».

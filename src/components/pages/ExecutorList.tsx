@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { DemoDataBadge } from "@/components/DemoDataBadge";
 import { RatingLine, Stars } from "@/components/Rating";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locale";
@@ -33,7 +34,12 @@ export interface ReviewCard {
   comment: string | null;
   authorName: string;
   createdAt: string | Date;
+  /** ⚠️ ВРЕМЕННО: отзыв из сид-скрипта. Удалить вместе с сидом. */
+  isDemo?: boolean;
 }
+
+/** ⚠️ ВРЕМЕННО: метка, которой сид помечает свои тексты в базе. */
+const DEMO_PREFIX = "[демо] ";
 
 export interface ExecutorCard {
   id: string;
@@ -161,6 +167,12 @@ export function ExecutorList({
                       <p className="mt-4 flex-1 text-body-s text-cream-dim">{crew.bio}</p>
                     )}
 
+                    {/* ⚠️ ВРЕМЕННО: подпись у демо-отзывов, пропадёт вместе
+                        с тестовыми данными. */}
+                    {crew.reviews.length > 0 && crew.reviews.every((r) => r.isDemo) && (
+                      <DemoDataBadge locale={locale} className="mt-4" />
+                    )}
+
                     {crew.reviews.length > 0 && (
                   <ul className="mt-4 space-y-3 border-t border-[var(--plate-edge)] pt-4">
                     {crew.reviews.map((review) => (
@@ -173,7 +185,9 @@ export function ExecutorList({
                           {review.authorName}
                         </p>
                         {review.comment && (
-                          <p className="mt-1 text-body-s text-cream-dim">«{review.comment}»</p>
+                          <p className="mt-1 text-body-s text-cream-dim">
+                            «{review.comment.startsWith(DEMO_PREFIX) ? review.comment.slice(DEMO_PREFIX.length) : review.comment}»
+                          </p>
                         )}
                       </li>
                     ))}

@@ -28,6 +28,15 @@ export interface ProductReview {
   comment: string | null;
   authorName: string;
   createdAt: Date;
+  /**
+   * ⚠️ Отзыв заведён сид-скриптом для показа, а не настоящим покупателем.
+   *
+   * Признак вычисляется по автору, а не хранится колонкой: демо-заказчики
+   * заведены с почтой на `@demo.opusgroup`, и когда их удалят вместе с
+   * отзывами (`npm run demo:seed -- --clean`), признак исчезнет сам. Колонка
+   * в таблице пережила бы уборку и осталась бы врать.
+   */
+  isDemo: boolean;
 }
 
 /**
@@ -60,7 +69,10 @@ export async function listProductReviews(
             v.rating,
             v.comment,
             u.display_name as "authorName",
-            v.created_at   as "createdAt"
+            v.created_at   as "createdAt",
+            -- ⚠️ ВРЕМЕННО: пометка демо-отзывов. Удаляется вместе с
+            -- сид-скриптом, когда появятся настоящие покупатели.
+            (u.email like '%@demo.opusgroup') as "isDemo"
        from product_reviews v
        join users u on u.id = v.author_id
       where v.product_id = $1

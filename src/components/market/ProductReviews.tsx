@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DemoDataBadge } from "@/components/DemoDataBadge";
 import { RatingLine, Stars } from "@/components/Rating";
 import { formatDate } from "@/lib/requests-ui";
 import { useProductRatings } from "@/lib/product-ratings";
@@ -24,7 +25,12 @@ interface Review {
   comment: string | null;
   authorName: string;
   createdAt: string;
+  /** ⚠️ ВРЕМЕННО: отзыв из сид-скрипта, а не от покупателя. */
+  isDemo: boolean;
 }
+
+/** ⚠️ ВРЕМЕННО: метка, которой сид помечает свои тексты в базе. */
+const DEMO_PREFIX = "[демо] ";
 
 export function ProductReviews({ productId }: { productId: string }) {
   const rating = useProductRatings()[productId];
@@ -61,6 +67,13 @@ export function ProductReviews({ productId }: { productId: string }) {
         />
       </div>
 
+      {/* ⚠️ ВРЕМЕННО: подпись у демо-отзывов. Показывается, только если все
+          показанные отзывы заведены сид-скриптом; как только появится хоть
+          один настоящий, подпись пропадёт сама. Удалять вместе с сидом. */}
+      {reviews.length > 0 && reviews.every((r) => r.isDemo) && (
+        <DemoDataBadge className="mt-4" />
+      )}
+
       {reviews.length > 0 && (
         <ul className="mt-8 grid gap-6 sm:grid-cols-2">
           {reviews.map((review) => (
@@ -73,7 +86,12 @@ export function ProductReviews({ productId }: { productId: string }) {
               </div>
               <p className="mt-1 text-caption text-cream-dim">{review.authorName}</p>
               {review.comment && (
-                <p className="mt-3 text-body-s text-soft">«{review.comment}»</p>
+                // Метку «[демо]» из текста убираем при показе: в базе она
+                // нужна, чтобы данные можно было найти и удалить, а в
+                // цитате она мусор — про то же самое уже сказала подпись.
+                <p className="mt-3 text-body-s text-soft">
+                  «{review.comment.startsWith(DEMO_PREFIX) ? review.comment.slice(DEMO_PREFIX.length) : review.comment}»
+                </p>
               )}
             </li>
           ))}

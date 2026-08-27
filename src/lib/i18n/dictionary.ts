@@ -94,6 +94,8 @@ export interface Dictionary {
   };
   langSwitch: { label: string; to: (name: string) => string };
   theme: { blue: string; black: string; switchTo: (name: string) => string };
+  /** ⚠️ ВРЕМЕННО: подпись у демо-отзывов. Удалить вместе с сид-скриптом. */
+  demoReviews: { badge: string; title: string };
 }
 
 /** «3 отзыва» — русские окончания. */
@@ -231,6 +233,10 @@ const ru: Dictionary = {
     entity: "ООО «Опус Групп», Екатеринбург",
   },
   langSwitch: { label: "Язык", to: (name) => `Переключить на ${name}` },
+  demoReviews: {
+    badge: "демо-данные",
+    title: "Отзывы заведены для примера — настоящих покупателей у этого товара ещё не было.",
+  },
   theme: {
     blue: "Синяя калька",
     black: "Чёрная калька",
@@ -366,6 +372,10 @@ const en: Dictionary = {
     entity: "OOO Opus Group, Yekaterinburg",
   },
   langSwitch: { label: "Language", to: (name) => `Switch to ${name}` },
+  demoReviews: {
+    badge: "sample data",
+    title: "These reviews are seeded as an example — this product has had no real buyers yet.",
+  },
   theme: {
     blue: "Blue tracing paper",
     black: "Black tracing paper",

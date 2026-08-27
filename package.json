@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": "npm run db:migrate:deploy && next build",
+    "vercel-build": "npm run db:migrate:deploy && npm run db:seed:deploy && next build",
     "start": "next start",
     "lint": "eslint",
     "db:check": "tsx --conditions=react-server scripts/check-db.ts",
@@ -18,7 +18,8 @@
     "db:cleanup": "tsx --conditions=react-server scripts/cleanup.ts",
     "billing:charge": "tsx --conditions=react-server scripts/billing.ts",
     "_comment_demo": "ВРЕМЕННАЯ ДЕМО-ВСТАВКА — удаляется вместе с scripts/seed-demo.ts, см. README",
-    "demo:seed": "tsx --conditions=react-server scripts/seed-demo.ts"
+    "demo:seed": "tsx --conditions=react-server scripts/seed-demo.ts",
+    "db:seed:deploy": "tsx --conditions=react-server scripts/deploy-seed.ts"
   },
   "dependencies": {
     "@fontsource/manrope": "^5.3.0",

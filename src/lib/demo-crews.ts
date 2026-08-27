@@ -11,9 +11,10 @@ import type { ExecutorCard } from "@/app/services/ExecutorList";
  * Что здесь намеренно НЕ выдумано:
  *
  *  - **репутация**. У всех ноль завершённых заявок, и карточка честно пишет
- *    «пока без завершённых заявок». Нарисовать «12 завершённых» было бы
- *    рекламой несуществующей бригады, а по такой рекламе человек выбирает,
- *    кому доверить крышу.
+ *    «пока без завершённых заявок», а отзывов нет вовсе — «пока нет отзывов».
+ *    Нарисовать «12 завершённых» или «4,8 звезды» было бы рекламой
+ *    несуществующей бригады, а по такой рекламе человек выбирает, кому
+ *    доверить крышу.
  *  - **подписка**. Значок Technic не ставится никому: это платный статус, и
  *    рисовать его бесплатно — обесценивать его у тех, кто заплатит.
  *  - **контакты**. Ни телефонов, ни почт, ни ссылок. Позвонить по образцу
@@ -34,6 +35,12 @@ export const DEMO_CREWS: ExecutorCard[] = [
     completedDeals: 0,
     cancelledDeals: 0,
     completionRate: null,
+    // Отзывов у образца нет по той же причине, по которой нет завершённых
+    // заявок: оценка, которую никто не ставил, — это реклама, а по ней
+    // выбирают, кому доверить крышу.
+    ratingAverage: null,
+    reviewCount: 0,
+    reviews: [],
     hasActiveSubscription: false,
   },
   {
@@ -46,6 +53,12 @@ export const DEMO_CREWS: ExecutorCard[] = [
     completedDeals: 0,
     cancelledDeals: 0,
     completionRate: null,
+    // Отзывов у образца нет по той же причине, по которой нет завершённых
+    // заявок: оценка, которую никто не ставил, — это реклама, а по ней
+    // выбирают, кому доверить крышу.
+    ratingAverage: null,
+    reviewCount: 0,
+    reviews: [],
     hasActiveSubscription: false,
   },
   {
@@ -58,6 +71,12 @@ export const DEMO_CREWS: ExecutorCard[] = [
     completedDeals: 0,
     cancelledDeals: 0,
     completionRate: null,
+    // Отзывов у образца нет по той же причине, по которой нет завершённых
+    // заявок: оценка, которую никто не ставил, — это реклама, а по ней
+    // выбирают, кому доверить крышу.
+    ratingAverage: null,
+    reviewCount: 0,
+    reviews: [],
     hasActiveSubscription: false,
   },
   {
@@ -70,6 +89,12 @@ export const DEMO_CREWS: ExecutorCard[] = [
     completedDeals: 0,
     cancelledDeals: 0,
     completionRate: null,
+    // Отзывов у образца нет по той же причине, по которой нет завершённых
+    // заявок: оценка, которую никто не ставил, — это реклама, а по ней
+    // выбирают, кому доверить крышу.
+    ratingAverage: null,
+    reviewCount: 0,
+    reviews: [],
     hasActiveSubscription: false,
   },
   {
@@ -82,6 +107,12 @@ export const DEMO_CREWS: ExecutorCard[] = [
     completedDeals: 0,
     cancelledDeals: 0,
     completionRate: null,
+    // Отзывов у образца нет по той же причине, по которой нет завершённых
+    // заявок: оценка, которую никто не ставил, — это реклама, а по ней
+    // выбирают, кому доверить крышу.
+    ratingAverage: null,
+    reviewCount: 0,
+    reviews: [],
     hasActiveSubscription: false,
   },
 ];

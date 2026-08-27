@@ -14,7 +14,9 @@
     "db:migrate": "tsx --conditions=react-server scripts/migrate.ts",
     "db:migrate:status": "tsx --conditions=react-server scripts/migrate.ts --status",
     "db:cleanup": "tsx --conditions=react-server scripts/cleanup.ts",
-    "billing:charge": "tsx --conditions=react-server scripts/billing.ts"
+    "billing:charge": "tsx --conditions=react-server scripts/billing.ts",
+    "_comment_demo": "ВРЕМЕННАЯ ДЕМО-ВСТАВКА — удаляется вместе с scripts/seed-demo.ts, см. README",
+    "demo:seed": "tsx --conditions=react-server scripts/seed-demo.ts"
   },
   "dependencies": {
     "@fontsource/manrope": "^5.3.0",

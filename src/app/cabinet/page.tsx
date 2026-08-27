@@ -8,8 +8,13 @@ import { RequestsPanel } from "./RequestsPanel";
 import { SubscriptionPanel } from "./SubscriptionPanel";
 import { ProfilePanel } from "./ProfilePanel";
 import { EmailNotice } from "./EmailNotice";
+import { FreeQuotaNote } from "./FreeQuotaNote";
+// ⚠️ ВРЕМЕННЫЕ ДЕМО-ВСТАВКИ — удаляются одним коммитом (см. README).
+import { DemoRoleSwitch } from "@/components/demo/DemoRoleSwitch";
+import { isDemoMode } from "@/lib/demo-mode";
 import { getOwnProfile } from "@/lib/server/profiles/queries";
 import { query } from "@/lib/server/db";
+import { readAccessState } from "@/lib/server/payments/access";
 import {
   listClientRequests,
   listOpenRequests,
@@ -74,6 +79,13 @@ export default async function CabinetPage() {
 
         {user.email && !user.emailVerifiedAt && <EmailNotice />}
 
+        {/* ⚠️ ВРЕМЕННАЯ ДЕМО-ВСТАВКА — удалить вместе с остальными. */}
+        {isDemoMode() && <DemoRoleSwitch currentRole={user.role} />}
+
+        {/* Остаток бесплатных откликов — на том же экране, где исполнитель
+            откликается. ⚠️ Помечено как временная вставка (см. README). */}
+        {user.role === "executor" && (await renderFreeQuota(user.id))}
+
         {user.role === "executor" && (await renderSubscription(user.id))}
         {user.role === "executor" && (await renderProfile(user.id))}
 
@@ -105,6 +117,21 @@ function Row({ label, value }: { label: string; value: string }) {
       <dt className="text-body-s text-cream-dim">{label}</dt>
       <dd className="text-body text-cream-bright">{value}</dd>
     </div>
+  );
+}
+
+/**
+ * Остаток бесплатных откликов.
+ *
+ * ⚠️ ВРЕМЕННАЯ ДЕМО-ВСТАВКА — см. README.
+ */
+async function renderFreeQuota(executorId: string) {
+  const access = await readAccessState(executorId);
+  return (
+    <FreeQuotaNote
+      usedResponses={access.usedResponses}
+      hasActiveSubscription={access.hasActiveSubscription}
+    />
   );
 }
 

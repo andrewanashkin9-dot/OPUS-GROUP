@@ -75,7 +75,7 @@ export function RoofControls({ node }: { node: SceneNode }) {
             <p className="mt-2 text-caption text-cream-dim">
               Точный угол — в подписке «Technic».{" "}
               <Link
-                href="/#pricing"
+                href="/subscribe"
                 className="font-medium text-cream-bright underline underline-offset-2"
               >
                 Подключить

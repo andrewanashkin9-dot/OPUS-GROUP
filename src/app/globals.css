@@ -471,6 +471,24 @@ h3,
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Language toggle — the gold knob that slides between RU and EN.
+
+   The knob is a separate layer under the two labels rather than a background
+   on the active one: a background cannot travel between two elements, and
+   the whole point of this control is that the reader sees which way it went.
+--------------------------------------------------------------------------- */
+
+.lang-knob {
+  transition: transform var(--dur) var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lang-knob {
+    transition: none;
+  }
+}
+
 /* Reduced motion disables entrance animation entirely, as asked — the content
    is simply already there. */
 @media (prefers-reduced-motion: reduce) {

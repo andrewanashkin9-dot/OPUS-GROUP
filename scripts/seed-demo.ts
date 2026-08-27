@@ -193,6 +193,79 @@ const CREWS: DemoCrew[] = [
   },
 ];
 
+/**
+ * Отзывы о товарах каталога.
+ *
+ * Идентификаторы взяты из marketplace-catalog.json — того же файла, из
+ * которого магазин рисует карточки. Внешнего ключа между ними нет (каталог
+ * в базу не заведён), поэтому опечатка в id здесь превратилась бы в отзыв,
+ * который никто никогда не увидит: скрипт сверяет их с каталогом сам.
+ *
+ * Подобраны те же случаи, что и у бригад: много отзывов и высокая оценка,
+ * середина, откровенно низкая, единственное мнение, полярные оценки — и
+ * товары вовсе без отзывов, которых в каталоге большинство.
+ */
+const PRODUCT_REVIEWS: { productId: string; showcase: string; items: [number, string | null][] }[] = [
+  {
+    productId: "tn-shinglas-ultra",
+    showcase: "много отзывов, высокая оценка",
+    items: [
+      [5, "Третий сезон на крыше, ни одного гонта не сдуло. Под дождём действительно тихо."],
+      [5, "Резали ножом прямо на месте, подъёмник не понадобился."],
+      [4, "Хорошая черепица, но подложку пришлось докупать отдельно — в расчёте её не было."],
+      [5, "Цвет совпал с образцом, чего я, честно говоря, не ожидал."],
+      [5, null],
+      [4, "Гранулят сыпался первые пару недель, потом перестал. Говорят, так и должно быть."],
+      [5, "Брали на пристрой к тому, что клали пять лет назад. Оттенок сошёлся."],
+      [5, "Вес нормальный, вдвоём таскали пачки без надрыва."],
+      [4, "К материалу вопросов нет. Доставка приехала на день позже."],
+    ],
+  },
+  {
+    productId: "rockwool-scandic",
+    showcase: "средняя оценка",
+    items: [
+      [4, "Плиты держат форму, в распор встают плотно."],
+      [3, "Пылит сильно, без респиратора работать невозможно. Сам материал нормальный."],
+      [4, "После зимы в доме заметно теплее, счёт за газ упал примерно на четверть."],
+      [3, "Упаковка порвалась у двух пачек при разгрузке."],
+      [5, "Брал 200 мм в два слоя вразбежку — сделали по инструкции, доволен."],
+    ],
+  },
+  {
+    productId: "docke-block-house",
+    showcase: "низкая оценка",
+    items: [
+      [2, "За два сезона выцвел с южной стороны так, что стал заметно светлее северной."],
+      [1, "Панели повело на морозе, стыки разошлись. Ставили строго по инструкции, с зазорами."],
+      [3, "Смотрится прилично, но пластик есть пластик — вблизи видно."],
+      [2, "Крепёж в комплекте мягкий, половину саморезов сорвали."],
+    ],
+  },
+  {
+    productId: "braer-brick-red",
+    showcase: "единственный отзыв",
+    items: [[5, "Геометрия ровная, шов ложится одинаково. Боя в поддоне почти не было."]],
+  },
+  {
+    productId: "rehau-blitz-window",
+    showcase: "полярные оценки",
+    items: [
+      [1, "Пришло с царапиной на стеклопакете, меняли месяц."],
+      [5, "Стоит второй год, ничего не продувает, ручки как новые."],
+    ],
+  },
+  {
+    productId: "tarkett-holiday-laminate",
+    showcase: "немного отзывов, хорошая оценка",
+    items: [
+      [4, "Замок щёлкает уверенно, собрали комнату вдвоём за вечер."],
+      [5, "С детьми и собакой год — царапин не видно."],
+      [4, null],
+    ],
+  },
+];
+
 type Db = {
   query: (text: string, values?: unknown[]) => Promise<{ rows: { id: string }[]; rowCount: number | null }>;
 };
@@ -202,6 +275,7 @@ async function main(): Promise<void> {
 
   const { withTransaction, getPool } = await import("../src/lib/server/db");
   const { hashPassword } = await import("../src/lib/server/auth/password");
+  const { PRODUCTS } = await import("../src/lib/marketplace");
 
   const pool = getPool();
   try {
@@ -317,6 +391,37 @@ async function main(): Promise<void> {
           );
         }
       }
+
+      // Отзывы о товарах. Авторы — те же демо-заказчики: человек, который
+      // строил дом, вполне мог заодно оценить черепицу, которой его крыл.
+      const catalogIds = new Set(PRODUCTS.map((p) => p.id));
+      let productCursor = 0;
+      for (const entry of PRODUCT_REVIEWS) {
+        if (!catalogIds.has(entry.productId)) {
+          throw new Error(
+            `В каталоге нет товара «${entry.productId}» — отзыв о нём никто никогда не увидит. Сверьте id с marketplace-catalog.json.`,
+          );
+        }
+        if (entry.items.length > clientIds.length) {
+          throw new Error(
+            `У «${entry.productId}» больше отзывов (${entry.items.length}), чем заведено заказчиков (${clientIds.length}).`,
+          );
+        }
+        for (const [i, [rating, comment]] of entry.items.entries()) {
+          await db.query(
+            `insert into product_reviews (product_id, author_id, rating, comment, created_at)
+             values ($1, $2, $3, $4, now() - make_interval(days => $5))`,
+            [
+              entry.productId,
+              clientIds[productCursor % clientIds.length],
+              rating,
+              comment ? `${DEMO_COMMENT_PREFIX} ${comment}` : null,
+              5 + i * 6,
+            ],
+          );
+          productCursor++;
+        }
+      }
     });
 
     console.log("Готово. Заведены тестовые бригады, заявки и отзывы.\n");
@@ -326,6 +431,13 @@ async function main(): Promise<void> {
       const avg = n ? (crew.deals.reduce((s, d) => s + d.rating, 0) / n).toFixed(1) : "—";
       console.log(`  ${crew.name.padEnd(20)} ★ ${avg}  отзывов: ${String(n).padStart(2)}  — ${crew.showcase}`);
     }
+    console.log("\nТовары:");
+    for (const entry of PRODUCT_REVIEWS) {
+      const n = entry.items.length;
+      const avg = (entry.items.reduce((s, [r]) => s + r, 0) / n).toFixed(1);
+      console.log(`  ${entry.productId.padEnd(26)} ★ ${avg}  отзывов: ${String(n).padStart(2)}  — ${entry.showcase}`);
+    }
+
     console.log(`\nВход в любую из них: <slug>${DEMO_EMAIL_SUFFIX}, пароль ${DEMO_PASSWORD}`);
     console.log(`Заказчики: client1…client${CLIENTS.length}${DEMO_EMAIL_SUFFIX}`);
     console.log(`Модератор: moderator${DEMO_EMAIL_SUFFIX}`);
@@ -394,16 +506,23 @@ async function removeDemoData(): Promise<void> {
     await db.query(
       `alter table request_messages disable trigger request_messages_forbid_rewrite_trg`,
     );
+    await db.query(
+      `alter table product_reviews disable trigger product_reviews_forbid_rewrite_trg`,
+    );
     try {
       // Отзывы демо-заказчиков и отзывы о демо-бригадах — это разные
       // множества с тех пор, как отзыв можно оставить кому угодно (0010).
       await db.query(`delete from reviews where author_id in ${ids} or executor_id in ${ids}`);
       await db.query(`delete from request_messages where request_id in ${requests}`);
       await db.query(`delete from request_messages where author_id in ${ids}`);
+      await db.query(`delete from product_reviews where author_id in ${ids}`);
     } finally {
       await db.query(`alter table reviews enable trigger reviews_forbid_rewrite_trg`);
       await db.query(
         `alter table request_messages enable trigger request_messages_forbid_rewrite_trg`,
+      );
+      await db.query(
+        `alter table product_reviews enable trigger product_reviews_forbid_rewrite_trg`,
       );
     }
 

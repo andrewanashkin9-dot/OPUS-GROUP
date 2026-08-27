@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { RatingLine, Stars } from "@/components/Rating";
+import { getDictionary } from "@/lib/i18n/dictionary";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locale";
 import { Reveal } from "@/components/ui/Reveal";
 // ⚠️ ВРЕМЕННОЕ ТЕСТОВОЕ ПОСЛАБЛЕНИЕ — удалить вместе с миграцией 0010.
 import { DemoReviewForm } from "@/components/demo/DemoReviewForm";
@@ -51,11 +54,14 @@ export interface ExecutorCard {
 export function ExecutorList({
   executors,
   demo,
+  locale = DEFAULT_LOCALE,
 }: {
   executors: ExecutorCard[];
   /** Это образцы карточек, а не зарегистрированные бригады. */
   demo: boolean;
+  locale?: Locale;
 }) {
+  const t = getDictionary(locale).services;
   const model = useAppStore((s) => s.model);
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
 
@@ -82,11 +88,7 @@ export function ExecutorList({
   return (
     <>
       <p className="prose-measure mt-4 text-body-l text-cream-dim">
-        {demo
-          ? "Так будет выглядеть подбор бригад под вашу модель дома."
-          : model
-            ? "Показаны бригады, которые закрывают именно те работы, что есть в вашей модели."
-            : "Постройте модель дома в конструкторе — и здесь останутся только нужные вам бригады."}
+        {demo ? t.demoLede : model ? t.modelLede : t.modelHint}
       </p>
 
       {/* Пометка стоит над карточками, а не под ними: человек должен узнать,
@@ -97,9 +99,7 @@ export function ExecutorList({
           className="prose-measure mt-4 rounded-xl border border-[var(--plate-edge)] px-4 py-3 text-body-s"
           style={{ color: "var(--warning)" }}
         >
-          Это примеры карточек, а не настоящие бригады: регистрация
-          исполнителей ещё готовится. Ни телефонов, ни договоров за ними нет —
-          и заявка по ним никуда не уйдёт.
+          {t.demoNotice}
         </p>
       )}
 
@@ -112,13 +112,13 @@ export function ExecutorList({
           onClick={() => setShowAllOverride(!showAll)}
           className="mt-6 text-body-s font-medium text-cream underline underline-offset-2 hover:text-cream-bright"
         >
-          {showAll ? "Показать только нужные для моей модели" : "Показать все бригады"}
+          {showAll ? t.onlyMine : t.showAll}
         </button>
       )}
 
       {visible.length === 0 ? (
         <p className="mt-10 text-body-s text-cream-dim">
-          Под вашу модель пока никто не подходит — посмотрите всех.
+          {t.empty}
         </p>
       ) : (
         <ul className="mt-10 grid gap-6 sm:grid-cols-2">
@@ -139,7 +139,7 @@ export function ExecutorList({
                           {crew.displayName}
                         </h2>
                         <p className="mt-1 text-body-s text-cream-dim">
-                          {crew.city ?? "город не указан"}
+                          {crew.city ?? t.noCity}
                         </p>
                       </div>
                       {crew.hasActiveSubscription && (
@@ -150,6 +150,7 @@ export function ExecutorList({
                     </div>
 
                     <Reputation
+                  locale={locale}
                   completed={crew.completedDeals}
                   rate={crew.completionRate}
                   average={crew.ratingAverage}
@@ -168,12 +169,7 @@ export function ExecutorList({
                           {/* Звёзды — картинка, и голосом «★★★★★» ничего не
                               значит. Программе чтения отдаётся фраза, а сами
                               символы от неё скрыты целиком. */}
-                          <span aria-label={`Оценка ${review.rating} из 5`} role="img">
-                            <span aria-hidden="true" className="font-bold text-accent">
-                              {"★".repeat(review.rating)}
-                            </span>
-                            <span aria-hidden="true">{"★".repeat(5 - review.rating)}</span>
-                          </span>{" "}
+                          <Stars rating={review.rating} />{" "}
                           {review.authorName}
                         </p>
                         {review.comment && (
@@ -206,7 +202,7 @@ export function ExecutorList({
 
                     <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--plate-edge)] pt-4">
                       <span className="text-body-s font-medium text-cream">
-                        {crew.priceHint ?? "цена по смете объекта"}
+                        {crew.priceHint ?? t.noPrice}
                       </span>
                       {/* У образца нет кнопки. Полноценная акцентная кнопка,
                           которая ничего не делает, — это обещание, а обещать
@@ -215,7 +211,7 @@ export function ExecutorList({
                           как она будет выглядеть по-настоящему. */}
                       {demo ? (
                         <span className="text-body-s text-cream-dim">
-                          Заявка — после регистрации бригад
+                          {t.demoNoCta}
                         </span>
                       ) : (
                         <button
@@ -226,7 +222,7 @@ export function ExecutorList({
                           disabled={requested}
                           className="inline-flex items-center rounded-full bg-accent px-4 py-2 text-body-s font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 disabled:border disabled:border-success disabled:bg-transparent disabled:text-success disabled:shadow-none"
                         >
-                          {requested ? "Заявка отправлена ✓" : "Запросить смету"}
+                          {requested ? t.requestSent : t.requestQuote}
                         </button>
                       )}
                     </div>
@@ -253,53 +249,33 @@ export function ExecutorList({
  * «плохая», хотя её просто ещё никто не нанимал.
  */
 function Reputation({
+  locale,
   completed,
   rate,
   average,
   reviewCount,
 }: {
+  locale: Locale;
   completed: number;
   rate: number | null;
   average: number | null;
   reviewCount: number;
 }) {
+  const t = getDictionary(locale).services;
+
   return (
     <div className="mt-3 space-y-1">
-      {average === null ? (
-        <p className="text-body-s text-cream-dim">Пока нет отзывов</p>
-      ) : (
-        <p className="text-body-s text-cream">
-          <span className="font-bold text-accent" aria-hidden="true">
-            ★
-          </span>{" "}
-          <span className="font-bold tabular-nums">
-            {/* toFixed(1), потому что «4,7» человек читает, а «4,7000000001» нет */}
-            {average.toFixed(1)}
-          </span>
-          <span className="text-cream-dim">
-            {" · "}
-            {reviewCount} {plural(reviewCount, "отзыв", "отзыва", "отзывов")}
-          </span>
-        </p>
-      )}
+      <RatingLine average={average} count={reviewCount} locale={locale} />
 
       {completed === 0 ? (
-        <p className="text-body-s text-cream-dim">Пока без завершённых заявок</p>
+        <p className="text-body-s text-cream-dim">{t.noDeals}</p>
       ) : (
         <p className="text-body-s text-cream-dim">
-          {completed}{" "}
-          {plural(completed, "завершённая заявка", "завершённые заявки", "завершённых заявок")}
-          {rate !== null && rate < 1 && <> · доведено до конца {Math.round(rate * 100)}%</>}
+          {t.completed(completed)}
+          {rate !== null && rate < 1 && t.completionRate(Math.round(rate * 100))}
         </p>
       )}
     </div>
   );
 }
 
-function plural(n: number, one: string, few: string, many: string): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return one;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
-  return many;
-}

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { Footer } from "@/components/Footer";
 import { NavBar } from "@/components/NavBar";
+import { RatingLine } from "@/components/Rating";
 import { formatRub } from "@/lib/format";
+import { useProductRatings } from "@/lib/product-ratings";
 import {
   categoryLabel,
   marketUnitLabel,
@@ -17,9 +19,11 @@ import { useAppStore } from "@/lib/store";
 import { AddToCart } from "./AddToCart";
 import { ProductCard } from "./ProductCard";
 import { ProductPhoto } from "./ProductPhoto";
+import { ProductReviews } from "./ProductReviews";
 
 export function ProductDetail({ product }: { product: Product }) {
   const model = useAppStore((s) => s.model);
+  const rating = useProductRatings()[product.id];
   const suggestion = suggestedQuantity(product, model);
 
   const related = PRODUCTS.filter(
@@ -57,6 +61,12 @@ export function ProductDetail({ product }: { product: Product }) {
             <h1 className="font-display mt-2 text-h1 font-extrabold text-white">
               {product.name}
             </h1>
+            {/* Оценка сразу под названием, до цены: сначала «стоит ли
+                смотреть», потом «сколько стоит». */}
+            {rating && (
+              <RatingLine average={rating.average} count={rating.count} className="mt-3" />
+            )}
+
             <p className="prose-measure mt-4 text-body-l text-cream-dim">
               {product.summary}
             </p>
@@ -105,6 +115,8 @@ export function ProductDetail({ product }: { product: Product }) {
             </table>
           </div>
         </div>
+
+        <ProductReviews productId={product.id} />
 
         {related.length > 0 && (
           <section className="mt-20 border-t border-[var(--plate-edge)] pt-10">

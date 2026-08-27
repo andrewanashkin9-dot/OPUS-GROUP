@@ -2,27 +2,41 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { LocaleToggle } from "./LocaleToggle";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ui/ThemeToggle";
 import { Wordmark } from "./Logo";
 import { canModerate } from "@/lib/auth/cookie-names";
 import { useRoleCookie } from "@/lib/auth/useRoleCookie";
 import { useBom, useMarketLines } from "@/lib/store";
+import { getDictionary } from "@/lib/i18n/dictionary";
+import { DEFAULT_LOCALE, localePath, type Locale } from "@/lib/i18n/locale";
 
-const links = [
-  { href: "/#how-it-works", label: "Как это работает" },
-  { href: "/market", label: "Магазин" },
-  // Смета стоит сразу за магазином: оттуда в неё и складывают. До этого
-  // попасть в неё с широкого экрана было неоткуда — ссылка жила только в
-  // подвале и в панелях конструктора, и посетитель, добавивший позицию из
-  // магазина, терял её из виду.
-  { href: "/cart", label: "Смета" },
-  { href: "/services", label: "Услуги" },
-  { href: "/education", label: "База знаний" },
-  { href: "/#pricing", label: "Тарифы" },
-];
+/**
+ * Ссылки шапки строятся под язык: и подписи, и адреса. Адреса — потому что
+ * из английской версии переход должен вести в английскую же: `/en/services`,
+ * а не `/services`. Ссылка, тихо возвращающая на русский, читается как
+ * сбой перевода, а не как задумка.
+ */
+function navLinks(locale: Locale) {
+  const t = getDictionary(locale).nav;
+  return [
+    { href: "/#how-it-works", label: t.howItWorks },
+    { href: "/market", label: t.market },
+    // Смета стоит сразу за магазином: оттуда в неё и складывают. До этого
+    // попасть в неё с широкого экрана было неоткуда — ссылка жила только в
+    // подвале и в панелях конструктора, и посетитель, добавивший позицию из
+    // магазина, терял её из виду.
+    { href: "/cart", label: t.estimate },
+    { href: "/services", label: t.services },
+    { href: "/education", label: t.education },
+    { href: "/#pricing", label: t.pricing },
+  ];
+}
 
-export function NavBar() {
+export function NavBar({ locale = DEFAULT_LOCALE }: { locale?: Locale } = {}) {
+  const t = getDictionary(locale).nav;
+  const links = navLinks(locale);
   // Below md the links used to be hidden with nothing in their place, which
   // left a phone with no route to the shop, the crews or the knowledge base
   // at all — only the logo. They fold into a disclosure instead.
@@ -46,9 +60,11 @@ export function NavBar() {
 
   // Гостю — вход, вошедшему — кабинет. Ошибиться нестрашно: /cabinet всё
   // равно развернёт на форму входа того, у кого нет настоящей сессии.
+  // Кабинет и вход не переведены и живут только по-русски: вести туда с
+  // префиксом /en значило бы обещать перевод, которого там нет.
   const account = {
     href: signedIn ? "/cabinet" : "/login",
-    label: signedIn ? "Кабинет" : "Войти",
+    label: signedIn ? t.account : t.signIn,
   };
 
   return (
@@ -78,11 +94,11 @@ export function NavBar() {
           {links.map((link) => (
             <Link
               key={link.href}
-              href={link.href}
+              href={localePath(locale, link.href)}
               className="flex items-center gap-1.5 text-body-s font-medium text-dim transition-colors hover:text-white"
               aria-label={
                 link.href === "/cart" && estimateCount > 0
-                  ? `Смета, позиций: ${estimateCount}`
+                  ? t.estimateCount(estimateCount)
                   : undefined
               }
             >
@@ -100,13 +116,23 @@ export function NavBar() {
               href="/moderation"
               className="text-body-s font-medium text-accent transition-colors hover:brightness-110"
             >
-              Модерация
+              {t.moderation}
             </Link>
           )}
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <ThemeToggle />
+          {/* Тумблер стоит первым в группе управления: язык выбирают один
+              раз и до всего остального. На непереведённой странице он не
+              рисуется вовсе — решает сам компонент.
+
+              Ниже 640 px его в строке нет: на 390 px он вместе с надписью и
+              двумя кнопками растягивал документ на 23 px, и экран начинал
+              ездить вбок. Там он переезжает в свёрнутое меню — целой
+              строкой, где места сколько угодно. */}
+          <LocaleToggle locale={locale} className="hidden sm:inline-flex" />
+
+          <ThemeToggle locale={locale} />
 
           {/* Только вошедшим: гостю уведомлять не о чем, а лишний запрос с
               каждой страницы сайта ему тем более не нужен. Колокольчик
@@ -127,7 +153,7 @@ export function NavBar() {
             href="/start"
             className="hidden items-center rounded-full bg-accent px-5 py-2.5 text-ui font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 sm:inline-flex"
           >
-            Начать бесплатно
+            {t.startFree}
           </Link>
 
           <button
@@ -138,7 +164,7 @@ export function NavBar() {
             className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)] xl:hidden"
           >
             <span className="sr-only">
-              {open ? "Закрыть меню" : "Открыть меню"}
+              {open ? t.closeMenu : t.openMenu}
             </span>
             <svg
               viewBox="0 0 20 20"
@@ -171,12 +197,12 @@ export function NavBar() {
                 className="border-b border-[var(--plate-edge)] last:border-b-0"
               >
                 <Link
-                  href={link.href}
+                  href={localePath(locale, link.href)}
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-2 py-3 text-body font-medium text-white transition-colors hover:text-accent"
                   aria-label={
                     link.href === "/cart" && estimateCount > 0
-                      ? `Смета, позиций: ${estimateCount}`
+                      ? t.estimateCount(estimateCount)
                       : undefined
                   }
                 >
@@ -194,7 +220,7 @@ export function NavBar() {
                   onClick={() => setOpen(false)}
                   className="block py-3 text-body font-medium text-accent"
                 >
-                  Модерация
+                  {t.moderation}
                 </Link>
               </li>
             )}
@@ -204,7 +230,7 @@ export function NavBar() {
             onClick={() => setOpen(false)}
             className="mt-4 flex items-center justify-center rounded-full bg-accent px-5 py-3 text-ui font-bold text-deep"
           >
-            Начать бесплатно
+            {t.startFree}
           </Link>
           {/* Обязательно и здесь: на узком экране верхняя кнопка скрыта, и без
               этой строки с телефона в аккаунт было бы не попасть. */}
@@ -215,6 +241,14 @@ export function NavBar() {
           >
             {account.label}
           </Link>
+
+          {/* Язык — в самом низу меню и только на узких экранах: выше 640 px
+              тумблер стоит в строке шапки, и два одинаковых переключателя на
+              одной странице сбивают с толку. */}
+          <div className="mt-4 flex items-center justify-between border-t border-[var(--plate-edge)] pt-4 sm:hidden">
+            <span className="text-body-s text-dim">{getDictionary(locale).langSwitch.label}</span>
+            <LocaleToggle locale={locale} />
+          </div>
         </nav>
       )}
     </header>

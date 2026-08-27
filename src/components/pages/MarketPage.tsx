@@ -6,12 +6,14 @@ import { NavBar } from "@/components/NavBar";
 import {
   INITIAL_FILTER,
   MarketFilters,
+  ratingBandOf,
   type FilterState,
 } from "@/components/market/MarketFilters";
 import { ProductCard } from "@/components/market/ProductCard";
 import { Reveal } from "@/components/ui/Reveal";
 import { filterProducts, matchesModel, PRODUCTS } from "@/lib/marketplace";
 import { useAppStore } from "@/lib/store";
+import { useProductRatings } from "@/lib/product-ratings";
 import { LocaleHtmlLang } from "@/components/LocaleHtmlLang";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locale";
@@ -19,6 +21,7 @@ import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locale";
 export function MarketPage({ locale = DEFAULT_LOCALE }: { locale?: Locale } = {}) {
   const t = getDictionary(locale).market;
   const model = useAppStore((s) => s.model);
+  const ratings = useProductRatings();
   const [filter, setFilter] = useState<FilterState>(INITIAL_FILTER);
 
   const products = useMemo(() => {
@@ -30,9 +33,17 @@ export function MarketPage({ locale = DEFAULT_LOCALE }: { locale?: Locale } = {}
       },
       PRODUCTS,
     );
-    if (!filter.onlyForModel) return base;
-    return base.filter((product) => matchesModel(product, model));
-  }, [filter, model]);
+    // Оценка фильтруется здесь, а не в filterProducts: та работает по
+    // каталогу-файлу, а рейтинги живут в базе и приезжают отдельно. Тащить
+    // их внутрь означало бы связать чистую функцию над файлом с сетью.
+    const rated =
+      filter.ratingBand === null
+        ? base
+        : base.filter((product) => ratingBandOf(ratings[product.id]) === filter.ratingBand);
+
+    if (!filter.onlyForModel) return rated;
+    return rated.filter((product) => matchesModel(product, model));
+  }, [filter, model, ratings]);
 
   return (
     <>

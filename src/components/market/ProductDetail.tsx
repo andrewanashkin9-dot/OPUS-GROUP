@@ -21,6 +21,8 @@ import { AddToCart } from "./AddToCart";
 import { ProductCard } from "./ProductCard";
 import { ProductPhoto } from "./ProductPhoto";
 import { ProductReviews } from "./ProductReviews";
+// ⚠️ ВРЕМЕННАЯ ДЕМО-ВСТАВКА — см. TODO_BEFORE_LAUNCH.md
+import { DemoManagerChat } from "@/components/demo/DemoManagerChat";
 
 export function ProductDetail({
   product,
@@ -109,6 +111,9 @@ export function ProductDetail({
             <div className="mt-8">
               <AddToCart product={product} locale={locale} />
             </div>
+
+            {/* ⚠️ ВРЕМЕННО: чат с демо-менеджером поставщика. */}
+            <DemoManagerChat productId={product.id} />
 
             <table className="mt-10 w-full border-t border-[var(--plate-edge)] text-body-s">
               <caption className="pb-3 text-left text-caption font-medium uppercase text-cream-dim">

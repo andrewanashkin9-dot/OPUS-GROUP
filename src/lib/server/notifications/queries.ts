@@ -16,6 +16,8 @@ import { query } from "../db";
  */
 
 export type NotificationKind =
+  /** Приветствие после регистрации. Показывается ровно один раз. */
+  | "welcome"
   | "response_received"
   | "response_accepted"
   | "response_rejected"
@@ -123,6 +125,31 @@ export async function markRead(userId: string, notificationId: string): Promise<
     [notificationId, userId],
   );
   return (rowCount ?? 0) > 0;
+}
+
+/**
+ * Непоказанное приветствие, если оно есть.
+ *
+ * Отдельным запросом, а не поиском по общему списку: список ограничен
+ * двадцатью свежими, а приветствие — самое старое уведомление человека, и у
+ * активного пользователя оно из выдачи выпадает. Карточка тогда не появилась
+ * бы вовсе у тех, кто успел набрать двадцать событий до первого захода.
+ */
+export async function findUnseenWelcome(userId: string): Promise<NotificationRow | null> {
+  const { rows } = await query<NotificationRow>(
+    `select id,
+            kind,
+            text,
+            request_id  as "requestId",
+            response_id as "responseId",
+            read_at     as "readAt",
+            created_at  as "createdAt"
+       from notifications
+      where user_id = $1 and kind = 'welcome' and read_at is null
+      limit 1`,
+    [userId],
+  );
+  return rows[0] ?? null;
 }
 
 /** «Прочитать все» — одна кнопка вместо двадцати кликов. */

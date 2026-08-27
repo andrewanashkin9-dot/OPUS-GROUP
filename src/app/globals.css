@@ -409,6 +409,68 @@ h3,
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Achievement card — the welcome toast after registration.
+
+   Three separate animations rather than one: the card arrives, the medal
+   lands a beat later, and a highlight sweeps across the plate once. Played
+   together they read as a single gesture; written together they would be one
+   unreadable keyframe list.
+--------------------------------------------------------------------------- */
+
+.achievement-in {
+  animation: achievement-in 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes achievement-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.achievement-medal {
+  animation: achievement-medal 620ms cubic-bezier(0.34, 1.56, 0.64, 1) 140ms both;
+}
+
+@keyframes achievement-medal {
+  from {
+    opacity: 0;
+    transform: scale(0.4) rotate(-18deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The sweep is a single pass, not a loop: a card that keeps glinting at the
+   corner of the eye stops being a reward and becomes a distraction. */
+.achievement-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 35%,
+    rgba(255, 215, 0, 0.16) 50%,
+    transparent 65%
+  );
+  transform: translateX(-100%);
+  animation: achievement-sheen 1100ms ease-out 320ms 1 both;
+}
+
+@keyframes achievement-sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+
 /* Reduced motion disables entrance animation entirely, as asked — the content
    is simply already there. */
 @media (prefers-reduced-motion: reduce) {
@@ -420,6 +482,15 @@ h3,
   }
   .reveal-in {
     animation: none;
+  }
+  .achievement-in,
+  .achievement-medal {
+    animation: none;
+  }
+  /* Карточка остаётся, исчезает только блик: он здесь украшение и ничего не
+     сообщает. */
+  .achievement-sheen::after {
+    display: none;
   }
   *,
   *::before,

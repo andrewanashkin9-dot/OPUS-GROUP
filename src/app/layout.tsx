@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { StoreHydrator } from "@/components/StoreHydrator";
+import { WelcomeAchievement } from "@/components/WelcomeAchievement";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { BlueprintSpace } from "@/components/ui/BlueprintSpace";
 import { FilmGrain } from "@/components/ui/FilmGrain";
@@ -43,6 +44,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <StoreHydrator />
           {children}
         </div>
+
+        {/* Приветствие после регистрации. В корневой разметке, потому что
+            попасть после неё человек может на любую страницу — и застать его
+            надо там, где он оказался, а не только в кабинете. Гостю ничего не
+            рисует и никуда не ходит. */}
+        <WelcomeAchievement />
 
         <FilmGrain />
       </body>

@@ -8,11 +8,13 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "npm run db:migrate:deploy && next build",
     "start": "next start",
     "lint": "eslint",
     "db:check": "tsx --conditions=react-server scripts/check-db.ts",
     "db:migrate": "tsx --conditions=react-server scripts/migrate.ts",
     "db:migrate:status": "tsx --conditions=react-server scripts/migrate.ts --status",
+    "db:migrate:deploy": "tsx --conditions=react-server scripts/deploy-migrate.ts",
     "db:cleanup": "tsx --conditions=react-server scripts/cleanup.ts",
     "billing:charge": "tsx --conditions=react-server scripts/billing.ts",
     "_comment_demo": "ВРЕМЕННАЯ ДЕМО-ВСТАВКА — удаляется вместе с scripts/seed-demo.ts, см. README",

@@ -6,7 +6,7 @@ import { Button } from "@/components/Button";
 import { useApiFetch } from "@/lib/auth/useApiFetch";
 
 /**
- * Кнопка, которая действительно начинает оплату.
+ * Витрина тарифа и кнопка, которая начинает оплату.
  *
  * Нажатие идёт на наш маршрут, тот заводит платёж в Т-Кассе и возвращает
  * ссылку на её страницу — туда и уходит человек. Реквизиты карты вводятся у
@@ -16,15 +16,26 @@ import { useApiFetch } from "@/lib/auth/useApiFetch";
 const FREE_RESPONSES = 1;
 const PRICE = "700 ₽";
 
+const FEATURES = [
+  "Отклики на заявки без ограничений",
+  "Отметка «Technic» в выдаче бригад",
+  "Точные размеры и полная спецификация в конструкторе",
+];
+
 export function SubscribeForm({
+  isGuest,
   isExecutor,
+  paymentsReady,
   usedResponses,
   hasActiveSubscription,
   paidUntil,
   subscriptionStatus,
 }: {
   role: string;
+  isGuest: boolean;
   isExecutor: boolean;
+  /** Заданы ли ключи Т-Кассы. Пока нет — кнопка честно говорит об этом. */
+  paymentsReady: boolean;
   usedResponses: number;
   hasActiveSubscription: boolean;
   paidUntil: string | null;
@@ -48,6 +59,35 @@ export function SubscribeForm({
     }
     setError(data.error ?? "Не удалось начать оплату");
     setPending(false);
+  }
+
+  // Гостю показывается то же самое предложение, что и всем: цена, что входит,
+  // и вход по кнопке. Раньше он вместо этого попадал на форму входа с
+  // главной — и уходил, так и не узнав, за что предлагают заплатить.
+  if (isGuest) {
+    return (
+      <div className="plate mt-8 p-6">
+        <Price />
+        <p className="mt-4 text-body text-soft">
+          Подписка для бригад: снимает ограничение на отклики и отмечает
+          исполнителя в выдаче. Первый отклик на заявку — бесплатно.
+        </p>
+        <Features />
+        <Link
+          href="/login?next=/subscribe"
+          className="mt-8 flex w-full items-center justify-center rounded-full bg-accent px-5 py-3 text-ui font-bold text-deep transition-[filter] hover:brightness-108"
+        >
+          Войти и оформить
+        </Link>
+        <p className="mt-4 text-caption text-dim">
+          Нет учётной записи?{" "}
+          <Link href="/login?next=/subscribe" className="text-accent underline underline-offset-2">
+            Зарегистрируйтесь как исполнитель
+          </Link>{" "}
+          — это бесплатно.
+        </p>
+      </div>
+    );
   }
 
   if (!isExecutor) {
@@ -90,10 +130,7 @@ export function SubscribeForm({
 
   return (
     <div className="plate mt-8 p-6">
-      <p className="font-display text-h1 font-extrabold text-accent">
-        {PRICE}
-        <span className="text-body-l font-medium text-dim"> / мес.</span>
-      </p>
+      <Price />
 
       <p className="mt-4 text-body text-soft">
         {freeLeft > 0
@@ -101,11 +138,7 @@ export function SubscribeForm({
           : "Бесплатный отклик уже использован. Чтобы откликаться дальше, нужна подписка."}
       </p>
 
-      <ul className="mt-6 space-y-2 text-body-s text-soft">
-        <li>· Отклики на заявки без ограничений</li>
-        <li>· Отметка «Technic» в выдаче бригад</li>
-        <li>· Точные размеры и полная спецификация в конструкторе</li>
-      </ul>
+      <Features />
 
       {error && (
         <p role="alert" className="mt-6 rounded-2xl border border-error/40 px-4 py-3 text-body-s text-error">
@@ -113,13 +146,48 @@ export function SubscribeForm({
         </p>
       )}
 
-      <Button className="mt-8 w-full" onClick={subscribe} disabled={pending}>
-        {pending ? "Готовим оплату…" : `Оплатить ${PRICE}`}
-      </Button>
+      {/* Пока ключи Т-Кассы не заданы, кнопка неактивна и объясняет, почему.
+          Раньше она выглядела рабочей и отвечала красным «Оплата пока не
+          подключена» — на вид поломка, хотя это ожидаемое состояние. */}
+      {paymentsReady ? (
+        <Button className="mt-8 w-full" onClick={subscribe} disabled={pending}>
+          {pending ? "Готовим оплату…" : `Оплатить ${PRICE}`}
+        </Button>
+      ) : (
+        <>
+          <Button className="mt-8 w-full" disabled>
+            Оплатить {PRICE}
+          </Button>
+          <p className="mt-4 rounded-2xl border border-[var(--plate-edge)] px-4 py-3 text-body-s text-dim">
+            Приём платежей ещё не подключён — ждём реквизиты ИП. Экран и расчёт
+            подписки готовы: как только появятся ключи Т-Кассы, кнопка начнёт
+            работать без изменений в коде.
+          </p>
+        </>
+      )}
 
       <p className="mt-4 text-caption text-dim">
         Оплата на стороне банка. Данные карты к нам не попадают.
       </p>
     </div>
+  );
+}
+
+function Price() {
+  return (
+    <p className="font-display text-h1 font-extrabold text-accent">
+      {PRICE}
+      <span className="text-body-l font-medium text-dim"> / мес.</span>
+    </p>
+  );
+}
+
+function Features() {
+  return (
+    <ul className="mt-6 space-y-2 text-body-s text-soft">
+      {FEATURES.map((f) => (
+        <li key={f}>· {f}</li>
+      ))}
+    </ul>
   );
 }

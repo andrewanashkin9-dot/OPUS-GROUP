@@ -95,7 +95,9 @@ export function ProfilePanel({
   }
 
   return (
-    <section className="mt-14 rounded-3xl border border-line p-6">
+    // Якорь для приветственной карточки: её кнопка «Заполнить профиль» ведёт
+    // на /cabinet#profile. scroll-mt отводит заголовок из-под липкой шапки.
+    <section id="profile" className="mt-14 scroll-mt-20 rounded-3xl border border-line p-6">
       <h2 className="font-display text-h3 font-extrabold text-cream-bright">Профиль бригады</h2>
       <p className="mt-2 text-body-s text-cream-dim">
         Это увидят заказчики на странице «Бригады».

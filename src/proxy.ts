@@ -19,7 +19,11 @@ import { ACCESS_COOKIE } from "@/lib/auth/cookie-names";
  * работающей ровно до первого маршрута, который забыли внести в matcher.
  */
 
-const PROTECTED_PAGES = ["/cabinet", "/moderation", "/subscribe"];
+// /subscribe здесь нет намеренно. Это витрина тарифа: гостю сначала
+// показывают, что он покупает, и только нажатие «Оплатить» уводит на вход.
+// Пока страница была закрытой, кнопка «Оформить подписку» с главной
+// приводила на форму входа — человек так и не узнавал, за что платит.
+const PROTECTED_PAGES = ["/cabinet", "/moderation"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

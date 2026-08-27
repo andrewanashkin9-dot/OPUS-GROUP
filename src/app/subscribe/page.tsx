@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { Footer } from "@/components/Footer";
 import { NavBar } from "@/components/NavBar";
 import { requireUser } from "@/lib/server/auth/guard";
 import { findUserById } from "@/lib/server/auth/users";
 import { readAccessState } from "@/lib/server/payments/access";
+import { getTKassaConfig, isBillingEnabled } from "@/lib/server/payments/config";
 import { query } from "@/lib/server/db";
 import { SubscribeForm } from "./SubscribeForm";
 
 export const metadata: Metadata = {
   title: "Подписка Technic — OPUS GROUP",
-  robots: { index: false, follow: false },
+  description: "Отклики без ограничений, отметка «Technic» в выдаче бригад и точные размеры в конструкторе — 700 ₽ в месяц.",
 };
 
 export const dynamic = "force-dynamic";
@@ -21,17 +21,55 @@ export const dynamic = "force-dynamic";
  * До этого кнопка «Оформить подписку» на главной вела на `/start` — экран
  * выбора, что строить. Так вышло потому, что тарифный блок написали раньше,
  * чем появилась оплата: вести было некуда, и кнопку скопировали с соседней
- * «Начать бесплатно». Теперь есть куда.
+ * «Начать бесплатно».
  *
- * Страница серверная: состояние подписки и остаток бесплатных откликов
- * читаются у базы. Гостя до неё не доводит proxy — он уходит на форму входа.
+ * Второй заход по тому же адресу: страница была закрытой, и гостя с неё
+ * уводило на форму входа. Витрину тарифа закрывать нельзя — человек должен
+ * сначала увидеть, что покупает, и только потом входить. Поэтому здесь
+ * `requireUser` не разворачивает, а лишь решает, что показать: гостю —
+ * описание и кнопку «Войти и оформить», вошедшему — его собственное
+ * состояние.
+ *
+ * Ничего закрытого на странице нет: цена и список возможностей одинаковы для
+ * всех, а платит всё равно тот, кто вошёл, — маршрут оплаты проверяет права
+ * сам.
  */
 export default async function SubscribePage() {
-  const auth = await requireUser();
-  if (!auth.ok) redirect("/login?next=/subscribe");
+  // Готов ли приём платежей — решает сервер, а не браузер по ответу об
+  // ошибке. Иначе единственный способ узнать, что оплата не подключена, —
+  // нажать кнопку и получить красное сообщение, похожее на поломку.
+  const paymentsReady = isBillingEnabled() && getTKassaConfig() !== null;
 
-  const user = await findUserById(auth.user.id);
-  if (!user || user.status !== "active") redirect("/login?next=/subscribe");
+  const auth = await requireUser();
+  const user = auth.ok ? await findUserById(auth.user.id) : null;
+
+  // Гость и человек с заблокированной учётной записью видят одно и то же —
+  // витрину. Разница вскроется на кнопке оплаты, и это правильное место:
+  // до неё объяснять «вам нельзя» не за что.
+  if (!user || user.status !== "active") {
+    return (
+      <>
+        <NavBar />
+        <main className="mx-auto min-h-[60vh] w-full max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
+          <p className="text-body-s text-dim">Тариф</p>
+          <h1 className="font-display mt-2 text-h1 font-extrabold text-white">
+            Подписка Technic
+          </h1>
+          <SubscribeForm
+            role="guest"
+            isExecutor={false}
+            paymentsReady={paymentsReady}
+            isGuest
+            usedResponses={0}
+            hasActiveSubscription={false}
+            paidUntil={null}
+            subscriptionStatus={null}
+          />
+        </main>
+        <Footer />
+      </>
+    );
+  }
 
   // Подписка в этом проекте — для исполнителей: она снимает лимит на отклики
   // и помечает бригаду в выдаче. Заказчику платить не за что, и вместо
@@ -63,6 +101,8 @@ export default async function SubscribePage() {
         <SubscribeForm
           role={user.role}
           isExecutor={isExecutor}
+          paymentsReady={paymentsReady}
+          isGuest={false}
           usedResponses={access.usedResponses}
           hasActiveSubscription={access.hasActiveSubscription}
           paidUntil={

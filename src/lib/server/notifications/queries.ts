@@ -129,14 +129,24 @@ export async function markRead(userId: string, notificationId: string): Promise<
 }
 
 /**
- * Непоказанное приветствие, если оно есть.
+ * Приветствие пользователя.
  *
- * Отдельным запросом, а не поиском по общему списку: список ограничен
- * двадцатью свежими, а приветствие — самое старое уведомление человека, и у
- * активного пользователя оно из выдачи выпадает. Карточка тогда не появилась
- * бы вовсе у тех, кто успел набрать двадцать событий до первого захода.
+ * ⚠️ Раньше называлось `findUnseenWelcome` и отдавало строку только пока она
+ * непрочитана — карточка появлялась ровно один раз, после регистрации.
+ * По просьбе поведение изменено: приветствие возвращается всегда, и карточка
+ * показывается при каждом заходе.
+ *
+ * Стоит сказать вслух, чем за это платят: поздравление, которое приходит
+ * каждый раз, перестаёт быть поздравлением и становится баннером — его
+ * закрывают не читая уже на третий день. Вернуть прежнее поведение — это
+ * снова дописать `and read_at is null` в запрос ниже, одна строка.
+ *
+ * Отдельно про тех, кто зарегистрировался раньше этой функции: строки
+ * приветствия у них нет и задним числом она не создаётся. Чтобы карточку
+ * видели все, текст для них собирается на лету из роли — см. маршрут
+ * /api/notifications/welcome.
  */
-export async function findUnseenWelcome(userId: string): Promise<NotificationRow | null> {
+export async function findWelcome(userId: string): Promise<NotificationRow | null> {
   const { rows } = await query<NotificationRow>(
     `select id,
             kind,
@@ -146,7 +156,7 @@ export async function findUnseenWelcome(userId: string): Promise<NotificationRow
             read_at     as "readAt",
             created_at  as "createdAt"
        from notifications
-      where user_id = $1 and kind = 'welcome' and read_at is null
+      where user_id = $1 and kind = 'welcome'
       limit 1`,
     [userId],
   );

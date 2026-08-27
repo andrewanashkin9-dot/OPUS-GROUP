@@ -61,7 +61,7 @@ export async function findUserById(id: string): Promise<PublicUser | null> {
  * ещё и переключить её кнопкой), и приветствие, собираемое при показе,
  * рассказывало бы про сегодняшнюю роль, а не про ту, с которой он пришёл.
  */
-function welcomeText(role: UserRole): string {
+export function welcomeText(role: UserRole): string {
   switch (role) {
     case "executor":
       return "Заполните профиль бригады — навыки, цены и портфолио. По ним заказчики и выбирают, кому написать.";

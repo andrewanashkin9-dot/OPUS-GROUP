@@ -27,6 +27,8 @@ interface Message {
   authorName: string;
   body: string;
   createdAt: string;
+  /** Когда собеседник прочитал. null — ещё нет. */
+  readAt: string | null;
 }
 
 export function Chat({
@@ -51,6 +53,11 @@ export function Chat({
   const [error, setError] = useState<string | null>(null);
 
   const listRef = useRef<HTMLDivElement>(null);
+  // Первая загрузка — она же отметка «прочитано» — делается один раз, когда
+  // чат доезжает до экрана. Гасить непрочитанное самой отрисовкой страницы
+  // нечестно: заявка длинная, и переписка может остаться далеко внизу,
+  // непрочитанной в буквальном смысле.
+  const seen = useRef(false);
   // Прокручиваем вниз только когда человек и так внизу: иначе новое
   // сообщение выдёргивает его из середины разговора, который он читает.
   const stickToBottom = useRef(true);
@@ -74,6 +81,21 @@ export function Chat({
       if (document.visibilityState === "visible") void load();
     }, POLL_MS);
     return () => clearInterval(timer);
+  }, [load]);
+
+  useEffect(() => {
+    const node = listRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting) || seen.current) return;
+      seen.current = true;
+      // load() заодно помечает сообщения собеседника прочитанными — это
+      // делает тот же GET на сервере.
+      void load();
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
   }, [load]);
 
   useEffect(() => {
@@ -114,7 +136,9 @@ export function Chat({
   }
 
   return (
-    <section className="mt-12">
+    // Якорь для вкладки «Чат» на этой же странице. scroll-mt отводит
+    // заголовок из-под липкой шапки.
+    <section id="chat" className="mt-12 scroll-mt-20">
       <h2 className="font-display text-h3 font-extrabold text-cream-bright">Переписка</h2>
       <p className="mt-1 text-caption text-cream-dim">
         Видят только вы и вторая сторона по этой заявке.
@@ -155,6 +179,13 @@ export function Chat({
                   </p>
                   <p className="mt-1 text-caption text-cream-dim">
                     {formatDateTime(m.createdAt)}
+                    {/* «Прочитано» показывается только на своих сообщениях:
+                        знать, прочитал ли ты сам то, что видишь, незачем. */}
+                    {mine && m.readAt && (
+                      <span className="ml-2 text-success" title="Прочитано">
+                        ✓✓
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>

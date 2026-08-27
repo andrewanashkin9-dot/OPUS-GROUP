@@ -74,10 +74,15 @@ export function switchLocalePath(pathname: string, to: Locale): string {
  * которого не будет, — и человек нажмёт, получит 404 и решит, что сломан
  * сайт целиком.
  */
-export const TRANSLATED_PAGES = ["/", "/services"] as const;
+export const TRANSLATED_PAGES = ["/", "/services", "/market"] as const;
 
+/**
+ * Страницы товаров тоже переведены, но их 37 и перечислять их незачем:
+ * достаточно правила «всё внутри /market».
+ */
 export function isTranslated(pathname: string): boolean {
   const bare = pathname === "/en" ? "/" : pathname.startsWith("/en/") ? pathname.slice(3) : pathname;
+  if (bare.startsWith("/market/")) return true;
   return (TRANSLATED_PAGES as readonly string[]).includes(bare);
 }
 

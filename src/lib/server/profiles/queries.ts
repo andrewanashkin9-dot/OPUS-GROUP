@@ -23,6 +23,8 @@ export interface ReviewSummary {
   comment: string | null;
   authorName: string;
   createdAt: Date;
+  /** ⚠️ ВРЕМЕННО: отзыв из сид-скрипта, а не от заказчика. См. README. */
+  isDemo: boolean;
 }
 
 export interface ExecutorProfile {
@@ -124,7 +126,9 @@ export async function listExecutors(filter?: { specialties?: string[] }): Promis
                     from (
                       select v2.id, v2.rating, v2.comment,
                              a.display_name as "authorName",
-                             v2.created_at  as "createdAt"
+                             v2.created_at  as "createdAt",
+                             -- ⚠️ ВРЕМЕННО: пометка демо-отзывов, см. README.
+                             (a.email like '%@demo.opusgroup') as "isDemo"
                         from reviews v2
                         join users a on a.id = v2.author_id
                        where v2.executor_id = u.id

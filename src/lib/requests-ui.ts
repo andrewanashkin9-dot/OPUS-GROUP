@@ -70,10 +70,10 @@ export function workKindLabel(id: string): string {
  * Год добавляется только когда он отличается от текущего: «27 августа 2026»
  * в списке заявок этого же года — лишние символы в каждой строке.
  */
-export function formatDate(value: string | Date): string {
+export function formatDate(value: string | Date, locale: "ru" | "en" = "ru"): string {
   const date = new Date(value);
   const sameYear = date.getFullYear() === new Date().getFullYear();
-  return date.toLocaleDateString("ru-RU", {
+  return date.toLocaleDateString(locale === "en" ? "en-GB" : "ru-RU", {
     day: "numeric",
     month: "long",
     ...(sameYear ? {} : { year: "numeric" }),

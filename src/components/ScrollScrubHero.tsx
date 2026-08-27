@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { ButtonLink } from "./Button";
 import { TitleBlock } from "./TitleBlock";
+import { getDictionary } from "@/lib/i18n/dictionary";
+import { DEFAULT_LOCALE, localePath, type Locale } from "@/lib/i18n/locale";
 
 /**
  * The first screen: a camera move from the corner of a dark room to a lit
@@ -54,7 +56,9 @@ function clamp01(v: number) {
   return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
-export function ScrollScrubHero() {
+export function ScrollScrubHero({ locale = DEFAULT_LOCALE }: { locale?: Locale } = {}) {
+  const t = getDictionary(locale).hero;
+
   const trackRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
@@ -259,19 +263,18 @@ export function ScrollScrubHero() {
                 thinnest at this height, and dim cream over the blueprint
                 falls to roughly 3.4:1 — under the floor for small text. */}
                 <p className="text-caption font-medium uppercase text-accent">
-                  Фото → 3D-модель → смета → бригада
+                  {t.eyebrow}
                 </p>
                 <h1 className="font-display mt-4 text-display font-extrabold tracking-tight text-white">
-                  Ваш дом в 3D — из четырёх фотографий
+                  {t.title}
                 </h1>
                 <p className="prose-measure mx-auto mt-4 text-body-l text-soft">
-                  Загрузите фото дома — и настройте крышу, фасад и забор прямо в
-                  модели. Материалы и стоимость считаются сами.
+                  {t.lede}
                 </p>
                 <div className="hero-cta mt-7 flex flex-wrap justify-center gap-3">
-                  <ButtonLink href="/editor">Загрузить фото дома</ButtonLink>
-                  <ButtonLink href="/#how-it-works" variant="secondary">
-                    Как это работает
+                  <ButtonLink href="/start">{t.ctaPrimary}</ButtonLink>
+                  <ButtonLink href={localePath(locale, "/#how-it-works")} variant="secondary">
+                    {t.ctaSecondary}
                   </ButtonLink>
                 </div>
 
@@ -281,16 +284,16 @@ export function ScrollScrubHero() {
                 <TitleBlock
                   className="mt-7 !bg-transparent !shadow-none sm:mt-9"
                   fields={[
-                    { label: "Объект", value: "Частный дом" },
+                    { label: t.fields.object, value: t.values.object },
                     {
-                      label: "Габариты",
-                      value: "9,5 × 8,2 м",
+                      label: t.fields.size,
+                      value: t.values.size,
                       secondary: true,
                     },
-                    { label: "Этажность", value: "2 этажа" },
-                    { label: "Площадь фасадов", value: "186,7 м²" },
-                    { label: "Смета", value: "1 526 203 ₽", accent: true },
-                    { label: "Масштаб", value: "1:100", secondary: true },
+                    { label: t.fields.floors, value: t.values.floors },
+                    { label: t.fields.facade, value: t.values.facade },
+                    { label: t.fields.estimate, value: "1 526 203 ₽", accent: true },
+                    { label: t.fields.scale, value: "1:100", secondary: true },
                   ]}
                 />
               </div>
@@ -302,7 +305,7 @@ export function ScrollScrubHero() {
           ref={hintRef}
           className="hero-hint absolute inset-x-0 bottom-6 text-center text-caption uppercase text-dim"
         >
-          Листайте, чтобы приблизиться
+          {t.scrollHint}
         </p>
 
         {/* The headline starts hidden for the scrub to reveal. Without JS

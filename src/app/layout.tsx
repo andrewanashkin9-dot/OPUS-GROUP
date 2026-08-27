@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { StoreHydrator } from "@/components/StoreHydrator";
+import { WelcomeAchievement } from "@/components/WelcomeAchievement";
+// ⚠️ ВРЕМЕННАЯ ДЕМО-ВСТАВКА — см. TODO_BEFORE_LAUNCH.md
+import { DemoModeCorner } from "@/components/demo/DemoModeCorner";
+import { isDemoMode } from "@/lib/demo-mode";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { BlueprintSpace } from "@/components/ui/BlueprintSpace";
 import { FilmGrain } from "@/components/ui/FilmGrain";
@@ -17,6 +21,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="ru"
       data-scroll-behavior="smooth"
       className="h-full antialiased"
+      // The blocking script below stamps data-theme on this element before
+      // React arrives, so the client tree legitimately differs from the
+      // server one here — by design, and only on this one attribute.
+      suppressHydrationWarning
     >
       <head>
         {/* Applies the saved sheet colour before first paint. Inlined and
@@ -39,6 +47,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <StoreHydrator />
           {children}
         </div>
+
+        {/* Приветствие после регистрации. В корневой разметке, потому что
+            попасть после неё человек может на любую страницу — и застать его
+            надо там, где он оказался, а не только в кабинете. Гостю ничего не
+            рисует и никуда не ходит. */}
+        <WelcomeAchievement />
+
+        {/* ⚠️ ВРЕМЕННО: переключатель «Посетитель / Модератор» в углу.
+            Только при DEMO_MODE=true — решение принимается здесь, на
+            сервере, чтобы в боевой сборке этого кода в разметке не было
+            вовсе. */}
+        {isDemoMode() && <DemoModeCorner />}
 
         <FilmGrain />
       </body>

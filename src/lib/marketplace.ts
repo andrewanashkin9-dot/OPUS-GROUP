@@ -1,5 +1,6 @@
 import catalog from "./marketplace-catalog.json";
 import type { NodeKind, SceneModel } from "./3d/types";
+import type { SurfaceKind } from "./room/types";
 
 /**
  * The materials market: everything the configurator does not put in the
@@ -13,13 +14,19 @@ import type { NodeKind, SceneModel } from "./3d/types";
  */
 
 export type CategoryId =
+  // Снаружи — то, из чего собран дом.
   | "roof"
   | "facade"
   | "insulation"
   | "waterproofing"
   | "fence"
   | "foundation"
-  | "openings";
+  | "openings"
+  // Внутри — то, чем отделывают комнату.
+  | "flooring"
+  | "wallcover"
+  | "ceiling"
+  | "soundproof";
 
 /**
  * Trade units. Deliberately separate from the 3D model's Unit: the model
@@ -33,6 +40,7 @@ export type MarketUnit =
   | "roll"
   | "pack"
   | "bag"
+  | "bucket"
   | "panel";
 
 export interface Category {
@@ -47,6 +55,12 @@ export interface Product {
   category: CategoryId;
   /** Which part of the house this covers, when it maps onto one. */
   appliesTo?: NodeKind;
+  /**
+   * Which room surfaces this may be applied to. Absent on everything the
+   * room configurator has no business offering — a roof tile is a product,
+   * but never a candidate for a ceiling.
+   */
+  roomSurfaces?: SurfaceKind[];
   price: number;
   unit: MarketUnit;
   summary: string;
@@ -89,6 +103,7 @@ const UNIT_LABELS: Record<MarketUnit, string> = {
   roll: "рулон",
   pack: "упак.",
   bag: "мешок",
+  bucket: "ведро",
   panel: "панель",
 };
 
@@ -143,6 +158,57 @@ export function photoSources(id: string) {
 }
 
 /**
+ * Reads a number out of the product's own spec sheet.
+ *
+ * Rates come from the datasheet rather than from a table in code, so the
+ * arithmetic and the printed spec can never disagree — if a supplier changes
+ * the coverage, the one place it is written down is the place that is read.
+ */
+export function specRate(product: Product, pattern: RegExp): number | null {
+  for (const [, value] of product.specs) {
+    const found = value.match(pattern);
+    if (found) {
+      const n = Number(found[1].replace(",", "."));
+      if (n > 0) return n;
+    }
+  }
+  return null;
+}
+
+/** "5,56 шт/м²" — how many pieces one square metre takes. */
+const PER_M2 = /(\d+(?:[.,]\d+)?)\s*шт\/м²/;
+/** "26 м² на рулон", "65 м² на ведро в два слоя" — what one package covers. */
+const COVERS_M2 = /(\d+(?:[.,]\d+)?)\s*м²\s*(?:на|\/)/;
+
+/**
+ * How many units of `product` cover `areaM2` — packs, rolls, buckets, sheets
+ * or pieces, whichever the merchant actually sells it in.
+ *
+ * Returns null when the datasheet does not answer the question: guessing a
+ * coverage rate would produce an estimate that looks exact and is not.
+ */
+export function unitsForAreaM2(product: Product, areaM2: number): number | null {
+  if (areaM2 <= 0) return 0;
+  if (product.unit === "m2") return Math.ceil(areaM2);
+
+  const perM2 = specRate(product, PER_M2);
+  if (perM2) return Math.ceil(areaM2 * perM2);
+
+  const covers = specRate(product, COVERS_M2);
+  if (covers) return Math.ceil(areaM2 / covers);
+
+  return null;
+}
+
+/** Products the room configurator may offer for one kind of surface. */
+export function productsForSurface(
+  kind: SurfaceKind,
+  all: Product[] = PRODUCTS,
+): Product[] {
+  return all.filter((p) => p.roomSurfaces?.includes(kind));
+}
+
+/**
  * How much of this product the reader's own model needs.
  *
  * The point of the market sitting next to the configurator: a product that
@@ -163,16 +229,7 @@ export function suggestedQuantity(
   const total = nodes.reduce((sum, n) => sum + n.quantity, 0);
   const measure = nodes[0].unit;
   const from = nodes.length > 1 ? `${nodes.length} поверхности` : nodes[0].label;
-  const rate = (pattern: RegExp) => {
-    for (const [, value] of product.specs) {
-      const found = value.match(pattern);
-      if (found) {
-        const n = Number(found[1].replace(",", "."));
-        if (n > 0) return n;
-      }
-    }
-    return null;
-  };
+  const rate = (pattern: RegExp) => specRate(product, pattern);
 
   // Counted things map straight across: four windows in the model are four
   // windows to buy.
@@ -184,13 +241,8 @@ export function suggestedQuantity(
   if (measure === "m2") {
     if (product.unit === "m2") return { quantity: Math.ceil(total), from };
 
-    // Rates come out of the spec sheet rather than out of a table here, so
-    // the arithmetic and the datasheet can never disagree.
-    const perM2 = rate(/(\d+(?:[.,]\d+)?)\s*шт\/м²/);
-    if (perM2) return { quantity: Math.ceil(total * perM2), from };
-
-    const covers = rate(/(\d+(?:[.,]\d+)?)\s*м²\s*(?:на|\/)/);
-    if (covers) return { quantity: Math.ceil(total / covers), from };
+    const units = unitsForAreaM2(product, total);
+    if (units !== null) return { quantity: units, from };
     return null;
   }
 

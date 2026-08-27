@@ -1,0 +1,541 @@
+"use client";
+
+import { useCallback, useMemo, useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/Button";
+import { StatusFilter } from "@/components/cabinet/StatusFilter";
+import { useApiFetch } from "@/lib/auth/useApiFetch";
+import {
+  REQUEST_STATUS_LABELS as STATUS_LABELS,
+  REQUEST_STATUS_STYLES as STATUS_STYLES,
+  WORK_KINDS,
+  formatDate,
+  plural,
+  type RequestStatus as Status,
+} from "@/lib/requests-ui";
+
+/**
+ * Заявки в кабинете. Один компонент на обе роли: клиент видит свои заявки и
+ * отклики на них, исполнитель — ленту новых заявок.
+ *
+ * Все запросы идут через useApiFetch: он сам продлевает сессию, когда
+ * пятнадцатиминутный токен истёк, и уводит на вход, только если продлить
+ * действительно нечем.
+ */
+
+interface RequestItem {
+  id: string;
+  /** С сервера приезжает Date, через JSON — строка. formatDate ест обе. */
+  createdAt: string | Date;
+  hasReview?: boolean;
+  status: Status;
+  title: string;
+  description: string | null;
+  city: string | null;
+  workKinds: string[];
+  budgetAmount: string | null;
+  responsesCount?: number;
+}
+
+interface ResponseItem {
+  id: string;
+  executorName: string;
+  executorCity: string | null;
+  status: "pending" | "accepted" | "rejected" | "withdrawn";
+  message: string | null;
+  priceAmount: string | null;
+  leadTimeDays: number | null;
+}
+
+/**
+ * Первый список приходит с сервера готовым (`initialRequests`), а не
+ * догружается после отрисовки. Две причины: человек сразу видит заявки без
+ * пустого экрана с «загружаем», и на странице нет запроса, который стартует
+ * из эффекта, — React такое не любит и справедливо ругается.
+ *
+ * Перезагрузка через API нужна только после действий: создали заявку,
+ * приняли отклик, завершили.
+ */
+export function RequestsPanel({
+  role,
+  initialRequests,
+}: {
+  role: string;
+  initialRequests: RequestItem[];
+}) {
+  const call = useApiFetch();
+  const isClient = role === "client";
+
+  const [requests, setRequests] = useState<RequestItem[]>(initialRequests);
+  const [filter, setFilter] = useState<Status | "all">("all");
+  const [error, setError] = useState<string | null>(null);
+  /** Отдельно от обычной ошибки: тут нужна не жалоба, а ссылка на оплату. */
+  const [limitReached, setLimitReached] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    const { ok, data } = await call<{ requests?: RequestItem[]; error?: string }>("/api/requests");
+    if (ok && data.requests) setRequests(data.requests);
+    else setError(data.error ?? "Не удалось загрузить заявки");
+  }, [call]);
+
+  /** Одно место, где выполняются действия: запрос, разбор ошибки, перезагрузка. */
+  const act = useCallback(
+    async (url: string, body?: unknown) => {
+      setBusy(true);
+      setError(null);
+      const { ok, status, data } = await call<{ error?: string }>(url, {
+        method: "POST",
+        headers: body ? { "content-type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!ok) {
+        // 402 Payment Required — кончился бесплатный лимит. Это не поломка,
+        // а развилка: человеку нужна ссылка на оплату, а не красная плашка.
+        if (status === 402) setLimitReached(true);
+        else setError(data.error ?? "Не получилось");
+      } else {
+        setLimitReached(false);
+        await load();
+      }
+      setBusy(false);
+      return ok;
+    },
+    [call, load],
+  );
+
+  // Порядок статусов — жизненный путь заявки, а не алфавит: новая, в работе,
+  // завершена, отменена. По нему человек читает свою историю сверху вниз.
+  const ORDER: Status[] = ["published", "in_progress", "completed", "cancelled", "draft"];
+  const counts = useMemo(
+    () => ORDER.map((id) => ({ id, count: requests.filter((r) => r.status === id).length })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [requests],
+  );
+  const visible = useMemo(
+    () => (filter === "all" ? requests : requests.filter((r) => r.status === filter)),
+    [requests, filter],
+  );
+
+  return (
+    <section className="mt-16">
+      <h2 className="font-display text-h3 font-extrabold text-cream-bright">
+        {isClient ? "Мои заявки" : "Новые заявки"}
+      </h2>
+
+      {/* Сортировка одна и та же везде — сначала новые. Отдельного
+          переключателя нет намеренно: «сначала старые» в списке заявок
+          нужно примерно никогда, а лишний орган управления читается как
+          обещание, что тут есть что настраивать. */}
+      <StatusFilter
+        value={filter}
+        onChange={setFilter}
+        counts={counts}
+        labels={STATUS_LABELS}
+        total={requests.length}
+      />
+
+      {error && (
+        <p role="alert" className="mt-4 rounded-2xl border border-error/40 px-4 py-3 text-body-s text-error">
+          {error}
+        </p>
+      )}
+
+      {limitReached && (
+        <div
+          role="alert"
+          className="mt-4 rounded-2xl border p-4"
+          style={{ borderColor: "rgba(255,215,0,0.45)" }}
+        >
+          <p className="text-body-s text-white">
+            Первый отклик бесплатный, для следующих нужна подписка.
+          </p>
+          <Link
+            href="/subscribe"
+            className="mt-3 inline-flex items-center rounded-full bg-accent px-4 py-2 text-body-s font-bold text-deep transition-[filter] hover:brightness-108"
+          >
+            Оформить подписку за 700 ₽/мес
+          </Link>
+        </div>
+      )}
+
+      {isClient && <NewRequestForm busy={busy} onCreate={(body) => act("/api/requests", body)} />}
+
+      {visible.length === 0 ? (
+        <p className="mt-8 text-body-s text-cream-dim">
+          {requests.length > 0
+            ? "В этом статусе заявок нет."
+            : isClient
+              ? "Заявок пока нет — создайте первую."
+              : "Свободных заявок сейчас нет."}
+        </p>
+      ) : (
+        <ul className="mt-8 space-y-4">
+          {visible.map((item) => (
+            <RequestCard key={item.id} item={item} isClient={isClient} busy={busy} act={act} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function RequestCard({
+  item,
+  isClient,
+  busy,
+  act,
+}: {
+  item: RequestItem;
+  isClient: boolean;
+  busy: boolean;
+  act: (url: string, body?: unknown) => Promise<boolean>;
+}) {
+  const call = useApiFetch();
+  const [responses, setResponses] = useState<ResponseItem[] | null>(null);
+  const [open, setOpen] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+
+  async function toggle() {
+    const next = !open;
+    setOpen(next);
+    if (next && responses === null) {
+      const { data } = await call<{ responses?: ResponseItem[] }>(`/api/requests/${item.id}`);
+      setResponses(data.responses ?? []);
+    }
+  }
+
+  return (
+    // Якорь для уведомлений: колокольчик ведёт на /cabinet#request-<id>, и без
+    // него человек попадал бы просто в кабинет, где заявку о которой речь
+    // нужно ещё найти глазами. scroll-mt отводит карточку из-под липкой
+    // шапки — иначе заголовок заявки окажется ровно под ней.
+    <li id={`request-${item.id}`} className="scroll-mt-20 rounded-3xl border border-line p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          {/* Заголовок — ссылка на страницу заявки. Раньше заявка жила
+              только внутри этой карточки, и переслать её кому-то или
+              вернуться к ней по ссылке было нельзя. */}
+          <h3 className="text-body-l text-cream-bright">
+            <Link
+              href={`/requests/${item.id}`}
+              className="underline decoration-transparent underline-offset-4 transition-colors hover:decoration-current"
+            >
+              {item.title}
+            </Link>
+          </h3>
+          <p className="mt-1 text-body-s text-cream-dim">
+            {[
+              item.city,
+              item.workKinds.map((k) => WORK_KINDS.find((w) => w.id === k)?.label ?? k).join(", "),
+              item.budgetAmount ? `${Number(item.budgetAmount).toLocaleString("ru-RU")} ₽` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+          <p className="mt-1 text-caption text-cream-dim">
+            {formatDate(item.createdAt)}
+            {isClient && (
+              <>
+                {" · "}
+                {item.responsesCount ?? 0}{" "}
+                {plural(item.responsesCount ?? 0, "отклик", "отклика", "откликов")}
+              </>
+            )}
+          </p>
+        </div>
+        <span
+          className={`shrink-0 rounded-full border px-3 py-1 text-caption ${STATUS_STYLES[item.status]}`}
+        >
+          {STATUS_LABELS[item.status]}
+        </span>
+      </div>
+
+      {item.description && <p className="mt-4 text-body-s text-cream-dim">{item.description}</p>}
+
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        {isClient ? (
+          <>
+            <button
+              type="button"
+              onClick={toggle}
+              className="text-ui font-bold text-cream-dim hover:text-cream-bright"
+            >
+              {open ? "Скрыть отклики" : `Отклики (${item.responsesCount ?? 0})`}
+            </button>
+            {item.status === "in_progress" && (
+              <Button
+                disabled={busy}
+                onClick={() => act(`/api/requests/${item.id}/status`, { status: "completed" })}
+              >
+                Работа выполнена
+              </Button>
+            )}
+            {/* Отзыв — только по завершённой заявке и только один раз.
+                Здесь это прячет форму, а не запрещает: настоящий запрет
+                стоит в базе, и запрос мимо интерфейса получит отказ. */}
+            {item.status === "completed" && !item.hasReview && (
+              <button
+                type="button"
+                onClick={() => setReviewing((v) => !v)}
+                className="text-ui font-bold text-accent transition-[filter] hover:brightness-110"
+              >
+                {reviewing ? "Не оставлять отзыв" : "Оставить отзыв"}
+              </button>
+            )}
+            {item.status === "completed" && item.hasReview && (
+              <span className="text-body-s text-cream-dim">Отзыв оставлен</span>
+            )}
+            {(item.status === "published" || item.status === "in_progress") && (
+              <Button
+                variant="ghost"
+                disabled={busy}
+                onClick={() => act(`/api/requests/${item.id}/status`, { status: "cancelled" })}
+              >
+                Отменить
+              </Button>
+            )}
+          </>
+        ) : (
+          <RespondForm busy={busy} onSend={(body) => act(`/api/requests/${item.id}/responses`, body)} />
+        )}
+      </div>
+
+      {reviewing && (
+        <ReviewForm
+          busy={busy}
+          onSend={async (body) => {
+            const sent = await act(`/api/requests/${item.id}/review`, body);
+            if (sent) setReviewing(false);
+            return sent;
+          }}
+        />
+      )}
+
+      {open && responses !== null && (
+        <ul className="mt-5 space-y-3 border-t border-line pt-5">
+          {responses.length === 0 && <li className="text-body-s text-cream-dim">Откликов пока нет.</li>}
+          {responses.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-body-s text-cream-bright">
+                  {r.executorName}
+                  {r.executorCity ? `, ${r.executorCity}` : ""}
+                </p>
+                <p className="text-caption text-cream-dim">
+                  {[
+                    r.priceAmount ? `${Number(r.priceAmount).toLocaleString("ru-RU")} ₽` : null,
+                    r.leadTimeDays ? `${r.leadTimeDays} дн.` : null,
+                    r.message,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "без условий"}
+                </p>
+              </div>
+              {r.status === "pending" && item.status === "published" ? (
+                <Button disabled={busy} onClick={() => act(`/api/responses/${r.id}/accept`)}>
+                  Принять
+                </Button>
+              ) : (
+                <span className="text-caption text-cream-dim">
+                  {r.status === "accepted" ? "принят" : r.status === "rejected" ? "отклонён" : "—"}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+function NewRequestForm({
+  busy,
+  onCreate,
+}: {
+  busy: boolean;
+  onCreate: (body: unknown) => Promise<boolean>;
+}) {
+  const [title, setTitle] = useState("");
+  const [city, setCity] = useState("");
+  const [budget, setBudget] = useState("");
+  const [kinds, setKinds] = useState<string[]>([]);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const created = await onCreate({
+      title,
+      city: city || null,
+      budgetAmount: budget || null,
+      workKinds: kinds,
+    });
+    if (created) {
+      setTitle("");
+      setCity("");
+      setBudget("");
+      setKinds([]);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-6 space-y-4 rounded-3xl border border-line p-6">
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Что нужно сделать"
+        required
+        maxLength={200}
+        className={inputClass}
+      />
+      <div className="flex flex-wrap gap-2">
+        {WORK_KINDS.map((kind) => {
+          const active = kinds.includes(kind.id);
+          return (
+            <button
+              key={kind.id}
+              type="button"
+              onClick={() =>
+                setKinds((prev) =>
+                  active ? prev.filter((k) => k !== kind.id) : [...prev, kind.id],
+                )
+              }
+              className={`rounded-full border px-4 py-2 text-ui transition-colors ${
+                active ? "border-cream text-cream-bright" : "border-line text-cream-dim"
+              }`}
+            >
+              {kind.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex gap-3">
+        <input
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          placeholder="Город"
+          className={inputClass}
+        />
+        <input
+          value={budget}
+          onChange={(e) => setBudget(e.target.value)}
+          placeholder="Бюджет, ₽"
+          inputMode="decimal"
+          className={inputClass}
+        />
+      </div>
+      <Button type="submit" disabled={busy || kinds.length === 0}>
+        Создать заявку
+      </Button>
+    </form>
+  );
+}
+
+function RespondForm({
+  busy,
+  onSend,
+}: {
+  busy: boolean;
+  onSend: (body: unknown) => Promise<boolean>;
+}) {
+  const [price, setPrice] = useState("");
+  const [days, setDays] = useState("");
+
+  return (
+    <form
+      onSubmit={async (event) => {
+        event.preventDefault();
+        const sent = await onSend({ priceAmount: price || null, leadTimeDays: days || null });
+        if (sent) {
+          setPrice("");
+          setDays("");
+        }
+      }}
+      className="flex w-full flex-wrap items-center gap-3"
+    >
+      <input
+        value={price}
+        onChange={(e) => setPrice(e.target.value)}
+        placeholder="Цена, ₽"
+        inputMode="decimal"
+        className={`${inputClass} max-w-40`}
+      />
+      <input
+        value={days}
+        onChange={(e) => setDays(e.target.value)}
+        placeholder="Срок, дней"
+        inputMode="numeric"
+        className={`${inputClass} max-w-40`}
+      />
+      <Button type="submit" disabled={busy}>
+        Откликнуться
+      </Button>
+    </form>
+  );
+}
+
+const inputClass =
+  "w-full rounded-2xl border border-line bg-surface px-4 py-3 text-body text-cream-bright " +
+  "placeholder:text-cream-dim focus:border-cream-dim focus:outline-none";
+
+/**
+ * Форма отзыва: оценка и текст.
+ *
+ * Оценка обязательна, текст нет. Так и в жизни: поставить пять звёзд легко,
+ * а расписывать почему — работа, и требовать её значит не получить ни одного
+ * отзыва. Зато оценка без текста всё равно попадает в средний рейтинг.
+ */
+function ReviewForm({
+  busy,
+  onSend,
+}: {
+  busy: boolean;
+  onSend: (body: unknown) => Promise<boolean>;
+}) {
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSend({ rating, comment });
+      }}
+      className="mt-5 space-y-3 border-t border-[var(--plate-edge)] pt-5"
+    >
+      <fieldset>
+        <legend className="mb-2 text-body-s text-cream-dim">Оценка работы</legend>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setRating(value)}
+              aria-pressed={rating === value}
+              aria-label={`${value} из 5`}
+              className={`h-9 w-9 rounded-full border text-ui font-bold transition-colors ${
+                value <= rating
+                  ? "border-accent bg-accent text-deep"
+                  : "border-[var(--plate-edge)] text-cream-dim hover:border-[var(--plate-edge-hi)]"
+              }`}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      <textarea
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        rows={2}
+        maxLength={2000}
+        placeholder="Что понравилось, что нет (необязательно)"
+        className={inputClass}
+      />
+
+      <Button type="submit" disabled={busy || rating === 0}>
+        Отправить отзыв
+      </Button>
+    </form>
+  );
+}

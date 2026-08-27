@@ -953,6 +953,536 @@
       ctx.restore();
       grain(ctx, W, H, 0.2, 107);
     },
+
+    // ------------------------------------------------------ интерьер
+
+    laminate(ctx, tint, W, H) {
+      // Ламинат и кварцвинил: печатный декор, поэтому доски похожи одна на
+      // другую куда сильнее, чем настоящее дерево, а фаска отбита резко.
+      const boardH = H * 0.3;
+      const r = rng(53);
+      let row = 0;
+      for (let y = -boardH * 0.45; y < H + boardH; y += boardH, row++) {
+        const base = shade(tint, (r() - 0.5) * 0.07);
+        ctx.fillStyle = base;
+        ctx.fillRect(0, y, W, boardH);
+
+        // Продольная текстура: длинные волокна вдоль доски.
+        for (let i = 0; i < 80; i++) {
+          const gy = y + r() * boardH;
+          ctx.strokeStyle = rgba(shade(base, r() > 0.55 ? -0.3 : 0.2), 0.07 + r() * 0.16);
+          ctx.lineWidth = 0.6 + r() * 1.9;
+          ctx.beginPath();
+          ctx.moveTo(-20, gy);
+          ctx.bezierCurveTo(
+            W * 0.3, gy + (r() - 0.5) * 20,
+            W * 0.68, gy + (r() - 0.5) * 20,
+            W + 20, gy,
+          );
+          ctx.stroke();
+        }
+
+        // Один «собор» на доску — та самая дуга, по которой декор и узнают.
+        const cx = W * (0.18 + r() * 0.6);
+        for (let i = 0; i < 9; i++) {
+          const spread = 10 + i * 7;
+          ctx.strokeStyle = rgba(shade(base, -0.26), 0.16 - i * 0.012);
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(cx - spread * 3.4, y + boardH);
+          ctx.quadraticCurveTo(cx, y + boardH * 0.16 - i * 4, cx + spread * 3.4, y + boardH);
+          ctx.stroke();
+        }
+
+        // Торцевой стык, вразбежку от ряда к ряду.
+        const seamX = W * (row % 2 === 0 ? 0.62 : 0.24);
+        ctx.fillStyle = "rgba(0,0,0,0.42)";
+        ctx.fillRect(seamX, y + 3, 2.5, boardH - 6);
+        ctx.fillStyle = rgba(shade(base, 0.34), 0.5);
+        ctx.fillRect(seamX + 2.5, y + 3, 1.5, boardH - 6);
+
+        // V-фаска: тень в канавке и подсвеченный скос доски снизу.
+        const g = ctx.createLinearGradient(0, y + boardH - 7, 0, y + boardH + 7);
+        g.addColorStop(0, rgba(shade(base, -0.55), 0.9));
+        g.addColorStop(0.5, "rgba(0,0,0,0.62)");
+        g.addColorStop(1, rgba(shade(base, 0.4), 0.85));
+        ctx.fillStyle = g;
+        ctx.fillRect(0, y + boardH - 7, W, 14);
+      }
+
+      // Сатиновый лак: одна широкая полоса блика поперёк досок.
+      const sheen = ctx.createLinearGradient(0, 0, W * 0.9, H);
+      sheen.addColorStop(0, "rgba(255,255,255,0)");
+      sheen.addColorStop(0.42, "rgba(255,255,255,0.1)");
+      sheen.addColorStop(0.6, "rgba(255,255,255,0)");
+      ctx.fillStyle = sheen;
+      ctx.fillRect(0, 0, W, H);
+
+      grain(ctx, W, H, 0.18, 53);
+    },
+
+    porcelain(ctx, tint, W, H) {
+      // Ректифицированный керамогранит 60 × 60: шов почти сведён, поэтому
+      // рисунок камня важнее раскладки.
+      const r = rng(71);
+      const tile = W * 0.46;
+      const joint = 3;
+
+      ctx.fillStyle = shade(tint, -0.5);
+      ctx.fillRect(0, 0, W, H);
+
+      for (let ty = -tile * 0.3; ty < H + tile; ty += tile + joint) {
+        for (let tx = -tile * 0.2; tx < W + tile; tx += tile + joint) {
+          const base = shade(tint, (r() - 0.5) * 0.1);
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(tx, ty, tile, tile);
+          ctx.clip();
+
+          ctx.fillStyle = base;
+          ctx.fillRect(tx, ty, tile, tile);
+
+          // Облачность камня: мягкие пятна, из которых складывается порода.
+          for (let i = 0; i < 26; i++) {
+            const px = tx + r() * tile;
+            const py = ty + r() * tile;
+            const rad = tile * (0.1 + r() * 0.3);
+            const cloud = ctx.createRadialGradient(px, py, 0, px, py, rad);
+            cloud.addColorStop(0, rgba(shade(base, r() > 0.5 ? 0.16 : -0.18), 0.3));
+            cloud.addColorStop(1, "rgba(0,0,0,0)");
+            ctx.fillStyle = cloud;
+            ctx.fillRect(tx, ty, tile, tile);
+          }
+
+          // Прожилки: тонкие, ломаные, идут через всю плиту.
+          for (let i = 0; i < 12; i++) {
+            const y0 = ty + r() * tile;
+            ctx.strokeStyle = rgba(shade(base, r() > 0.6 ? 0.34 : -0.34), 0.14 + r() * 0.2);
+            ctx.lineWidth = 0.7 + r() * 1.6;
+            ctx.beginPath();
+            ctx.moveTo(tx - 10, y0);
+            let px = tx - 10;
+            let py = y0;
+            while (px < tx + tile + 10) {
+              const nx = px + tile * (0.08 + r() * 0.14);
+              const ny = py + (r() - 0.5) * tile * 0.12;
+              ctx.lineTo(nx, ny);
+              px = nx;
+              py = ny;
+            }
+            ctx.stroke();
+          }
+
+          ctx.restore();
+
+          // Кромка после ректификации — прямая, с едва заметным светом.
+          ctx.strokeStyle = "rgba(255,255,255,0.08)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(tx + 0.5, ty + 0.5, tile - 1, tile - 1);
+        }
+      }
+      // Матовая поверхность: блика нет, только тонкая шероховатость.
+      grain(ctx, W, H, 0.4, 71);
+    },
+
+    "tile-gloss"(ctx, tint, W, H) {
+      // Настенная плитка 30 × 60 вперевязку, глянцевая глазурь.
+      const r = rng(89);
+      const tw = W * 0.52;
+      const th = tw / 2;
+      const joint = 5;
+
+      ctx.fillStyle = shade(tint, -0.42);
+      ctx.fillRect(0, 0, W, H);
+
+      let row = 0;
+      for (let y = -th * 0.4; y < H + th; y += th + joint, row++) {
+        const offset = row % 2 === 0 ? 0 : -(tw + joint) / 2;
+        for (let x = -tw + offset; x < W + tw; x += tw + joint) {
+          const base = shade(tint, 0.08 + (r() - 0.5) * 0.05);
+
+          // Глазурь наливная: к низу плитки она чуть темнее и толще.
+          const g = ctx.createLinearGradient(x, y, x + tw * 0.5, y + th);
+          g.addColorStop(0, shade(base, 0.14));
+          g.addColorStop(0.55, base);
+          g.addColorStop(1, shade(base, -0.12));
+          ctx.fillStyle = g;
+          ctx.fillRect(x, y, tw, th);
+
+          // Глянец: жёсткий блик по верху и отражённый свет снизу. Именно
+          // резкая граница блика отличает глазурь от матовой керамики.
+          const spec = ctx.createLinearGradient(x, y, x + tw * 0.3, y + th);
+          spec.addColorStop(0, "rgba(255,255,255,0.62)");
+          spec.addColorStop(0.13, "rgba(255,255,255,0.3)");
+          spec.addColorStop(0.16, "rgba(255,255,255,0.06)");
+          spec.addColorStop(0.55, "rgba(255,255,255,0)");
+          spec.addColorStop(0.84, "rgba(255,255,255,0.07)");
+          spec.addColorStop(1, "rgba(255,255,255,0.24)");
+          ctx.fillStyle = spec;
+          ctx.fillRect(x, y, tw, th);
+
+          // Завал кромки: у настенной плитки грань скруглена, и по ней идёт
+          // яркая нитка света — без неё плитка читается наклейкой.
+          ctx.fillStyle = "rgba(255,255,255,0.72)";
+          ctx.fillRect(x, y, tw, 2.5);
+          ctx.fillStyle = "rgba(255,255,255,0.3)";
+          ctx.fillRect(x, y, 2.5, th);
+          ctx.fillStyle = "rgba(0,0,0,0.3)";
+          ctx.fillRect(x, y + th - 3, tw, 3);
+        }
+      }
+
+      // Затирка сидит ниже глазури, поэтому шов затенён с одной стороны.
+      ctx.fillStyle = "rgba(0,0,0,0.2)";
+      for (let y = -th * 0.4; y < H + th; y += th + joint) {
+        ctx.fillRect(0, y + th, W, joint * 0.5);
+      }
+      grain(ctx, W, H, 0.12, 89);
+    },
+
+    "paint-matt"(ctx, tint, W, H) {
+      // Валик оставляет мелкую апельсиновую корку, ворсинки и еле заметные
+      // захватки. На этом краска и опознаётся — ровной заливкой она не бывает.
+      ctx.fillStyle = tint;
+      ctx.fillRect(0, 0, W, H);
+
+      const r = rng(97);
+      ctx.save();
+      ctx.globalCompositeOperation = "overlay";
+      for (let i = 0; i < 30000; i++) {
+        const x = r() * W;
+        const y = r() * H;
+        const rad = 1.4 + r() * 4.6;
+        ctx.fillStyle = r() > 0.5
+          ? `rgba(255,255,255,${r() * 0.26})`
+          : `rgba(0,0,0,${r() * 0.14})`;
+        ctx.beginPath();
+        ctx.arc(x, y, rad, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // След ворса: короткие штрихи по направлению последнего прохода.
+      for (let i = 0; i < 2600; i++) {
+        const x = r() * W;
+        const y = r() * H;
+        const len = 8 + r() * 34;
+        ctx.strokeStyle = r() > 0.5
+          ? `rgba(255,255,255,${r() * 0.2})`
+          : `rgba(0,0,0,${r() * 0.12})`;
+        ctx.lineWidth = 0.6 + r() * 1.4;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + (r() - 0.5) * 6, y + len);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Захватки валика: широкие вертикальные полосы в доли процента тона.
+      for (let i = 0; i < 7; i++) {
+        const x = r() * W;
+        const w = W * (0.1 + r() * 0.16);
+        const g = ctx.createLinearGradient(x, 0, x + w, 0);
+        g.addColorStop(0, "rgba(255,255,255,0)");
+        g.addColorStop(0.5, `rgba(255,255,255,${0.03 + r() * 0.035})`);
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(x, 0, w, H);
+      }
+
+      grain(ctx, W, H, 0.32, 97);
+    },
+
+    wallpaper(ctx, tint, W, H) {
+      // Флизелин под покраску: тканая основа, тиснёный раппорт и один стык.
+      ctx.fillStyle = tint;
+      ctx.fillRect(0, 0, W, H);
+
+      const r = rng(103);
+
+      // Тиснение рисуется не контуром, а парой «тень сверху — свет снизу».
+      // Рельеф виден только по тому, как он ловит свет; обведённая линия
+      // сразу читается печатью, а не выдавленным узором.
+      const stepX = W * 0.105;
+      const stepY = H * 0.145;
+      let row = 0;
+      for (let y = -stepY; y < H + stepY * 2; y += stepY, row++) {
+        for (let x = -stepX; x < W + stepX * 2; x += stepX) {
+          const cx = x + (row % 2 === 0 ? 0 : stepX / 2);
+          const rad = stepX * 0.36;
+          for (const [dy, colour] of [
+            [-rad * 0.3, "rgba(0,0,0,0.2)"],
+            [rad * 0.3, "rgba(255,255,255,0.28)"],
+          ]) {
+            const g = ctx.createRadialGradient(cx, y + dy, 0, cx, y + dy, rad);
+            g.addColorStop(0, colour);
+            g.addColorStop(1, colour.replace(/[0-9.]+\)$/, "0)"));
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.ellipse(cx, y + dy, rad, rad * 0.82, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+
+      // Тканая основа поверх рельефа: две сетки нитей под небольшим углом.
+      ctx.save();
+      ctx.globalCompositeOperation = "overlay";
+      for (const [step, alpha, tilt] of [[6, 0.4, 0.05], [8, 0.3, -0.06]]) {
+        for (let i = -H; i < W + H; i += step) {
+          ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+          ctx.lineWidth = 1.1;
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i + H * tilt, H);
+          ctx.stroke();
+          ctx.strokeStyle = `rgba(0,0,0,${alpha * 0.85})`;
+          ctx.beginPath();
+          ctx.moveTo(i + step / 2, 0);
+          ctx.lineTo(i + step / 2 + H * tilt, H);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+
+      // Стык полос: у флизелина он встык, видна только тонкая линия.
+      const seam = W * 0.71;
+      ctx.fillStyle = "rgba(0,0,0,0.12)";
+      ctx.fillRect(seam, 0, 1.6, H);
+      ctx.fillStyle = "rgba(255,255,255,0.14)";
+      ctx.fillRect(seam + 1.6, 0, 1.3, H);
+
+      grain(ctx, W, H, 0.3, 103);
+    },
+
+    travertine(ctx, tint, W, H) {
+      // Венецианская кельма: слои полупрозрачной штукатурки, поры в теле и
+      // заглаженные до блеска вершины.
+      const r = rng(109);
+      ctx.fillStyle = shade(tint, -0.2);
+      ctx.fillRect(0, 0, W, H);
+
+      // Проходы кельмой — широкие мазки в разные стороны, слоями. Каждый
+      // слой чуть перекрывает предыдущий, отсюда и облачность травертина.
+      for (let pass = 0; pass < 4; pass++) {
+        for (let i = 0; i < 200; i++) {
+          const x = r() * W;
+          const y = r() * H;
+          const len = W * (0.12 + r() * 0.3);
+          const wide = H * (0.06 + r() * 0.11);
+          const angle = (r() - 0.5) * 0.5;
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          const g = ctx.createLinearGradient(0, -wide / 2, 0, wide / 2);
+          const face = shade(tint, (r() - 0.35) * 0.55);
+          g.addColorStop(0, rgba(face, 0));
+          g.addColorStop(0.45, rgba(face, 0.5));
+          g.addColorStop(1, rgba(face, 0));
+          ctx.fillStyle = g;
+          ctx.fillRect(0, -wide / 2, len, wide);
+          // Край мазка: кельма оставляет тонкую заглаженную кромку.
+          ctx.fillStyle = rgba(shade(face, 0.45), 0.22);
+          ctx.fillRect(0, -wide / 2, len, 1.6);
+          ctx.restore();
+        }
+      }
+
+      // Поры травертина: вытянутые вдоль слоя каверны с подсветкой сверху.
+      for (let i = 0; i < 1400; i++) {
+        const x = r() * W;
+        const y = r() * H;
+        const rad = 2 + r() * 6;
+        ctx.fillStyle = `rgba(0,0,0,${0.18 + r() * 0.3})`;
+        ctx.beginPath();
+        ctx.ellipse(x, y, rad * (1.4 + r()), rad * 0.62, (r() - 0.5) * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(255,255,255,${0.16 + r() * 0.22})`;
+        ctx.beginPath();
+        ctx.ellipse(x, y - rad * 0.7, rad * (1.2 + r() * 0.6), rad * 0.3, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Железнение: вершины рельефа заглажены и дают пятна лоска.
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      for (let i = 0; i < 90; i++) {
+        const x = r() * W;
+        const y = r() * H;
+        const rx = W * (0.05 + r() * 0.12);
+        const g = ctx.createRadialGradient(x, y, 0, x, y, rx);
+        g.addColorStop(0, `rgba(255,255,255,${0.1 + r() * 0.14})`);
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.ellipse(x, y, rx, rx * 0.42, (r() - 0.5) * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      grain(ctx, W, H, 0.34, 109);
+    },
+
+    "stretch-ceiling"(ctx, tint, W, H) {
+      // Натянутое полотно почти не за что зацепиться взгляду: вся его
+      // фактура — это натяжение, шов сварки и рассеянный отблеск окна.
+      ctx.fillStyle = tint;
+      ctx.fillRect(0, 0, W, H);
+
+      const r = rng(113);
+
+      // Натяжение: очень пологие волны, расходящиеся от углов.
+      for (let i = 0; i < 26; i++) {
+        const x = r() * W;
+        const y = r() * H;
+        const rx = W * (0.25 + r() * 0.4);
+        const g = ctx.createRadialGradient(x, y, 0, x, y, rx);
+        g.addColorStop(0, r() > 0.5
+          ? `rgba(255,255,255,${0.04 + r() * 0.05})`
+          : `rgba(0,0,0,${0.02 + r() * 0.04})`);
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      // Отражение окна: у матового ПВХ оно размыто до пятна, но оно есть —
+      // без него полотно неотличимо от крашеного потолка.
+      ctx.save();
+      ctx.translate(W * 0.62, H * 0.3);
+      ctx.rotate(-0.22);
+      for (const [w, h, alpha] of [[W * 0.42, H * 0.3, 0.08], [W * 0.3, H * 0.2, 0.07]]) {
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, w);
+        g.addColorStop(0, `rgba(255,255,255,${alpha})`);
+        g.addColorStop(0.7, `rgba(255,255,255,${alpha * 0.35})`);
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, w, h, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // Сварной шов: полотно шире 3,25 м сваривают, и шов виден на просвет.
+      const seamY = H * 0.38;
+      const seam = ctx.createLinearGradient(0, seamY - 4, 0, seamY + 4);
+      seam.addColorStop(0, "rgba(0,0,0,0)");
+      seam.addColorStop(0.42, "rgba(0,0,0,0.08)");
+      seam.addColorStop(0.58, "rgba(255,255,255,0.1)");
+      seam.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = seam;
+      ctx.fillRect(0, seamY - 4, W, 8);
+
+      grain(ctx, W, H, 0.1, 113);
+    },
+
+    "gypsum-board"(ctx, tint, W, H) {
+      // Лицевой картон ГКЛ: волокно, редкие узелки и утонённая кромка,
+      // которая и отличает лист под шпаклёвку от обычного.
+      ctx.fillStyle = tint;
+      ctx.fillRect(0, 0, W, H);
+
+      const r = rng(127);
+
+      // Волокно картона: короткое, спутанное, но еле различимое — вблизи
+      // это бумага, а не мешковина, и контраст здесь врал бы о материале.
+      ctx.save();
+      ctx.globalCompositeOperation = "overlay";
+      for (let i = 0; i < 7000; i++) {
+        const x = r() * W;
+        const y = r() * H;
+        const len = 5 + r() * 20;
+        const angle = (r() - 0.5) * 0.55;
+        ctx.strokeStyle = r() > 0.5
+          ? `rgba(255,255,255,${r() * 0.3})`
+          : `rgba(0,0,0,${r() * 0.16})`;
+        ctx.lineWidth = 0.5 + r() * 0.7;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Узелки макулатуры: их видно, но их немного.
+      for (let i = 0; i < 70; i++) {
+        const x = r() * W;
+        const y = r() * H;
+        ctx.fillStyle = rgba(shade(tint, -0.22), 0.1 + r() * 0.12);
+        ctx.beginPath();
+        ctx.ellipse(x, y, 1.2 + r() * 2.4, 0.8 + r() * 1.4, r() * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Утонённая кромка (УК): картон загнут, поле уходит вниз на 1,5 мм.
+      const edge = H * 0.2;
+      const rec = ctx.createLinearGradient(0, H - edge, 0, H);
+      rec.addColorStop(0, "rgba(0,0,0,0)");
+      rec.addColorStop(0.35, "rgba(0,0,0,0.14)");
+      rec.addColorStop(1, "rgba(0,0,0,0.22)");
+      ctx.fillStyle = rec;
+      ctx.fillRect(0, H - edge, W, edge);
+      ctx.fillStyle = "rgba(255,255,255,0.16)";
+      ctx.fillRect(0, H - edge, W, 2);
+
+      grain(ctx, W, H, 0.34, 127);
+    },
+
+    underlay(ctx, tint, W, H) {
+      // Подложка с фольгированной стороной: металлический отлив, тиснение
+      // сеткой и складки от рулона, которые не разглаживаются до конца.
+      ctx.fillStyle = tint;
+      ctx.fillRect(0, 0, W, H);
+
+      const r = rng(131);
+
+      // Металлический отлив — узкие полосы света поперёк рулона.
+      for (let i = 0; i < 40; i++) {
+        const y = r() * H;
+        const h = H * (0.02 + r() * 0.08);
+        const g = ctx.createLinearGradient(0, y, 0, y + h);
+        g.addColorStop(0, "rgba(255,255,255,0)");
+        g.addColorStop(0.5, `rgba(255,255,255,${0.06 + r() * 0.16})`);
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, y, W, h);
+      }
+
+      // Тиснение: регулярная сетка ячеек, по которой подложка и мнётся.
+      const cell = W * 0.045;
+      for (let x = 0; x < W + cell; x += cell) {
+        ctx.fillStyle = "rgba(0,0,0,0.1)";
+        ctx.fillRect(x, 0, 1.4, H);
+        ctx.fillStyle = "rgba(255,255,255,0.13)";
+        ctx.fillRect(x + 1.4, 0, 1.2, H);
+      }
+      for (let y = 0; y < H + cell; y += cell) {
+        ctx.fillStyle = "rgba(0,0,0,0.1)";
+        ctx.fillRect(0, y, W, 1.4);
+        ctx.fillStyle = "rgba(255,255,255,0.13)";
+        ctx.fillRect(0, y + 1.4, W, 1.2);
+      }
+
+      // Складки от рулона: длинные пологие изломы с тенью и бликом.
+      for (let i = 0; i < 9; i++) {
+        const y0 = r() * H;
+        const drift = (r() - 0.5) * H * 0.25;
+        for (const [dy, colour, wide] of [
+          [0, `rgba(0,0,0,${0.1 + r() * 0.12})`, 5],
+          [-4, `rgba(255,255,255,${0.1 + r() * 0.14})`, 3],
+        ]) {
+          ctx.strokeStyle = colour;
+          ctx.lineWidth = wide;
+          ctx.beginPath();
+          ctx.moveTo(-20, y0 + dy);
+          ctx.bezierCurveTo(
+            W * 0.35, y0 + dy + drift,
+            W * 0.7, y0 + dy - drift,
+            W + 20, y0 + dy + drift * 0.4,
+          );
+          ctx.stroke();
+        }
+      }
+
+      grain(ctx, W, H, 0.24, 131);
+    },
   };
 
   window.__paintMaterial = function paintMaterial(canvas, kind, tint) {

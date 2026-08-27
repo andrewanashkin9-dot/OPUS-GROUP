@@ -30,7 +30,23 @@
   --white: #ffffff;
   --soft: rgba(255, 255, 255, 0.68);
   --dim: rgba(255, 255, 255, 0.42);
-  --cream: #e4d2ac;
+  /* The one accent. Gold, not beige: on the blueprint sheet a cream sat so
+     close to the paper's own warmth that it read as a lighter grey, and an
+     accent that has to be pointed out is not an accent. Contrast measured
+     against the composited plate rather than the sheet, because that is what
+     it is actually printed on: 7.22:1 on #133872 in blue and about 14:1 on
+     #1F1F1F in black, so it clears AAA for body text in both themes; black
+     on the filled version reads 13.3:1. */
+  --accent: #ffd700;
+  /* Фирменный кремовый — цвет чернил на исходных знаках. Взят из самих
+     файлов: у надписи пик #f6f2e1, у контейнера #f1e4d3; здесь тон между
+     ними. Отдельным токеном, а не через --cream (тот давно стал псевдонимом
+     белого и красит обычный текст — перекрасив его, мы бы затонировали
+     половину сайта). */
+  --brand-cream: #f2e7d4;
+  /* A lifted tint for edges and rules, where full-strength gold on a hairline
+     reads as a stray highlight rather than as a drawn line. */
+  --accent-line: rgba(255, 215, 0, 0.22);
 
   /* Graph-paper pitch: a fine line every 28px, a bold one every 5th. */
   --grid-cell: 28px;
@@ -118,15 +134,17 @@
   --color-plate-quiet: var(--plate-quiet);
   --color-plate-edge: var(--plate-edge);
 
-  /* Cream is the ONE accent and it is rationed: logo, primary CTA, active
+  /* The accent is rationed: logo, primary CTA, active
      state, key figures, title-block rules. It is reachable only through
      `accent`, so no component can casually tint body copy with it. */
-  --color-accent: var(--cream);
+  --color-accent: var(--accent);
+  --color-brand-cream: var(--brand-cream);
+  --color-accent-line: var(--accent-line);
 
   /* Legacy names, remapped onto the blueprint. Pages not yet rebuilt keep
      working and land in the new world automatically — and because the old
-     `cream` body text now resolves to white, cream stops leaking everywhere
-     the moment the palette changes. */
+     `cream` body text now resolves to white, the accent stops leaking
+     everywhere the moment the palette changes. */
   --color-bg: var(--deep);
   --color-surface: var(--plate);
   --color-line: var(--plate-edge);
@@ -203,7 +221,7 @@ h3,
 }
 
 ::selection {
-  background: var(--cream);
+  background: var(--accent);
   color: var(--deep);
 }
 
@@ -211,11 +229,11 @@ h3,
    animates, so a focus ring inherits the site's 280ms fade — it drifts up from
    the element's own colour instead of appearing. A keyboard user needs to see
    where focus landed at the moment it lands, so transitions are switched off
-   for the focused element and the cream ring is simply there. */
+   for the focused element and the accent ring is simply there. */
 :focus-visible {
   outline-width: 2px;
   outline-style: solid;
-  outline-color: var(--cream);
+  outline-color: var(--accent);
   outline-offset: 3px;
   border-radius: 4px;
   transition-property: none;
@@ -391,6 +409,86 @@ h3,
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Achievement card — the welcome toast after registration.
+
+   Three separate animations rather than one: the card arrives, the medal
+   lands a beat later, and a highlight sweeps across the plate once. Played
+   together they read as a single gesture; written together they would be one
+   unreadable keyframe list.
+--------------------------------------------------------------------------- */
+
+.achievement-in {
+  animation: achievement-in 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes achievement-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.achievement-medal {
+  animation: achievement-medal 620ms cubic-bezier(0.34, 1.56, 0.64, 1) 140ms both;
+}
+
+@keyframes achievement-medal {
+  from {
+    opacity: 0;
+    transform: scale(0.4) rotate(-18deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The sweep is a single pass, not a loop: a card that keeps glinting at the
+   corner of the eye stops being a reward and becomes a distraction. */
+.achievement-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 35%,
+    rgba(255, 215, 0, 0.16) 50%,
+    transparent 65%
+  );
+  transform: translateX(-100%);
+  animation: achievement-sheen 1100ms ease-out 320ms 1 both;
+}
+
+@keyframes achievement-sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Language toggle — the gold knob that slides between RU and EN.
+
+   The knob is a separate layer under the two labels rather than a background
+   on the active one: a background cannot travel between two elements, and
+   the whole point of this control is that the reader sees which way it went.
+--------------------------------------------------------------------------- */
+
+.lang-knob {
+  transition: transform var(--dur) var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lang-knob {
+    transition: none;
+  }
+}
+
 /* Reduced motion disables entrance animation entirely, as asked — the content
    is simply already there. */
 @media (prefers-reduced-motion: reduce) {
@@ -402,6 +500,15 @@ h3,
   }
   .reveal-in {
     animation: none;
+  }
+  .achievement-in,
+  .achievement-medal {
+    animation: none;
+  }
+  /* Карточка остаётся, исчезает только блик: он здесь украшение и ничего не
+     сообщает. */
+  .achievement-sheen::after {
+    display: none;
   }
   *,
   *::before,
@@ -486,7 +593,7 @@ h3,
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: var(--cream);
+  background: var(--accent);
   box-shadow: var(--lift-1);
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease);
@@ -497,7 +604,7 @@ h3,
   height: 18px;
   border: none;
   border-radius: 999px;
-  background: var(--cream);
+  background: var(--accent);
   box-shadow: var(--lift-1);
   cursor: pointer;
 }
@@ -591,6 +698,45 @@ h3,
 
 /* The brand mark. Painted as `currentColor` through a mask of the artwork, so
    it inherits the accent from its context and needs no per-theme variant. */
+/* Три фирменных знака, один приём.
+
+   Каждый — маска по currentColor, а не <img>: графика одноцветная, поэтому
+   один файл обслуживает любой контекст. Цвет он берёт у того, во что вложен,
+   то есть сам следует за темой между синей и чёрной бумагой и за акцентом,
+   если тот поменяется, — без второго файла и без ручного переключения.
+
+   Исходники приходили светлой графикой на тёмном фоне, без прозрачности.
+   Она вырезана заранее: яркость исходника стала альфа-каналом, фон и сор
+   фактуры отсечены по порогу, тонкие линии подняты до полной плотности —
+   иначе в шапке они читались бы серой мутью рядом с плотным шрифтом. */
+
+.logo-wordmark,
+.logo-container {
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+/* Надпись «OPUS GROUP®». Пропорция 15.7:1 — задавать ей ширину и высоту
+   одновременно нельзя, иначе она растянется; в вёрстке фиксируется высота. */
+.logo-wordmark {
+  -webkit-mask-image: url("/assets/brand/opus-wordmark.png");
+  mask-image: url("/assets/brand/opus-wordmark.png");
+  aspect-ratio: 1284 / 82;
+}
+
+/* Контейнер с надписью на боку — самостоятельный знак, подпись рядом с ним
+   уже лишняя. Пропорция 4:5, вертикальная: сверху уходит трос крана. */
+.logo-container {
+  -webkit-mask-image: url("/assets/brand/opus-container.png");
+  mask-image: url("/assets/brand/opus-container.png");
+  aspect-ratio: 400 / 500;
+}
+
 .logo-mark {
   background-color: currentColor;
   -webkit-mask-image: url("/assets/brand/opus-mark.png");

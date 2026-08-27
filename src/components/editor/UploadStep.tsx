@@ -99,7 +99,7 @@ export function UploadStep() {
             <p
               className="px-3 py-2 text-caption"
               style={{
-                color: previews[i] ? "var(--cream-bright)" : "var(--cream-dim)",
+                color: previews[i] ? "var(--white)" : "var(--dim)",
               }}
             >
               {previews[i] ? "✓ " : ""}

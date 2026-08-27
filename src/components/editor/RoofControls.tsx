@@ -69,13 +69,13 @@ export function RoofControls({ node }: { node: SceneNode }) {
             value={roof.pitchDeg}
             disabled={pitchLocked}
             onChange={(e) => setRoofPitch(Number(e.target.value))}
-            className="mt-2 w-full accent-[var(--cream-bright)] disabled:opacity-40"
+            className="mt-2 w-full accent-[var(--accent)] disabled:opacity-40"
           />
           {pitchLocked ? (
             <p className="mt-2 text-caption text-cream-dim">
               Точный угол — в подписке «Technic».{" "}
               <Link
-                href="/#pricing"
+                href="/subscribe"
                 className="font-medium text-cream-bright underline underline-offset-2"
               >
                 Подключить

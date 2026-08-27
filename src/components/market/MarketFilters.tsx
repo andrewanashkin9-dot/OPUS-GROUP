@@ -12,6 +12,8 @@ import {
 import { getDictionary } from "@/lib/i18n/dictionary";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locale";
 import { brandLabel, categoryText } from "@/lib/i18n/product-text";
+import { PRODUCTS } from "@/lib/marketplace";
+import { useProductRatings, type ProductRating } from "@/lib/product-ratings";
 
 /**
  * Category, brand and price filters.
@@ -27,6 +29,11 @@ export interface FilterState {
   brands: string[];
   maxPrice: number;
   onlyForModel: boolean;
+  /**
+   * Полоса оценки: 5, 4, 3, 2, 1 — округлённая средняя, или 0 для товаров
+   * без единого отзыва. null — не фильтруем.
+   */
+  ratingBand: number | null;
 }
 
 export const INITIAL_FILTER: FilterState = {
@@ -34,7 +41,25 @@ export const INITIAL_FILTER: FilterState = {
   brands: [],
   maxPrice: PRICE_MAX,
   onlyForModel: false,
+  ratingBand: null,
 };
+
+/**
+ * Полоса, в которую попадает товар по своей средней оценке.
+ *
+ * Полосы **не накопительные**: «4 ★» это 3,5–4,49, а не «четыре и выше».
+ * Накопительные («от 4 и выше») привычнее по маркетплейсам, но они врут
+ * глазу: столбик у двойки включал бы в себя весь каталог, и картинка
+ * показывала бы не разброс оценок, а порядок сортировки. Здесь столбики —
+ * это настоящая форма каталога, и её видно до всякого клика.
+ *
+ * 0 — товар без отзывов. Отдельная полоса, а не «единица»: «никто не
+ * оценил» и «оценили на единицу» — разные новости, и складывать их нельзя.
+ */
+export function ratingBandOf(rating: ProductRating | undefined): number {
+  if (!rating || rating.count === 0) return 0;
+  return Math.max(1, Math.min(5, Math.round(rating.average)));
+}
 
 /** Brands shown before the list has to be asked for. */
 const BRANDS_SHOWN = 6;
@@ -88,7 +113,8 @@ export function MarketFilters({
     !value.categories.length &&
     !value.brands.length &&
     value.maxPrice >= PRICE_MAX &&
-    !value.onlyForModel;
+    !value.onlyForModel &&
+    value.ratingBand === null;
 
   return (
     <section
@@ -129,6 +155,8 @@ export function MarketFilters({
           </button>
         )}
       </FilterGroup>
+
+      <RatingFilter value={value} onChange={onChange} locale={locale} />
 
       <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-4">
         <label className="flex min-w-64 flex-1 flex-col gap-2">
@@ -171,6 +199,114 @@ export function MarketFilters({
         )}
       </div>
     </section>
+  );
+}
+
+/**
+ * Оценка — гистограммой, а не строкой чипов.
+ *
+ * Чипы «5 ★ / 4 ★ / 3 ★» сказали бы только, что фильтр есть. Столбики
+ * говорят больше: сколько товаров в каждой полосе и какой формы каталог —
+ * и отвечают на «а есть ли там вообще что-то ниже четвёрки» раньше, чем
+ * человек нажмёт.
+ *
+ * Оценки приезжают после отрисовки (каталог статический), поэтому пока их
+ * нет, группы нет вовсе. Пустая рамка с нулями сдвигала бы фильтры под
+ * руками у читающего.
+ */
+function RatingFilter({
+  value,
+  onChange,
+  locale,
+}: {
+  value: FilterState;
+  onChange: (next: FilterState) => void;
+  locale: Locale;
+}) {
+  const t = getDictionary(locale).market;
+  const ratings = useProductRatings();
+
+  const bands = [5, 4, 3, 2, 1, 0];
+  const counts = new Map<number, number>(bands.map((b) => [b, 0]));
+  for (const product of PRODUCTS) {
+    const band = ratingBandOf(ratings[product.id]);
+    counts.set(band, (counts.get(band) ?? 0) + 1);
+  }
+
+  const shown = bands.filter((b) => (counts.get(b) ?? 0) > 0);
+  // Одна полоса на весь каталог — фильтровать не по чему.
+  if (shown.length < 2) return null;
+
+  const max = Math.max(...shown.map((b) => counts.get(b) ?? 0));
+
+  // Сводка: средняя по каталогу, взвешенная по числу отзывов, — то же
+  // число, что человек увидел бы, сложив все отзывы. Простое среднее
+  // средних дало бы товару с одним отзывом тот же вес, что товару с
+  // девятью.
+  const all = PRODUCTS.map((p) => ratings[p.id]).filter(Boolean) as ProductRating[];
+  const reviews = all.reduce((sum, r) => sum + r.count, 0);
+  const average = reviews
+    ? (all.reduce((sum, r) => sum + r.average * r.count, 0) / reviews).toFixed(1)
+    : null;
+
+  return (
+    <FilterGroup label={t.rating}>
+      <div className="w-full max-w-md">
+        {average && (
+          <p className="mb-2 text-caption text-cream-dim">
+            {t.ratingSummary(average, reviews)}
+          </p>
+        )}
+
+        <div className="space-y-1">
+          {shown.map((band) => {
+            const count = counts.get(band) ?? 0;
+            const active = value.ratingBand === band;
+            return (
+              <button
+                key={band}
+                type="button"
+                aria-pressed={active}
+                // Повторное нажатие снимает фильтр: у одиночного выбора
+                // иначе нет выхода, кроме кнопки «Сбросить» где-то внизу.
+                onClick={() => onChange({ ...value, ratingBand: active ? null : band })}
+                // Выбранная полоса подсвечивается плашкой и золотой
+                // волосяной рамкой — тем же языком, что и чипы категорий
+                // выше: без рамки одна подложка на тёмном фоне читается как
+                // наведение мышью, а не как выбор.
+                className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1 text-left transition-colors ${
+                  active
+                    ? "bg-[var(--blue-lift)] ring-1 ring-[var(--accent-line)]"
+                    : "hover:bg-[var(--blue-lift)]"
+                }`}
+              >
+                <span
+                  // У полосы «без отзывов» звёзд нет по определению, и
+                  // рисовать «0 ★» нельзя: ноль звёзд читается как «плохо»,
+                  // хотя это «никто не оценил».
+                  title={band === 0 ? t.ratingNone : undefined}
+                  className={`w-9 shrink-0 text-caption font-bold tabular-nums ${
+                    band === 0 ? "text-cream-dim" : "text-accent"
+                  }`}
+                >
+                  {band === 0 ? "—" : t.ratingBand(band)}
+                </span>
+                <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--plate-edge)]">
+                  <span
+                    aria-hidden="true"
+                    className={`block h-full rounded-full ${band === 0 ? "bg-dim" : "bg-accent"}`}
+                    style={{ width: `${Math.max(4, (count / max) * 100)}%` }}
+                  />
+                </span>
+                <span className="w-8 shrink-0 text-right text-caption tabular-nums text-cream-dim">
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </FilterGroup>
   );
 }
 

@@ -90,6 +90,10 @@ export interface Dictionary {
     filtersLabel: string;
     category: string;
     brand: string;
+    rating: string;
+    ratingBand: (stars: number) => string;
+    ratingNone: string;
+    ratingSummary: (average: string, reviews: number) => string;
     priceUpTo: (price: string) => string;
     onlyMyModel: string;
     found: string;
@@ -252,6 +256,11 @@ const ru: Dictionary = {
     filtersLabel: "Фильтры каталога",
     category: "Категория",
     brand: "Производитель",
+    rating: "Оценка",
+    ratingBand: (stars) => `${stars} ★`,
+    ratingNone: "без отзывов",
+    ratingSummary: (average, reviews) =>
+      `в среднем ${average} по ${reviews} ${reviews % 10 === 1 && reviews % 100 !== 11 ? "отзыву" : "отзывам"}`,
     priceUpTo: (price) => `Цена — до ${price}`,
     onlyMyModel: "Только для моей модели",
     found: "Найдено:",
@@ -422,6 +431,11 @@ const en: Dictionary = {
     filtersLabel: "Catalogue filters",
     category: "Category",
     brand: "Manufacturer",
+    rating: "Rating",
+    ratingBand: (stars) => `${stars} ★`,
+    ratingNone: "no reviews",
+    ratingSummary: (average, reviews) =>
+      `${average} on average across ${reviews} review${reviews === 1 ? "" : "s"}`,
     priceUpTo: (price) => `Price — up to ${price}`,
     onlyMyModel: "Only for my model",
     found: "Found:",

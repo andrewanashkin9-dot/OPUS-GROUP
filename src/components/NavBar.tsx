@@ -82,7 +82,15 @@ export function NavBar({ locale = DEFAULT_LOCALE }: { locale?: Locale } = {}) {
           className="flex shrink-0 items-center"
           onClick={() => setOpen(false)}
         >
-          <Wordmark className="h-3 text-brand-cream min-[360px]:h-3.5 sm:h-4" />
+          {/* Три высоты, потому что пропорция 16:1 наказывает за каждый
+              лишний пиксель: при 16 px надпись занимала около четверти ширины
+              шапки, и на русских подписях — они длиннее английских — пунктам
+              меню переставало хватать места, они переносились на вторую
+              строку и налезали на саму надпись. Ступени: 10 px до 360,
+              12 px до 640 и 14 px выше — на 320 px надпись в 14 px вместе с
+              тремя круглыми кнопками не помещалась в строку и растягивала
+              документ на 20 px, экран начинал ездить вбок. */}
+          <Wordmark className="h-2.5 text-brand-cream min-[360px]:h-3 sm:h-3.5" />
         </Link>
 
         {/* Разворачивается с 1280, а не с 1024: после появления вкладки
@@ -90,12 +98,28 @@ export function NavBar({ locale = DEFAULT_LOCALE }: { locale?: Locale } = {}) {
             хватать ширины, и они переносились на вторую строку, разрывая
             шапку. Ниже этого порога всё уходит в свёрнутое меню — там те же
             пункты, ничего не теряется. */}
-        <nav className="hidden items-center gap-6 xl:flex xl:gap-8">
+        {/* whitespace-nowrap на пунктах и shrink-0 на группах справа — это и
+            есть «в одну линию»: без них длинная подпись ломается пополам, и
+            строка меню превращается в две.
+            
+            Порог 1440, а не прежние 1280. Считается он не на глаз: сумма
+            надписи (219), шести русских пунктов с промежутками (619) и
+            группы управления (483) плюс поля — около 1385 px, а сам ряд
+            сидит в контейнере max-w-7xl шириной 1280. Разница уходит в поля
+            страницы и не видна, пока полей хватает, — то есть примерно с
+            1440. Ниже этого всё уходит в свёрнутое меню: там те же пункты,
+            ничего не теряется, а строка не ломается пополам.
+            
+            У модератора пунктов семь, и он — самый тесный случай; порог
+            выбран по нему, а не по гостю. Порог не умеет зависеть от роли,
+            и «гостю развернём раньше» означало бы, что у модератора шапка
+            разъезжается ровно на тех же 1366 px. */}
+        <nav className="hidden items-center gap-6 min-[1440px]:flex">
           {links.map((link) => (
             <Link
               key={link.href}
               href={localePath(locale, link.href)}
-              className="flex items-center gap-1.5 text-body-s font-medium text-dim transition-colors hover:text-white"
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-body-s font-medium text-dim transition-colors hover:text-white"
               aria-label={
                 link.href === "/cart" && estimateCount > 0
                   ? t.estimateCount(estimateCount)
@@ -114,14 +138,14 @@ export function NavBar({ locale = DEFAULT_LOCALE }: { locale?: Locale } = {}) {
           {showModeration && (
             <Link
               href="/moderation"
-              className="text-body-s font-medium text-accent transition-colors hover:brightness-110"
+              className="shrink-0 whitespace-nowrap text-body-s font-medium text-accent transition-colors hover:brightness-110"
             >
               {t.moderation}
             </Link>
           )}
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {/* Тумблер стоит первым в группе управления: язык выбирают один
               раз и до всего остального. На непереведённой странице он не
               рисуется вовсе — решает сам компонент.
@@ -144,14 +168,19 @@ export function NavBar({ locale = DEFAULT_LOCALE }: { locale?: Locale } = {}) {
               нового посетителя, и второй такой же акцент отменил бы первый. */}
           <Link
             href={account.href}
-            className="hidden items-center rounded-full border border-[var(--plate-edge)] px-4 py-2.5 text-ui font-bold text-white transition-colors hover:border-[var(--plate-edge-hi)] hover:bg-[var(--blue-lift)] sm:inline-flex"
+            // С 1024, а не с 640: на планшете вошедшему не хватало ширины —
+            // колокольчик и язык добавляют 130 px, и строка выезжала за
+            // экран. Из свёрнутого меню кабинет никуда не делся, а «Начать
+            // бесплатно» осталась в строке: она нужнее тому, кто пришёл
+            // впервые, чем ссылка в кабинет тому, кто и так тут свой.
+            className="hidden shrink-0 items-center whitespace-nowrap rounded-full border border-[var(--plate-edge)] px-4 py-2.5 text-ui font-bold text-white transition-colors hover:border-[var(--plate-edge-hi)] hover:bg-[var(--blue-lift)] lg:inline-flex"
           >
             {account.label}
           </Link>
 
           <Link
             href="/start"
-            className="hidden items-center rounded-full bg-accent px-5 py-2.5 text-ui font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 sm:inline-flex"
+            className="hidden shrink-0 items-center whitespace-nowrap rounded-full bg-accent px-5 py-2.5 text-ui font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 sm:inline-flex"
           >
             {t.startFree}
           </Link>
@@ -161,7 +190,7 @@ export function NavBar({ locale = DEFAULT_LOCALE }: { locale?: Locale } = {}) {
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
             aria-controls="mobile-nav"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)] xl:hidden"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)] sm:h-10 sm:w-10 min-[1440px]:hidden"
           >
             <span className="sr-only">
               {open ? t.closeMenu : t.openMenu}
@@ -188,7 +217,7 @@ export function NavBar({ locale = DEFAULT_LOCALE }: { locale?: Locale } = {}) {
       {open && (
         <nav
           id="mobile-nav"
-          className="border-t border-[var(--plate-edge)] px-4 pb-4 pt-2 xl:hidden"
+          className="border-t border-[var(--plate-edge)] px-4 pb-4 pt-2 min-[1440px]:hidden"
         >
           <ul>
             {links.map((link) => (

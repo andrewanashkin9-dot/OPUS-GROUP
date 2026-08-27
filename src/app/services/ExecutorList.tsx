@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Reveal } from "@/components/ui/Reveal";
+// ⚠️ ВРЕМЕННОЕ ТЕСТОВОЕ ПОСЛАБЛЕНИЕ — удалить вместе с миграцией 0010.
+import { DemoReviewForm } from "@/components/demo/DemoReviewForm";
 import { nodeKindLabel, useAppStore } from "@/lib/store";
 import type { NodeKind } from "@/lib/3d/types";
 
@@ -181,6 +183,13 @@ export function ExecutorList({
                     ))}
                   </ul>
                 )}
+
+                {/* ⚠️ ВРЕМЕННО: форма отзыва без завершённой заявки. У
+                        образцов её нет — отзыв о выдуманной бригаде не имеет
+                        смысла и сохранить его некуда. */}
+                    {!demo && (
+                      <DemoReviewForm executorId={crew.id} executorName={crew.displayName} />
+                    )}
 
                 {crew.specialties.length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-1.5">

@@ -5,6 +5,8 @@ import { Footer } from "@/components/Footer";
 import { NavBar } from "@/components/NavBar";
 import { requireUser } from "@/lib/server/auth/guard";
 import { findRequest, listResponses } from "@/lib/server/requests/queries";
+import { listMessages, readThreadAccess } from "@/lib/server/messages/queries";
+import { Chat } from "./Chat";
 import {
   REQUEST_STATUS_LABELS,
   REQUEST_STATUS_STYLES,
@@ -59,6 +61,12 @@ export default async function RequestPage({
   if (!isOwner && own.length === 0 && request.status !== "published") notFound();
 
   const responses = isOwner ? all : own;
+
+  // Право на переписку считает сервер, и оно же решает, показывать ли чат
+  // вовсе. Сообщения приезжают вместе со страницей, а не подгружаются после
+  // отрисовки: сервер уже здесь, у базы.
+  const thread = await readThreadAccess(id, auth.user.id);
+  const messages = thread.canRead ? await listMessages(id) : [];
   const details = [
     request.city,
     request.workKinds.map(workKindLabel).join(", "),
@@ -161,6 +169,19 @@ export default async function RequestPage({
             .
           </p>
         </section>
+
+        {thread.canRead && (
+          <Chat
+            requestId={request.id}
+            currentUserId={auth.user.id}
+            initialMessages={messages.map((m) => ({
+              ...m,
+              createdAt: m.createdAt.toISOString(),
+            }))}
+            initialCanWrite={thread.canWrite}
+            initialReason={thread.reason}
+          />
+        )}
       </main>
       <Footer />
     </>

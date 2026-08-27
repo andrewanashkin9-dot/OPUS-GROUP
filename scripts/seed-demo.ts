@@ -386,13 +386,25 @@ async function removeDemoData(): Promise<void> {
     const ids = `(select id from users where email like '%${DEMO_EMAIL_SUFFIX}')`;
     const requests = `(select id from requests where client_id in ${ids})`;
 
+    // Оба триггера «нельзя удалить» снимаются на одну транзакцию. Второй
+    // важен даже там, где переписку никто не трогает руками: удаление
+    // заявки уносит её сообщения каскадом, и триггер срабатывает на каждой
+    // такой строке.
     await db.query(`alter table reviews disable trigger reviews_forbid_rewrite_trg`);
+    await db.query(
+      `alter table request_messages disable trigger request_messages_forbid_rewrite_trg`,
+    );
     try {
       // Отзывы демо-заказчиков и отзывы о демо-бригадах — это разные
       // множества с тех пор, как отзыв можно оставить кому угодно (0010).
       await db.query(`delete from reviews where author_id in ${ids} or executor_id in ${ids}`);
+      await db.query(`delete from request_messages where request_id in ${requests}`);
+      await db.query(`delete from request_messages where author_id in ${ids}`);
     } finally {
       await db.query(`alter table reviews enable trigger reviews_forbid_rewrite_trg`);
+      await db.query(
+        `alter table request_messages enable trigger request_messages_forbid_rewrite_trg`,
+      );
     }
 
     await db.query(`delete from notifications  where request_id in ${requests}`);

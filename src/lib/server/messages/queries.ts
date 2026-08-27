@@ -24,6 +24,8 @@ export interface MessageRow {
   authorName: string;
   body: string;
   createdAt: Date;
+  /** Когда собеседник прочитал. null — ещё нет. */
+  readAt: Date | null;
 }
 
 /** Кто перед нами в этой заявке и что ему можно. */
@@ -96,7 +98,8 @@ export async function listMessages(requestId: string): Promise<MessageRow[]> {
             m.author_id    as "authorId",
             u.display_name as "authorName",
             m.body,
-            m.created_at   as "createdAt"
+            m.created_at   as "createdAt",
+            m.read_at      as "readAt"
        from request_messages m
        join users u on u.id = m.author_id
       where m.request_id = $1
@@ -105,6 +108,58 @@ export async function listMessages(requestId: string): Promise<MessageRow[]> {
     [requestId],
   );
   return rows;
+}
+
+/**
+ * Сколько сообщений собеседника человек ещё не прочитал.
+ *
+ * Считается по автору, а не по «получателю»: получателя в таблице нет и не
+ * должно быть — участники выводятся из заявки, и колонка с получателем
+ * разошлась бы с ними на первой же смене исполнителя.
+ */
+export async function countUnread(requestId: string, userId: string): Promise<number> {
+  const { rows } = await query<{ unread: string }>(
+    `select count(*) as unread
+       from request_messages
+      where request_id = $1 and author_id <> $2 and read_at is null`,
+    [requestId, userId],
+  );
+  return Number(rows[0].unread);
+}
+
+/**
+ * Отмечает прочитанными сообщения собеседника.
+ *
+ * Свои не трогаем: автор их и так видел, а поставив дату себе, мы сообщили
+ * бы собеседнику «прочитано» в тот момент, когда он ещё ничего не открывал.
+ *
+ * Право проверяется здесь же, `exists`-условием по заявке, а не отдельным
+ * чтением: между «убедились, что участник» и «обновили» помещается смена
+ * статуса заявки, и посторонний успел бы погасить чужие непрочитанные.
+ */
+export async function markThreadRead(requestId: string, userId: string): Promise<number> {
+  const { rowCount } = await query(
+    `update request_messages m
+        set read_at = now()
+      where m.request_id = $1
+        and m.author_id <> $2
+        and m.read_at is null
+        and exists (
+          select 1 from requests r
+           where r.id = m.request_id
+             and (
+               r.client_id = $2
+               or exists (
+                 select 1 from responses rs
+                  where rs.request_id = r.id
+                    and rs.status = 'accepted'
+                    and rs.executor_id = $2
+               )
+             )
+        )`,
+    [requestId, userId],
+  );
+  return rowCount ?? 0;
 }
 
 /**
@@ -170,6 +225,8 @@ export async function sendMessage(input: {
         authorName: created.authorName,
         body: input.body,
         createdAt: created.createdAt,
+        // Только что отправленное собеседник заведомо ещё не читал.
+        readAt: null,
       };
     });
   } catch (error) {

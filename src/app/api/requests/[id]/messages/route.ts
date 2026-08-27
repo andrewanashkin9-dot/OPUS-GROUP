@@ -3,7 +3,13 @@ import { requireUser } from "@/lib/server/auth/guard";
 import { noStore } from "@/lib/server/auth/http";
 import { readJson } from "@/lib/server/auth/validate";
 import { DomainError } from "@/lib/server/requests/queries";
-import { listMessages, readThreadAccess, sendMessage } from "@/lib/server/messages/queries";
+import {
+  countUnread,
+  listMessages,
+  markThreadRead,
+  readThreadAccess,
+  sendMessage,
+} from "@/lib/server/messages/queries";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,9 +33,15 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/requests/[i
   const access = await readThreadAccess(id, auth.user.id);
   if (!access.canRead) return NextResponse.json({ error: "Заявка не найдена" }, noStore(404));
 
+  // Порядок важен: сначала считаем непрочитанное, потом гасим. Иначе
+  // ответ всегда сообщал бы ноль, и собеседник никогда не узнал бы, что
+  // ему написали, пока он не смотрел.
+  const unread = await countUnread(id, auth.user.id);
   const messages = await listMessages(id);
+  await markThreadRead(id, auth.user.id);
+
   return NextResponse.json(
-    { messages, canWrite: access.canWrite, reason: access.reason },
+    { messages, unread, canWrite: access.canWrite, reason: access.reason },
     noStore(200),
   );
 }

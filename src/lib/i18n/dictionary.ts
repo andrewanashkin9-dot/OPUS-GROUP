@@ -126,7 +126,7 @@ export interface Dictionary {
   };
   langSwitch: { label: string; to: (name: string) => string };
   theme: { blue: string; black: string; switchTo: (name: string) => string };
-  /** ⚠️ ВРЕМЕННО: подпись у демо-отзывов. Удалить вместе с сид-скриптом. */
+  /** TODO: удалить перед запуском — подпись у демо-отзывов, вместе с сид-скриптом. */
   demoReviews: { badge: string; title: string };
 }
 

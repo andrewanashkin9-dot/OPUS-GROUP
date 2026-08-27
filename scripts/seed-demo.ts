@@ -1,5 +1,5 @@
 /**
- * ⚠️ ВРЕМЕННАЯ ДЕМО-ВСТАВКА — удаляется одним коммитом (см. README).
+ * TODO: удалить перед запуском — демо-вставка — удаляется одним коммитом (см. README).
  *
  * Тестовые исполнители, заявки и отзывы — чтобы рейтинг и отзывы на странице
  * «Услуги» можно было увидеть глазами до того, как появятся настоящие
@@ -562,7 +562,7 @@ const PRODUCT_REVIEWS: { productId: string; showcase: string; items: [number, st
 ];
 
 /**
- * ⚠️ ВРЕМЕННО: очередь на модерацию.
+ * TODO: удалить перед запуском — очередь на модерацию.
  *
  * Настоящих регистраций пока нет, а экран модерации без единой строки не
  * показывает ничего. Эти люди выдуманы: их можно блокировать и
@@ -606,7 +606,7 @@ const MODERATION_QUEUE: {
 ];
 
 /**
- * ⚠️ ВРЕМЕННО: менеджеры поставщиков для тестового чата.
+ * TODO: удалить перед запуском — менеджеры поставщиков для тестового чата.
  *
  * Роль `client`, а не `executor`, намеренно: исполнители попадают в выдачу
  * бригад на «Услугах», и менеджер поставщика стоял бы там среди кровельщиков.
@@ -626,7 +626,21 @@ type Db = {
 async function main(): Promise<void> {
   const clean = process.argv.includes("--clean");
 
-  const { withTransaction, getPool } = await import("../src/lib/server/db");
+  /**
+   * Режим для деплоя: завести, только если ещё ни разу не заводили.
+   *
+   * Отличий от обычного запуска два, и оба важны:
+   *
+   *  - **не удаляет ничего.** Обычный запуск сначала убирает прошлый прогон
+   *    — это нужно человеку, который хочет вернуть демо-данные в исходное
+   *    состояние. Деплою это запрещено: он затирал бы то, что успели
+   *    натыкать в интерфейсе с прошлого раза;
+   *  - **смотрит на отметку, а не на данные.** Убрали демо-данные перед
+   *    запуском — деплой не должен возвращать их назад.
+   */
+  const ifAbsent = process.argv.includes("--if-absent");
+
+  const { withTransaction, getPool, query } = await import("../src/lib/server/db");
   const { hashPassword } = await import("../src/lib/server/auth/password");
   const { PRODUCTS } = await import("../src/lib/marketplace");
 
@@ -637,6 +651,36 @@ async function main(): Promise<void> {
       return;
     }
 
+    if (ifAbsent) {
+      const { rows } = await query<{ seededAt: Date; source: string }>(
+        `select seeded_at as "seededAt", source from demo_seed_state limit 1`,
+      );
+      if (rows[0]) {
+        console.log(
+          `Демо-данные уже заводились ${rows[0].seededAt.toISOString().slice(0, 10)} (${rows[0].source}) — пропускаю.`,
+        );
+        return;
+      }
+
+      // Отметки нет, но люди есть: значит их завели руками до того, как
+      // появилась отметка. Ставим её и уходим — заводить поверх нельзя,
+      // повторная вставка отзывов упрётся в уникальность и оставит после
+      // себя половину работы.
+      const { rows: existing } = await query<{ count: string }>(
+        `select count(*) as count from users where email like '%${DEMO_EMAIL_SUFFIX}'`,
+      );
+      if (Number(existing[0].count) > 0) {
+        await query(
+          `insert into demo_seed_state (source) values ($1) on conflict (id) do nothing`,
+          ["найдены готовые данные"],
+        );
+        console.log(
+          `Демо-данные уже есть (${existing[0].count} записей) — отметил и пропускаю.`,
+        );
+        return;
+      }
+    }
+
     // Сначала убираем прошлый прогон, потом заводим заново.
     //
     // Иначе второй запуск падал на уникальности отзывов: пользователей
@@ -644,7 +688,9 @@ async function main(): Promise<void> {
     // безобидным — всё в одной транзакции, база не менялась, — но
     // бесполезным: «запусти сид ещё раз» это ровно то, что делают, когда
     // хотят вернуть демо-данные в исходное состояние.
-    await removeDemoData({ quiet: true });
+    // Деплою уборка запрещена: он затирал бы то, что успели натыкать в
+    // интерфейсе с прошлого раза. Ручному запуску, наоборот, нужна.
+    if (!ifAbsent) await removeDemoData({ quiet: true });
 
     const passwordHash = await hashPassword(DEMO_PASSWORD);
 
@@ -765,7 +811,7 @@ async function main(): Promise<void> {
         }
       }
 
-      // ⚠️ ВРЕМЕННО: очередь на модерацию и менеджеры для тестового чата.
+      // TODO: удалить перед запуском — очередь на модерацию и менеджеры для тестового чата.
       for (const person of MODERATION_QUEUE) {
         const id = await upsertUser(db, {
           email: `${person.slug}${DEMO_EMAIL_SUFFIX}`,
@@ -849,6 +895,11 @@ async function main(): Promise<void> {
         }
       }
     });
+
+    await query(
+      `insert into demo_seed_state (source) values ($1) on conflict (id) do nothing`,
+      [ifAbsent ? "деплой" : "запуск вручную"],
+    );
 
     console.log("Готово. Заведены тестовые бригады, заявки и отзывы.\n");
     console.log("Бригады:");

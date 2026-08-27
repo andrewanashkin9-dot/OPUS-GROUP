@@ -2,13 +2,12 @@ import { NextResponse } from "next/server";
 import { noStore } from "@/lib/server/auth/http";
 import { isDbConfigured } from "@/lib/server/db-config";
 import { query } from "@/lib/server/db";
-import { isDemoMode } from "@/lib/demo-mode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * ⚠️ ВРЕМЕННАЯ ДЕМО-ВСТАВКА — удалить перед запуском.
+ * TODO: удалить перед запуском — временная демо-вставка.
  *
  * Список демо-менеджеров для кнопки «Написать менеджеру».
  *
@@ -16,7 +15,7 @@ export const dynamic = "force-dynamic";
  * витрина, а не выгрузка персональных данных, пусть и выдуманных.
  */
 export async function GET() {
-  if (!isDemoMode() || !isDbConfigured()) {
+  if (!isDbConfigured()) {
     return NextResponse.json({ managers: [] }, noStore(200));
   }
 

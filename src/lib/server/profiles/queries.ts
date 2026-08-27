@@ -23,7 +23,7 @@ export interface ReviewSummary {
   comment: string | null;
   authorName: string;
   createdAt: Date;
-  /** ⚠️ ВРЕМЕННО: отзыв из сид-скрипта, а не от заказчика. См. README. */
+  /** TODO: удалить перед запуском — отзыв из сид-скрипта, а не от заказчика. См. README. */
   isDemo: boolean;
 }
 
@@ -127,7 +127,7 @@ export async function listExecutors(filter?: { specialties?: string[] }): Promis
                       select v2.id, v2.rating, v2.comment,
                              a.display_name as "authorName",
                              v2.created_at  as "createdAt",
-                             -- ⚠️ ВРЕМЕННО: пометка демо-отзывов, см. README.
+                             -- TODO: удалить перед запуском — пометка демо-отзывов, см. README.
                              (a.email like '%@demo.opusgroup') as "isDemo"
                         from reviews v2
                         join users a on a.id = v2.author_id

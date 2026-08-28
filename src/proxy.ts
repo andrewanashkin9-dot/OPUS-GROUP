@@ -25,6 +25,25 @@ import { ACCESS_COOKIE } from "@/lib/auth/cookie-names";
 // приводила на форму входа — человек так и не узнавал, за что платит.
 const PROTECTED_PAGES = ["/cabinet", "/moderation"];
 
+/**
+ * TODO: удалить перед запуском — витрина без базы.
+ *
+ * Без базы нет ни пользователей, ни сессий: этот файл увёл бы на вход вообще
+ * всех, и экран модерации не открылся бы никому. Тогда закрытых страниц нет —
+ * закрывать нечего, все данные лежат в базе, которой нет.
+ *
+ * Переменные читаются здесь напрямую, а не через `isDbConfigured()`: тот
+ * модуль помечен `server-only` и тянет за собой драйвер PostgreSQL, а этот
+ * файл выполняется на каждый запрос к любой странице.
+ *
+ * Значение подставляется при сборке. Это не беда: переменные окружения и так
+ * применяются только со следующей сборки — добавили базу, пересобрали,
+ * страницы снова закрыты.
+ */
+const DB_CONFIGURED = Boolean(
+  process.env.DB_HOST && process.env.DB_NAME && process.env.DB_USER && process.env.DB_PASSWORD,
+);
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -32,6 +51,9 @@ export function proxy(request: NextRequest) {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
   if (!isProtected) return NextResponse.next();
+
+  // TODO: удалить перед запуском — без базы страницы никого не ждут.
+  if (!DB_CONFIGURED) return NextResponse.next();
 
   if (request.cookies.get(ACCESS_COOKIE)?.value) return NextResponse.next();
 

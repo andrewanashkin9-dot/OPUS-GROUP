@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { isDbConfigured } from "@/lib/server/db-config";
+// TODO: удалить перед запуском — витрина без базы.
+import { demoProductReviews } from "@/lib/demo/fallback";
 import { productById } from "@/lib/marketplace";
 import { listProductReviews } from "@/lib/server/reviews/products";
 
@@ -20,7 +22,10 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/products/[i
     return NextResponse.json({ error: "Товар не найден" }, { status: 404 });
   }
 
-  if (!isDbConfigured()) return NextResponse.json({ reviews: [] });
+  // TODO: удалить перед запуском — без базы отдаём выдуманные отзывы.
+  if (!isDbConfigured()) {
+    return NextResponse.json({ reviews: demoProductReviews(id) });
+  }
 
   try {
     const reviews = await listProductReviews(id);

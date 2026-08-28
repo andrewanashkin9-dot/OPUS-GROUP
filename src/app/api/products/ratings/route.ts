@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { isDbConfigured } from "@/lib/server/db-config";
+// TODO: удалить перед запуском — витрина без базы.
+import { demoProductRatings } from "@/lib/demo/fallback";
 import { listProductRatings } from "@/lib/server/reviews/products";
 
 export const runtime = "nodejs";
@@ -16,9 +18,11 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   if (!isDbConfigured()) {
-    // База не настроена — не ошибка: каталог работает и без неё, просто
-    // без оценок. Пустой список читается вызывающим как «оценок нет».
-    return NextResponse.json({ ratings: [] }, { headers: cacheHeaders() });
+    // TODO: удалить перед запуском — без базы отдаём выдуманные оценки.
+    // Раньше здесь был пустой список, и каталог выглядел так, будто товары
+    // никто не оценивал. Пустая витрина не показывает функцию; выдуманная
+    // показывает — и помечена как выдуманная везде, где видна.
+    return NextResponse.json({ ratings: demoProductRatings() }, { headers: cacheHeaders() });
   }
 
   try {

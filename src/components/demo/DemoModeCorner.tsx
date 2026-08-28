@@ -36,10 +36,16 @@ export function DemoModeCorner() {
   const [error, setError] = useState<string | null>(null);
   const [hidden, setHidden] = useState(false);
 
-  // Гостю переключать нечего: роль есть только у вошедшего.
-  if (role === null || hidden) return null;
+  // TODO: удалить перед запуском — плашка видна и гостю.
+  //
+  // Раньше здесь было `role === null` → ничего не рисуем: без входа роли не
+  // существует, и переключать было нечего. Теперь сайт работает и без базы,
+  // где вошедших нет вовсе, — а показать функции нужно всем. Гость считается
+  // посетителем, и это единственное, чем он отличается.
+  if (hidden) return null;
 
   const asModerator = canModerate(role);
+
 
   async function switchTo(next: string) {
     setPending(true);

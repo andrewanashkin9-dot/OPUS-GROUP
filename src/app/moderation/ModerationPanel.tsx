@@ -69,12 +69,28 @@ const FILTERS = [
 export function ModerationPanel({
   initialUsers,
   currentUserId,
+  offline = false,
 }: {
   initialUsers: ManagedUser[];
   currentUserId: string;
+  /**
+   * TODO: удалить перед запуском — работа без базы.
+   *
+   * Базы в окружении нет, а показать экран нужно. Тогда список живёт в
+   * браузере: фильтры отбирают из него же, блокировка и одобрение меняют
+   * состояние здесь, до перезагрузки страницы.
+   *
+   * Не «как будто сохранилось» — именно до перезагрузки. Сделать вид, что
+   * решение записано, было бы хуже пустого экрана: человек ушёл бы уверенным,
+   * что кого-то заблокировал.
+   */
+  offline?: boolean;
 }) {
   const call = useApiFetch();
   const [users, setUsers] = useState(initialUsers);
+  // Полный список нужен только без базы: с базой за каждым фильтром ходят к
+  // ней, и держать копию было бы вторым источником правды.
+  const [allUsers, setAllUsers] = useState(initialUsers);
   const [filter, setFilter] = useState<string>("pending");
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +98,10 @@ export function ModerationPanel({
 
   const load = useCallback(
     async (nextFilter: string, nextSearch: string) => {
+      // Без базы отбирать нечего: список считается прямо при отрисовке из
+      // allUsers, filter и search — см. `visible` ниже.
+      if (offline) return;
+
       setBusy(true);
       const params = new URLSearchParams({ status: nextFilter });
       if (nextSearch.trim()) params.set("q", nextSearch.trim());
@@ -92,11 +112,33 @@ export function ModerationPanel({
       else setError(data.error ?? "Не удалось загрузить список");
       setBusy(false);
     },
-    [call],
+    [call, offline],
   );
 
   const act = useCallback(
     async (userId: string, action: string, reason: string) => {
+      // TODO: удалить перед запуском — решение без базы: меняем список здесь.
+      if (offline) {
+        setError(null);
+        setAllUsers((prev) =>
+          prev.map((u) =>
+            u.id === userId
+              ? {
+                  ...u,
+                  status: action === "block" ? "blocked" : "active",
+                  lastAction: {
+                    action,
+                    reason,
+                    actorName: "Вы",
+                    createdAt: new Date().toISOString(),
+                  },
+                }
+              : u,
+          ),
+        );
+        return true;
+      }
+
       setBusy(true);
       setError(null);
       const { ok, data } = await call<{ error?: string }>(`/api/moderation/users/${userId}`, {
@@ -112,8 +154,23 @@ export function ModerationPanel({
       await load(filter, search);
       return true;
     },
-    [call, filter, search, load],
+    [call, filter, search, load, offline],
   );
+
+  // TODO: удалить перед запуском — без базы список отбирается здесь.
+  // Считается при отрисовке, а не хранится: тогда блокировка видна сразу,
+  // без второго обхода состояния.
+  const visible = offline
+    ? allUsers.filter((u) => {
+        if (filter !== "all" && u.status !== filter) return false;
+        const needle = search.trim().toLowerCase();
+        if (!needle) return true;
+        return (
+          u.displayName.toLowerCase().includes(needle) ||
+          (u.email ?? "").toLowerCase().includes(needle)
+        );
+      })
+    : users;
 
   return (
     <>
@@ -158,11 +215,11 @@ export function ModerationPanel({
         </p>
       )}
 
-      {users.length === 0 ? (
+      {visible.length === 0 ? (
         <p className="mt-10 text-body-s text-cream-dim">Никого не найдено.</p>
       ) : (
         <ul className="mt-8 space-y-4">
-          {users.map((user) => (
+          {visible.map((user) => (
             <UserCard
               key={user.id}
               user={user}

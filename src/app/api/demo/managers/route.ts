@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { noStore } from "@/lib/server/auth/http";
 import { isDbConfigured } from "@/lib/server/db-config";
+import { demoManagers } from "@/lib/demo/fallback";
 import { query } from "@/lib/server/db";
 
 export const runtime = "nodejs";
@@ -15,8 +16,11 @@ export const dynamic = "force-dynamic";
  * витрина, а не выгрузка персональных данных, пусть и выдуманных.
  */
 export async function GET() {
+  // TODO: удалить перед запуском — без базы отдаём выдуманных менеджеров:
+  // переписка с ними тоже живёт в браузере, см. DemoManagerChat.
   if (!isDbConfigured()) {
-    return NextResponse.json({ managers: [] }, noStore(200));
+    // offline: переписка живёт прямо в браузере — заводить заявку негде.
+    return NextResponse.json({ managers: demoManagers(), offline: true }, noStore(200));
   }
 
   try {

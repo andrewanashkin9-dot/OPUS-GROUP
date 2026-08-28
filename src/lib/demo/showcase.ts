@@ -576,7 +576,7 @@ export const MODERATION_QUEUE: {
     status: "blocked",
     city: "Курган",
     blockedFor:
-      "Три жалобы на предоплату без выхода на объект. Заблокирован до выяснения, обращения по спорным заявкам — на support@opus-group.ru.",
+      "Три жалобы на предоплату без выхода на объект. Заблокирован до выяснения, обращения по спорным заявкам — на opusgroupnosleepwork@gmail.com.",
   },
   {
     slug: "mod-7",

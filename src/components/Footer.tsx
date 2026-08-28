@@ -42,7 +42,7 @@ export function Footer({ locale = DEFAULT_LOCALE }: { locale?: Locale } = {}) {
             locale={locale}
             title={t.support}
             links={[
-              { href: "mailto:hello@opus-group.ru", label: "hello@opus-group.ru" },
+              { href: "mailto:opusgroupnosleepwork@gmail.com", label: "opusgroupnosleepwork@gmail.com" },
               { href: "tel:+78003001010", label: "8 800 300-10-10" },
             ]}
           />

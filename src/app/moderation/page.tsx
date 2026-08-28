@@ -6,6 +6,8 @@ import { isDbConfigured } from "@/lib/server/db-config";
 // TODO: удалить перед запуском — витрина без базы.
 import { demoModerationUsers } from "@/lib/demo/fallback";
 import { ModerationPanel } from "./ModerationPanel";
+import { NavBar } from "@/components/NavBar";
+import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Модерация — OPUS GROUP",
@@ -73,30 +75,53 @@ function ModerationLayout({
   demo?: boolean;
 }) {
   return (
-    <main className="mx-auto max-w-4xl px-4 py-20 sm:px-6 lg:px-8">
-      <p className="text-body-s text-cream-dim">Модерация</p>
-      <h1 className="font-display mt-2 text-h1 font-extrabold text-cream-bright">Пользователи</h1>
-      <p className="prose-measure mt-4 text-body-s text-cream-dim">
-        Каждое решение сохраняется вместе с причиной и автором. Причину видит
-        пользователь — ограничение доступа должно быть объяснимо.
-      </p>
-
-      {/* TODO: удалить перед запуском — честная подпись у витрины без базы.
-          Человек должен понимать, что заблокировал выдуманного человека, и
-          что после перезагрузки страницы всё вернётся. */}
-      {demo && (
-        <p
-          className="mt-4 rounded-xl border border-dashed p-3 text-body-s text-cream-dim"
-          style={{ borderColor: "rgba(255,215,0,0.5)" }}
-        >
-          <span className="font-bold text-accent">Демо-данные.</span> Пользователи
-          выдуманы, база не подключена. Блокировать и одобрять можно —
-          по-настоящему всё работает так же, — но решения живут до перезагрузки
-          страницы.
+    <>
+      {/* Шапка и подвал, как на любой другой странице. Их здесь не было
+          вовсе: экран открывался голым текстом посреди пустого поля, и уйти
+          с него можно было только кнопкой «назад». Заодно это чинит и вид
+          слева — колонка больше не висит в пустоте, её левый край совпадает
+          с надписью в шапке. */}
+      <NavBar />
+      {/* Ширина и поля — те же, что у шапки, а не узкая колонка по центру.
+          Это рабочий экран со списком, а не статья: заголовок должен
+          начинаться под надписью в шапке, иначе слева зияет пустое поле в
+          четверть экрана, а строки карточек при этом жмутся. */}
+      {/* w-full здесь обязателен, и это не лишний класс. Корневая разметка —
+          колонка flex, а `mx-auto` у элемента такой колонки означает «сожмись
+          по содержимому и встань по центру»: без w-full ширина бралась не из
+          max-w, а из самой длинной карточки, и колонка гуляла по экрану
+          вслед за длиной имён. */}
+      <main className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 min-[1440px]:max-w-[1560px]">
+        <p className="text-body-s text-cream-dim">Модерация</p>
+        <h1 className="font-display mt-2 text-h1 font-extrabold text-cream-bright">
+          Пользователи
+        </h1>
+        <p className="prose-measure mt-4 text-body-s text-cream-dim">
+          Каждое решение сохраняется вместе с причиной и автором. Причину видит
+          пользователь — ограничение доступа должно быть объяснимо.
         </p>
-      )}
 
-      {children}
-    </main>
+        {/* TODO: удалить перед запуском — честная подпись у витрины без базы.
+            Человек должен понимать, что заблокировал выдуманного человека, и
+            что после перезагрузки страницы всё вернётся. */}
+        {demo && (
+          <p
+            // max-w-3xl: карточки внизу тянутся во всю ширину, а строка
+            // текста — нет. На 1560 px без ограничения это одна строка от
+            // края до края, и глаз теряет начало следующей.
+            className="mt-4 max-w-3xl rounded-xl border border-dashed p-3 text-body-s text-cream-dim"
+            style={{ borderColor: "rgba(255,215,0,0.5)" }}
+          >
+            <span className="font-bold text-accent">Демо-данные.</span> Пользователи
+            выдуманы, база не подключена. Блокировать и одобрять можно —
+            по-настоящему всё работает так же, — но решения живут до перезагрузки
+            страницы.
+          </p>
+        )}
+
+        {children}
+      </main>
+      <Footer />
+    </>
   );
 }

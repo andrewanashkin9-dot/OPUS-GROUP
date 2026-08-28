@@ -94,7 +94,7 @@ export function MaterialsPalette({ node, compact = false }: MaterialsPaletteProp
           </p>
           <Link
             href="/subscribe"
-            className="mt-3 inline-flex items-center rounded-full bg-accent px-4 py-2 text-body-s font-bold text-deep"
+            className="btn-gold mt-3 inline-flex items-center rounded-full bg-accent px-4 py-2 text-body-s font-bold text-deep"
           >
             Оформить подписку за 700 ₽/мес
           </Link>

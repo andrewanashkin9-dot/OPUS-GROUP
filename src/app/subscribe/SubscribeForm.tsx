@@ -75,7 +75,7 @@ export function SubscribeForm({
         <Features />
         <Link
           href="/login?next=/subscribe"
-          className="mt-8 flex w-full items-center justify-center rounded-full bg-accent px-5 py-3 text-ui font-bold text-deep transition-[filter] hover:brightness-108"
+          className="btn-gold mt-8 flex w-full items-center justify-center rounded-full bg-accent px-5 py-3 text-ui font-bold text-deep"
         >
           Войти и оформить
         </Link>
@@ -150,12 +150,14 @@ export function SubscribeForm({
           Раньше она выглядела рабочей и отвечала красным «Оплата пока не
           подключена» — на вид поломка, хотя это ожидаемое состояние. */}
       {paymentsReady ? (
-        <Button className="mt-8 w-full" onClick={subscribe} disabled={pending}>
+        <Button variant="gold" className="mt-8 w-full" onClick={subscribe} disabled={pending}>
           {pending ? "Готовим оплату…" : `Оплатить ${PRICE}`}
         </Button>
       ) : (
         <>
-          <Button className="mt-8 w-full" disabled>
+          {/* Тот же вид, но без движения: класс гасит анимацию у :disabled.
+              Иначе кнопка переливалась бы, обещая нажатие, которого не будет. */}
+          <Button variant="gold" className="mt-8 w-full" disabled>
             Оплатить {PRICE}
           </Button>
           <p className="mt-4 rounded-2xl border border-[var(--plate-edge)] px-4 py-3 text-body-s text-dim">

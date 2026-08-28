@@ -1,7 +1,8 @@
 import { Footer } from "@/components/Footer";
 import { LocaleHtmlLang } from "@/components/LocaleHtmlLang";
 import { NavBar } from "@/components/NavBar";
-import { DEMO_CREWS } from "@/lib/demo-crews";
+// TODO: удалить перед запуском — витрина без базы.
+import { demoExecutors } from "@/lib/demo/fallback";
 import { isDbConfigured } from "@/lib/server/db-config";
 import { listExecutors } from "@/lib/server/profiles/queries";
 import { ExecutorList, type ExecutorCard } from "./ExecutorList";
@@ -22,11 +23,16 @@ import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locale";
  * целиком из-за отсутствующего списка. Теперь список — это то, что может
  * не приехать, а не то, без чего нет страницы.
  *
- * Пока настоящих бригад нет ни одной, показываются образцы (DEMO_CREWS) —
- * с явной пометкой, что это примеры. Пустая страница не объясняет, зачем
- * раздел нужен; образцы объясняют. Как только в базе появляется хотя бы один
- * исполнитель, образцы исчезают целиком: смешивать выдуманные карточки с
- * настоящими нельзя ни одной секунды.
+ * Пока настоящих бригад нет ни одной, показываются выдуманные — с явной
+ * пометкой, что это примеры. Пустая страница не объясняет, зачем раздел
+ * нужен; заполненная объясняет. Как только в базе появляется хотя бы один
+ * исполнитель, выдуманные исчезают целиком: смешивать их с настоящими нельзя
+ * ни одной секунды.
+ *
+ * ⚠️ У этих карточек есть рейтинг и отзывы — в отличие от прежних пустых
+ * образцов. Это сделано по просьбе показать функцию тем, у кого базы нет, и
+ * это единственная причина: оценка, которую никто не ставил, на настоящей
+ * витрине была бы рекламой. Подпись «демо-данные» стоит у каждого отзыва.
  *
  * Разметка карточек живёт в ExecutorList: она клиентская, потому что
  * фильтрует бригады по модели дома из хранилища браузера.
@@ -47,7 +53,7 @@ export async function ServicesPage({ locale = DEFAULT_LOCALE }: { locale?: Local
         <h1 className="font-display text-h1 font-extrabold text-cream-bright">
           {t.title}
         </h1>
-        <ExecutorList executors={demo ? DEMO_CREWS : executors} demo={demo} locale={locale} />
+        <ExecutorList executors={demo ? demoExecutors() : executors} demo={demo} locale={locale} />
       </main>
       <Footer locale={locale} />
     </>

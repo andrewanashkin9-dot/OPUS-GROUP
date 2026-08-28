@@ -4,6 +4,9 @@ import { noStore, requestMeta } from "@/lib/server/auth/http";
 import { readJson } from "@/lib/server/auth/validate";
 import { createSession, setSessionCookies } from "@/lib/server/auth/session";
 import { query } from "@/lib/server/db";
+import { isDbConfigured } from "@/lib/server/db-config";
+import { cookies } from "next/headers";
+import { ROLE_COOKIE } from "@/lib/auth/cookie-names";
 import type { UserRole } from "@/lib/server/auth/tokens";
 
 export const runtime = "nodejs";
@@ -28,9 +31,6 @@ export const dynamic = "force-dynamic";
 const SWITCHABLE: UserRole[] = ["client", "executor", "moderator"];
 
 export async function POST(request: Request) {
-  const auth = await requireUser();
-  if (!auth.ok) return auth.response;
-
   const body = await readJson(request);
   if (!body.ok) return NextResponse.json({ error: body.error }, noStore(400));
 
@@ -39,6 +39,26 @@ export async function POST(request: Request) {
   if (!role) {
     return NextResponse.json({ error: "Такой роли переключать нельзя" }, noStore(400));
   }
+
+  // TODO: удалить перед запуском — переключение без базы.
+  //
+  // Пользователей нет, менять роль некому, и сессии тоже нет. Пишем только
+  // cookie-подсказку для интерфейса: по ней меню решает, показывать ли
+  // «Модерацию». Правами это не распоряжается — распоряжаться нечем, все
+  // защищённые данные лежат в базе, которой нет.
+  if (!isDbConfigured()) {
+    const store = await cookies();
+    store.set(ROLE_COOKIE, role, {
+      path: "/",
+      httpOnly: false,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24,
+    });
+    return NextResponse.json({ role, offline: true }, noStore(200));
+  }
+
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
 
   const { rowCount } = await query(
     `update users set role = $2::user_role where id = $1 and status = 'active'`,

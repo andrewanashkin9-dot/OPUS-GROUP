@@ -26,7 +26,11 @@ export function RoomTopBar() {
           <button
             type="button"
             onClick={() => void resetRoom()}
-            className="hidden shrink-0 text-body-s font-medium text-dim underline underline-offset-2 transition-colors hover:text-white md:inline"
+            // Видна на любой ширине. Спрятанная под md, она оставляла телефон
+            // без единого пути назад к загрузке фотографий: конструктор
+            // восстанавливает сохранённый проект, и экран загрузки больше
+            // не показывался никогда.
+            className="shrink-0 text-body-s font-medium text-dim underline underline-offset-2 transition-colors hover:text-white"
           >
             Начать заново
           </button>

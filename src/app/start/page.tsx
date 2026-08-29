@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ButtonLink } from "@/components/Button";
 import { Footer } from "@/components/Footer";
 import { NavBar } from "@/components/NavBar";
 import { FreeTierNote } from "@/components/FreeTierNote";
+import { OtherFlowHint, StartAction } from "@/components/StartAction";
 import { Reveal } from "@/components/ui/Reveal";
 
 export const metadata: Metadata = {
@@ -23,6 +23,7 @@ export const metadata: Metadata = {
  */
 const OPTIONS = [
   {
+    flow: "house",
     href: "/editor",
     eyebrow: "Снаружи",
     title: "Дом",
@@ -38,6 +39,7 @@ const OPTIONS = [
     primary: true,
   },
   {
+    flow: "room",
     href: "/editor/room",
     eyebrow: "Внутри",
     title: "Комната",
@@ -101,19 +103,19 @@ export default function StartPage() {
                   ))}
                 </ul>
 
-                <ButtonLink
+                <StartAction
+                  flow={option.flow}
                   href={option.href}
-                  variant={option.primary ? "primary" : "secondary"}
-                  className="mt-8 w-full"
-                >
-                  {option.cta}
-                </ButtonLink>
+                  cta={option.cta}
+                  primary={option.primary}
+                />
               </article>
             </Reveal>
           ))}
         </div>
 
         <FreeTierNote />
+        <OtherFlowHint />
 
         <p className="mt-4 text-center text-body-s text-dim">
           Уже знаете, что нужно?{" "}

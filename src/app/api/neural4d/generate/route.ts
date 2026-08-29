@@ -28,16 +28,6 @@ const MAX_BYTES_PER_PHOTO = 20 * 1024 * 1024; // 20 МБ, как обещает 
 const VENDOR_TIMEOUT_MS = 120_000;
 
 export async function POST(request: Request) {
-  // Вендор намеренно выключен на время работы над дизайном: генерация сразу
-  // отдаёт шаблонный дом, ничего не ждёт и ничего не тратит. Проверка стоит
-  // раньше всех остальных — даже читать ключ незачем.
-  if (!isNeural4DEnabled()) {
-    return NextResponse.json(
-      { configured: false, reason: "disabled" },
-      { status: 200, headers: { "Cache-Control": "no-store" } },
-    );
-  }
-
   const config = getNeural4DConfig();
 
   // Ключа нет — это штатное состояние до подключения вендора, а не сбой:
@@ -48,6 +38,17 @@ export async function POST(request: Request) {
   if (!config) {
     return NextResponse.json(
       { configured: false, reason: "not_configured" },
+      { status: 200, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  // Ключ есть, но вендор заглушён вручную. Проверка стоит после ключа, а не
+  // до него, чтобы причина в ответе была правдой: «disabled» при пустом
+  // окружении отвечало бы «мы это отключили» там, где на самом деле нечего
+  // включать.
+  if (!isNeural4DEnabled()) {
+    return NextResponse.json(
+      { configured: false, reason: "disabled" },
       { status: 200, headers: { "Cache-Control": "no-store" } },
     );
   }

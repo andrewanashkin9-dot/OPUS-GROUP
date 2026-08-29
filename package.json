@@ -19,7 +19,8 @@
     "billing:charge": "tsx --conditions=react-server scripts/billing.ts",
     "_comment_demo": "ВРЕМЕННАЯ ДЕМО-ВСТАВКА — удаляется вместе с scripts/seed-demo.ts, см. README",
     "demo:seed": "tsx --conditions=react-server scripts/seed-demo.ts",
-    "db:seed:deploy": "tsx --conditions=react-server scripts/deploy-seed.ts"
+    "db:seed:deploy": "tsx --conditions=react-server scripts/deploy-seed.ts",
+    "neural4d:check": "node tools/neural4d-check.mjs"
   },
   "dependencies": {
     "@fontsource/manrope": "^5.3.0",

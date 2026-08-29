@@ -17,9 +17,39 @@ import "server-only";
 
 const DEFAULT_API_URL = "https://api.neural4d.com/v1";
 
+/**
+ * Путь, по которому мы стучимся за моделью.
+ *
+ * Написан до появления документации вендора и, как показала трассировка,
+ * не существует — на него приходит 404, и именно поэтому генерация «не
+ * работала при живом ключе». Оставлен значением по умолчанию, чтобы
+ * поведение не изменилось молча, и вынесен в переменную окружения, чтобы
+ * правильный адрес можно было подставить, не пересобирая приложение.
+ */
+const DEFAULT_RECONSTRUCT_PATH = "/reconstruct";
+
+/** Ведущий слэш обязателен, хвостовой — нет: иначе получится `//` в URL. */
+function normalizePath(path: string): string {
+  const withLead = path.startsWith("/") ? path : `/${path}`;
+  return withLead.replace(/\/+$/, "");
+}
+
 export interface Neural4DConfig {
   apiKey: string;
   apiUrl: string;
+  /**
+   * Путь до эндпоинта реконструкции, относительно apiUrl.
+   *
+   * Вынесен в окружение не для гибкости, а потому что мы его не знаем.
+   * Значение по умолчанию — `/reconstruct` — было написано до того, как у
+   * вендора появилась документация, и оно неверно: такого адреса нет, на
+   * него приходит 404. Настоящие адреса Neural4D выглядят иначе
+   * (`/api/generateModelWithImage`, `/api/retrieveModel`), и до тех пор пока
+   * контракт не подтверждён живым запросом, менять его правкой кода значило
+   * бы заменить одну догадку другой. Проверить, какой путь отвечает,
+   * помогает `npm run neural4d:check`.
+   */
+  reconstructPath: string;
 }
 
 /**
@@ -35,9 +65,12 @@ export function getNeural4DConfig(): Neural4DConfig | null {
   // Адрес вендора берётся только из окружения. Если бы его присылал клиент,
   // эндпоинт стал бы открытым прокси — можно было бы заставить сервер ходить
   // во внутреннюю сеть и приложить к запросу наш ключ (SSRF).
-  const apiUrl = process.env.NEURAL4D_API_URL?.trim() || DEFAULT_API_URL;
+  const apiUrl = (process.env.NEURAL4D_API_URL?.trim() || DEFAULT_API_URL).replace(/\/+$/, "");
+  const reconstructPath = normalizePath(
+    process.env.NEURAL4D_RECONSTRUCT_PATH?.trim() || DEFAULT_RECONSTRUCT_PATH,
+  );
 
-  return { apiKey, apiUrl };
+  return { apiKey, apiUrl, reconstructPath };
 }
 
 /**

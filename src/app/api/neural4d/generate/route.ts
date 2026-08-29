@@ -93,8 +93,10 @@ export async function POST(request: Request) {
   const upstream = new FormData();
   for (const photo of photos) upstream.append("photos", photo, photo.name);
 
+  const endpoint = `${config.apiUrl}${config.reconstructPath}`;
+
   try {
-    const response = await fetch(`${config.apiUrl}/reconstruct`, {
+    const response = await fetch(endpoint, {
       method: "POST",
       // Заголовки авторизации добавляются только здесь.
       headers: neural4dAuthHeaders(config),
@@ -103,8 +105,14 @@ export async function POST(request: Request) {
     });
 
     if (!response.ok) {
-      // Логируем статус, но не тело и не ключ.
-      console.error(`[neural4d] вендор ответил ${response.status}`);
+      // Раньше в журнал уходил один статус — «вендор ответил 404», и всё.
+      // По такой записи неотличимы неверный ключ, несуществующий адрес и
+      // упавший сервис, а именно это и нужно знать первым делом. Теперь
+      // пишется ещё и путь, и начало ответа: там лежит текст ошибки вендора.
+      // Ключа в этой строке нет — он живёт только в заголовке запроса.
+      console.error(
+        `[neural4d] POST ${endpoint} -> ${response.status} ${response.statusText}; ${await peek(response)}`,
+      );
       return NextResponse.json(
         { error: "Сервис 3D-реконструкции временно недоступен. Попробуйте позже." },
         { status: 502 },
@@ -115,7 +123,7 @@ export async function POST(request: Request) {
     try {
       payload = await response.json();
     } catch {
-      console.error("[neural4d] ответ вендора не является JSON");
+      console.error(`[neural4d] ответ ${endpoint} не является JSON`);
       return NextResponse.json(
         { error: "Сервис вернул неожиданный ответ. Мы уже разбираемся." },
         { status: 502 },
@@ -147,8 +155,12 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const timedOut = error instanceof Error && error.name === "TimeoutError";
+    // Причина сетевого отказа — DNS, отказ в соединении, TLS — тоже в журнал:
+    // без неё «сетевая ошибка» одинаково означает опечатку в адресе и
+    // недоступный сервис.
+    const cause = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
     console.error(
-      `[neural4d] запрос не выполнен: ${timedOut ? "таймаут" : "сетевая ошибка"}`,
+      `[neural4d] POST ${endpoint} не выполнен (${timedOut ? "таймаут" : "сетевая ошибка"}): ${cause}`,
     );
     return NextResponse.json(
       {
@@ -158,6 +170,21 @@ export async function POST(request: Request) {
       },
       { status: 504 },
     );
+  }
+}
+
+/**
+ * Начало ответа вендора — для журнала.
+ *
+ * Обрезано: в теле ошибки бывает и трассировка на сотню строк, а нужен
+ * первый абзац, в котором вендор называет причину.
+ */
+async function peek(response: Response, limit = 400): Promise<string> {
+  try {
+    const text = await response.text();
+    return text.length > limit ? `${text.slice(0, limit)}…` : text || "(пустое тело)";
+  } catch {
+    return "(тело прочитать не удалось)";
   }
 }
 

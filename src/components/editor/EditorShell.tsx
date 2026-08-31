@@ -10,6 +10,7 @@ import { EditorCanvas } from "./EditorCanvas";
 import { EducationCardPanel } from "./EducationCardPanel";
 import { FootprintControls } from "./FootprintControls";
 import { HouseControls } from "./HouseControls";
+import { MeshControls } from "./MeshControls";
 import { MaterialsPalette } from "./MaterialsPalette";
 import { RoofControls } from "./RoofControls";
 import { Toolbar } from "./Toolbar";
@@ -18,6 +19,10 @@ import { UploadStep } from "./UploadStep";
 
 export function EditorShell() {
   const model = useAppStore((s) => s.model);
+  const vendorMesh = useAppStore((s) => s.vendorMesh);
+  // Показ модели вендора — состояние взгляда, а не проекта: оно не меняет
+  // ни одной цифры и не должно переживать перезагрузку вместе со сметой.
+  const [showMesh, setShowMesh] = useState(true);
   const selectedNodeId = useAppStore((s) => s.selectedNodeId);
   const selectNode = useAppStore((s) => s.selectNode);
   const colorOverrides = useAppStore((s) => s.colorOverrides);
@@ -51,6 +56,9 @@ export function EditorShell() {
         <div className="relative min-w-0 flex-1">
           <EditorCanvas
             model={model}
+            meshUrl={
+              showMesh && vendorMesh.status === "ready" ? vendorMesh.url : undefined
+            }
             selectedNodeId={selectedNode.id}
             colorOverrides={colorOverrides}
             onSelect={selectNode}
@@ -86,6 +94,7 @@ export function EditorShell() {
         {/* Desktop rail */}
         <aside className="hidden w-96 shrink-0 flex-col gap-8 overflow-y-auto border-l border-[var(--plate-edge)] bg-[var(--rail)] p-6 backdrop-blur-sm lg:flex">
           <FootprintControls model={model} />
+          <MeshControls showMesh={showMesh} onToggle={setShowMesh} />
           <HouseControls model={model} />
           <MaterialsPalette node={selectedNode} />
           <ColorPicker node={selectedNode} />

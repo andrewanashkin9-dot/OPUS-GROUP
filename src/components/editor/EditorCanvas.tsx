@@ -10,9 +10,12 @@ import { BlueprintGround } from "./BlueprintGround";
 import { CameraRig } from "./CameraRig";
 import { GroundShadow } from "./GroundShadow";
 import { HouseScene } from "./HouseScene";
+import { VendorMesh } from "./VendorMesh";
 
 interface EditorCanvasProps {
   model: SceneModel;
+  /** Адрес меша от вендора. Есть — показываем его вместо дома-схемы. */
+  meshUrl?: string;
   selectedNodeId: string | null;
   colorOverrides: Record<string, string>;
   onSelect: (nodeId: string) => void;
@@ -63,6 +66,7 @@ function Building({
 
 export function EditorCanvas({
   model,
+  meshUrl,
   selectedNodeId,
   colorOverrides,
   onSelect,
@@ -154,12 +158,19 @@ export function EditorCanvas({
 
       <GroundShadow widthM={widthM} depthM={depthM} />
 
-      <Building
-        model={model}
-        selectedNodeId={selectedNodeId}
-        colorOverrides={colorOverrides}
-        onSelect={onSelect}
-      />
+      {/* Модель вендора заменяет дом-схему, а не дополняет его: два дома в
+          одной точке дают мерцание пересекающихся поверхностей. Схема
+          возвращается, как только человек снимает показ. */}
+      {meshUrl ? (
+        <VendorMesh url={meshUrl} widthM={widthM} depthM={depthM} />
+      ) : (
+        <Building
+          model={model}
+          selectedNodeId={selectedNodeId}
+          colorOverrides={colorOverrides}
+          onSelect={onSelect}
+        />
+      )}
 
       <OrbitControls
         makeDefault

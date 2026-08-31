@@ -3,6 +3,11 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { getModel3DProvider } from "./3d";
 import { withRecalculatedQuantities } from "./3d/metrics";
+import {
+  pollVendorMesh,
+  startVendorMesh,
+  type VendorMesh,
+} from "./3d/neural4d-provider";
 import { productById, type MarketUnit, type Product } from "./marketplace";
 import {
   DEFAULT_DOOR,
@@ -91,6 +96,17 @@ interface AppState {
   /** True while the model is being rebuilt for new floors or a new style. */
   rebuilding: boolean;
   /**
+   * Фотографии, с которых начали проект.
+   *
+   * Держатся в памяти вкладки и никуда не сохраняются: они нужны, только
+   * чтобы человек мог заказать внешний вид дома уже после того, как проект
+   * открылся, — и обещание «фото остаются у вас» держится тем, что их
+   * некуда записать.
+   */
+  housePhotos: File[];
+  /** Внешний вид дома от Neural4D: необязательная картинка поверх сметы. */
+  vendorMesh: VendorMesh;
+  /**
    * Products added from the market, by id. They share the cart with the
    * model's own bill of materials: one basket, one total, one delivery — the
    * reader is buying for one building, not shopping in two places.
@@ -124,6 +140,8 @@ interface AppState {
   setStyle: (style: HouseStyle) => Promise<void>;
   /** Габариты дома в плане. Их задаёт человек — вендор их не измеряет. */
   setFootprint: (footprint: Footprint) => Promise<void>;
+  /** Заказывает у вендора внешний вид дома. Тратит баллы, поэтому по кнопке. */
+  requestHouseMesh: () => Promise<void>;
   resetProject: () => void;
   showEducationCard: (cardId: string) => void;
   dismissEducationCard: (cardId: string) => void;
@@ -216,6 +234,52 @@ function clampSide(value: number, fallback: number): number {
   if (!Number.isFinite(value)) return fallback;
   const clamped = Math.min(HOUSE_SIDE_MAX_M, Math.max(HOUSE_SIDE_MIN_M, value));
   return Math.round(clamped * 10) / 10;
+}
+
+/**
+ * Ждёт, пока вендор построит модель.
+ *
+ * Ожидание живёт в браузере, а не на сервере: модель строится минутами, а
+ * серверная функция на хостинге живёт меньше — цикл внутри неё оборвался бы
+ * по таймауту, ничего не отдав.
+ *
+ * Опрос баллов не тратит, но и бесконечным быть не должен: если за полчаса
+ * модель не готова, дальше ждать нечего — лучше честно сказать, чем стучать
+ * до закрытия вкладки.
+ */
+async function waitForMesh(
+  set: SetState,
+  get: () => AppState,
+  uuid: string,
+): Promise<void> {
+  const POLL_MS = 15_000;
+  const GIVE_UP_AFTER_MS = 30 * 60 * 1000;
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < GIVE_UP_AFTER_MS) {
+    // Проект успели сбросить или заказать заново — это ожидание больше
+    // никому не нужно.
+    const current = get().vendorMesh;
+    if (current.uuid !== uuid && current.status !== "queued") return;
+
+    const next = await pollVendorMesh(uuid);
+    if (next.status !== "queued") {
+      set({ vendorMesh: next });
+      return;
+    }
+
+    // Пауза после запроса, а не до него: короткая генерация иначе считалась
+    // бы готовой только через четверть минуты после того, как готова.
+    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+  }
+
+  set({
+    vendorMesh: {
+      status: "unavailable",
+      uuid,
+      message: "Сервис строит модель дольше получаса. Попробуйте позже.",
+    },
+  });
 }
 
 /**
@@ -341,6 +405,8 @@ export const useAppStore = create<AppState>()(
       quantityOverrides: {},
       colorOverrides: {},
       rebuilding: false,
+      housePhotos: [],
+      vendorMesh: { status: "idle" },
       marketItems: {},
 
       room: null,
@@ -381,21 +447,44 @@ export const useAppStore = create<AppState>()(
             status: "ready",
             selectedNodeId: model.nodes[0]?.id ?? null,
             usage: await readUsage(get().tier),
+            // Снимки остаются в памяти вкладки: по ним человек сможет
+            // заказать внешний вид дома, когда сам этого захочет.
+            housePhotos: photos,
+            vendorMesh: { status: "idle" },
           });
 
-          // Здесь НЕ вызывается вендор, и это осознанно.
-          //
-          // Одна генерация у Neural4D стоит 120 баллов. Пока меш никуда не
-          // выводится, каждая загрузка фотографий покупала бы картинку,
-          // которую никто не увидит, — счёт растёт, польза нулевая. Вызов
-          // вернётся сюда вместе с показом меша и ровно одним вариантом на
-          // запрос, а не четырьмя.
+          // Вендор здесь не вызывается намеренно: одна генерация стоит 120
+          // баллов, и покупать её на каждую загрузку фотографий — сжигать
+          // счёт. Заказ делает человек кнопкой в панели.
         } catch (err) {
           set({
             status: "error",
             error:
               err instanceof Error ? err.message : "Не удалось построить модель.",
           });
+        }
+      },
+
+      requestHouseMesh: async () => {
+        const { housePhotos, vendorMesh } = get();
+        // Повторное нажатие во время работы не должно ставить второе
+        // задание: это ещё 120 баллов за ту же картинку.
+        if (vendorMesh.status === "queued" || vendorMesh.status === "ready") return;
+        if (housePhotos.length === 0) {
+          set({
+            vendorMesh: {
+              status: "unavailable",
+              message: "Фотографии не сохранились — начните проект заново.",
+            },
+          });
+          return;
+        }
+
+        set({ vendorMesh: { status: "queued" } });
+        const started = await startVendorMesh(housePhotos);
+        set({ vendorMesh: started });
+        if (started.status === "queued" && started.uuid) {
+          void waitForMesh(set, get, started.uuid);
         }
       },
 

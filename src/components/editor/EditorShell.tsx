@@ -15,7 +15,6 @@ import { RoofControls } from "./RoofControls";
 import { Toolbar } from "./Toolbar";
 import { TopBar } from "./TopBar";
 import { UploadStep } from "./UploadStep";
-import { VendorNotice } from "./VendorNotice";
 
 export function EditorShell() {
   const model = useAppStore((s) => s.model);
@@ -48,7 +47,6 @@ export function EditorShell() {
           Это образец, а не ваш дом: сервис 3D-реконструкции ещё не подключён.
         </div>
       )}
-      {model.source === "photos" && <VendorNotice />}
       <div className="relative flex min-h-0 flex-1">
         <div className="relative min-w-0 flex-1">
           <EditorCanvas

@@ -74,6 +74,57 @@ export async function runLiveGeneration(
   );
 }
 
+/**
+ * Как называется параметр «сколько вариантов».
+ *
+ * Вендор по умолчанию ставит четыре задания за запрос и списывает 120
+ * баллов. Нужен один — но имя параметра неизвестно, а угадывать его правкой
+ * кода мы уже пробовали на `/reconstruct` и потеряли на этом время.
+ *
+ * Здесь оно выясняется опытом, и опыт бесплатный. Запрос уходит без файла:
+ * валидатор вендора отбивает его раньше, чем начнётся генерация, — это уже
+ * проверено, именно так приходит «Image file is required». Но отвечает он
+ * сразу обо ВСЕХ полях, которые не прошли проверку. Значит, если приложить
+ * поле с заведомо негодным значением и оно окажется в списке ошибок — такое
+ * поле у вендора есть. Если не окажется — такого поля он не знает.
+ *
+ * `faceNum` в списке — контрольный: это поле точно существует, вендор сам
+ * вернул его в `generationConfig`. Если жалобы нет даже на него, значит
+ * опыт ничего не показывает (вендор проверяет только файл), и это тоже
+ * результат — надо идти в документацию, а не гадать дальше.
+ */
+export async function probeVariantParam(): Promise<ProbeResult> {
+  const config = getNeural4DConfig();
+  if (!config) return offline("(подбор параметра)", "ключ не задан");
+
+  const body = new FormData();
+  // Заведомо негодное значение: отрицательное количество не бывает.
+  const BAD = "-1";
+  for (const name of [
+    "faceNum", // контроль: поле точно существует
+    "num",
+    "count",
+    "n",
+    "quantity",
+    "modelNum",
+    "modelCount",
+    "variantNum",
+    "variantCount",
+    "variants",
+    "batchSize",
+    "generateNum",
+    "resultNum",
+  ]) {
+    body.append(name, BAD);
+  }
+
+  return rawCall(
+    `${config.apiOrigin}${config.generatePath}`,
+    { method: "POST", headers: neural4dAuthHeaders(config), body },
+    "подбор имени параметра: без файла, поэтому баллы не тратятся",
+  );
+}
+
 /** Опрос готовности по номеру задания. */
 export async function runRetrieve(uuid: string): Promise<ProbeResult> {
   const config = getNeural4DConfig();

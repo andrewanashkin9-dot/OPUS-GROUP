@@ -3,10 +3,6 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { getModel3DProvider } from "./3d";
 import { withRecalculatedQuantities } from "./3d/metrics";
-import {
-  requestVendorPreview,
-  type VendorPreview,
-} from "./3d/neural4d-provider";
 import { productById, type MarketUnit, type Product } from "./marketplace";
 import {
   DEFAULT_DOOR,
@@ -94,14 +90,6 @@ interface AppState {
   colorOverrides: Record<string, string>;
   /** True while the model is being rebuilt for new floors or a new style. */
   rebuilding: boolean;
-  /**
-   * Чем закончился запрос внешнего вида у Neural4D.
-   *
-   * Живёт отдельно от `error` намеренно: отказ вендора — не поломка проекта.
-   * Дом построен, смета считается, редактор работает; не хватает только
-   * картинки, и сказать об этом надо, не выдавая за сбой.
-   */
-  vendorPreview: VendorPreview | null;
   /**
    * Products added from the market, by id. They share the cart with the
    * model's own bill of materials: one basket, one total, one delivery — the
@@ -353,7 +341,6 @@ export const useAppStore = create<AppState>()(
       quantityOverrides: {},
       colorOverrides: {},
       rebuilding: false,
-      vendorPreview: null,
       marketItems: {},
 
       room: null,
@@ -385,7 +372,7 @@ export const useAppStore = create<AppState>()(
           });
           return;
         }
-        set({ status: "generating", error: null, vendorPreview: null });
+        set({ status: "generating", error: null });
         try {
           const model = await getModel3DProvider().generateFromPhotos(photos);
           await getUsageLimitBackend().add(model.id);
@@ -396,13 +383,13 @@ export const useAppStore = create<AppState>()(
             usage: await readUsage(get().tier),
           });
 
-          // Внешний вид у вендора запрашивается после того, как проект уже
-          // открыт, и его отказ проектом не считается: смета не зависит от
-          // меша ни одной цифрой. Раньше здесь ждали вендора первым, и любая
-          // его ошибка оставляла человека с пустым экраном вместо дома.
-          void requestVendorPreview(photos).then((vendorPreview) =>
-            set({ vendorPreview }),
-          );
+          // Здесь НЕ вызывается вендор, и это осознанно.
+          //
+          // Одна генерация у Neural4D стоит 120 баллов. Пока меш никуда не
+          // выводится, каждая загрузка фотографий покупала бы картинку,
+          // которую никто не увидит, — счёт растёт, польза нулевая. Вызов
+          // вернётся сюда вместе с показом меша и ровно одним вариантом на
+          // запрос, а не четырьмя.
         } catch (err) {
           set({
             status: "error",
@@ -449,8 +436,7 @@ export const useAppStore = create<AppState>()(
           selectedNodeId: null,
           quantityOverrides: {},
           colorOverrides: {},
-          vendorPreview: null,
-        });
+            });
       },
 
       setFloors: async (floors) => {

@@ -24,77 +24,12 @@ import { DEFAULT_FOOTPRINT } from "./types";
  * Отсюда главное свойство: генерация модели больше не может «не работать».
  * Дом строится по габаритам мгновенно и локально, а всё, что происходит у
  * вендора, — необязательное улучшение картинки.
- */
-
-/** Наш маршрут, не вендорский. */
-const GENERATE_ENDPOINT = "/api/neural4d/generate";
-
-/**
- * Чем закончилась просьба к вендору нарисовать дом.
  *
- * "queued"       — задание принято, меш строится;
- * "out_of_points" — на счёте вендора кончились баллы;
- * "unavailable"  — вендор не ответил или отказал по другой причине;
- * "not_configured" — ключа нет, вендор не подключён.
+ * Сейчас к вендору отсюда не ходят вовсе. Одна генерация стоит 120 баллов,
+ * а показывать меш пока негде: покупать картинку, которую никто не увидит,
+ * — прямой убыток. Запрос вернётся вместе с показом меша, и в нём будет
+ * один вариант на запрос, а не четыре, как вендор делает по умолчанию.
  */
-export type VendorPreviewStatus =
-  | "queued"
-  | "out_of_points"
-  | "unavailable"
-  | "not_configured";
-
-export interface VendorPreview {
-  status: VendorPreviewStatus;
-  /** Номер задания — есть только у "queued". */
-  uuid?: string;
-  /** Текст от нашего маршрута, если он есть: его показывают человеку. */
-  message?: string;
-}
-
-/**
- * Просит вендора построить внешний вид дома по фотографии.
- *
- * Отдельная функция, а не метод провайдера, и это принципиально: результат
- * не влияет ни на модель, ни на смету. Провайдер отвечает за дом, который
- * можно редактировать; эта функция — за картинку, которой может и не быть.
- */
-export async function requestVendorPreview(photos: File[]): Promise<VendorPreview> {
-  const body = new FormData();
-  for (const photo of photos) body.append("photos", photo, photo.name);
-
-  let response: Response;
-  try {
-    response = await fetch(GENERATE_ENDPOINT, { method: "POST", body });
-  } catch {
-    return { status: "unavailable" };
-  }
-
-  let payload: unknown;
-  try {
-    payload = await response.json();
-  } catch {
-    return { status: "unavailable" };
-  }
-
-  const data = (payload ?? {}) as {
-    uuid?: unknown;
-    error?: unknown;
-    configured?: unknown;
-    reason?: unknown;
-  };
-
-  if (data.configured === false) return { status: "not_configured" };
-
-  if (response.ok && typeof data.uuid === "string") {
-    return { status: "queued", uuid: data.uuid };
-  }
-
-  const message = typeof data.error === "string" ? data.error : undefined;
-  return {
-    status: data.reason === "out_of_points" ? "out_of_points" : "unavailable",
-    message,
-  };
-}
 
 export class Neural4DModel3DProvider implements Model3DProvider {
   /**

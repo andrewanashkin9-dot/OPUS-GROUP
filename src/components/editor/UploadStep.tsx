@@ -3,36 +3,40 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/lib/store";
 
-const SIDES = ["Главный фасад", "Задний фасад", "Левый фасад", "Правый фасад"];
-
-/** Ровно четыре стороны: по двум-трём снимкам недостающие стены достраиваются
- *  догадкой, а смета считает их как настоящие. */
-const REQUIRED_PHOTOS = 4;
-
+/**
+ * Один снимок, а не четыре.
+ *
+ * Четыре стороны просили, пока считалось, что по ним восстановят постройку.
+ * Не восстанавливают: сервис 3D принимает ровно одно изображение и рисует по
+ * нему похожий дом, а размеры человек вводит сам на следующем шаге. Три
+ * лишних снимка не участвовали ни в генерации, ни в смете — требовать их
+ * значило просто не пускать людей в проект.
+ */
 export function UploadStep() {
   const status = useAppStore((s) => s.status);
   const error = useAppStore((s) => s.error);
   const generateFromPhotos = useAppStore((s) => s.generateFromPhotos);
-  const [files, setFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
-  const urlsRef = useRef<string[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const urlRef = useRef<string | null>(null);
 
   const isGenerating = status === "generating";
 
-  // Previews are object URLs, so each new selection must release the previous
-  // ones and the last set has to be released on unmount, or the tab leaks them.
-  function handleFiles(list: FileList | null) {
-    if (!list) return;
-    const next = Array.from(list).slice(0, 4);
-    urlsRef.current.forEach((u) => URL.revokeObjectURL(u));
-    const urls = next.map((f) => URL.createObjectURL(f));
-    urlsRef.current = urls;
-    setFiles(next);
-    setPreviews(urls);
+  // Превью — это object URL: каждый новый выбор должен освободить прежний, а
+  // последний — освободиться при уходе со страницы, иначе вкладка их копит.
+  function handleFile(list: FileList | null) {
+    const next = list?.[0] ?? null;
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    const url = next ? URL.createObjectURL(next) : null;
+    urlRef.current = url;
+    setFile(next);
+    setPreview(url);
   }
 
   useEffect(
-    () => () => urlsRef.current.forEach((u) => URL.revokeObjectURL(u)),
+    () => () => {
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    },
     [],
   );
 
@@ -45,9 +49,9 @@ export function UploadStep() {
         Загрузите фото дома
       </h1>
       <p className="prose-measure mx-auto mt-4 text-body-l text-cream-dim">
-        Снимите четыре стороны дома с телефона — спереди, сзади и с боков.
-        По ним сервис нарисует внешний вид. Размеры вы зададите сами на
-        следующем шаге: именно по ним считается смета.
+        Хватит одного снимка — лучше главного фасада целиком. По нему сервис
+        нарисует внешний вид. Размеры вы зададите сами на следующем шаге:
+        именно по ним считается смета.
       </p>
 
       <label
@@ -58,57 +62,35 @@ export function UploadStep() {
           id="house-photos"
           type="file"
           accept="image/*"
-          multiple
           className="sr-only"
-          onChange={(e) => handleFiles(e.target.files)}
+          onChange={(e) => handleFile(e.target.files)}
           disabled={isGenerating}
         />
         <span className="font-display text-h3 font-medium text-cream-bright">
-          {files.length === 0
-            ? "Нажмите, чтобы выбрать фотографии"
-            : files.length === REQUIRED_PHOTOS
-              ? "Все четыре стороны загружены"
-              : `Выбрано ${files.length} из ${REQUIRED_PHOTOS} — добавьте ещё ${REQUIRED_PHOTOS - files.length}`}
+          {file ? "Фотография выбрана" : "Нажмите, чтобы выбрать фотографию"}
         </span>
         <span className="text-body-s text-cream-dim">
-          JPG, PNG — до 20 МБ на файл
+          JPG или PNG — до 20 МБ
         </span>
       </label>
 
-      <ul className="mt-5 grid w-full grid-cols-2 gap-3 text-left sm:grid-cols-4">
-        {SIDES.map((side, i) => (
-          <li
-            key={side}
-            className="overflow-hidden rounded-xl border border-line bg-surface"
-          >
-            <div className="aspect-[4/3] w-full bg-bg">
-              {previews[i] ? (
-                // Object URLs of user-selected files; next/image would need a
-                // loader for blob: sources and buys nothing here.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previews[i]}
-                  alt={`Загруженное фото: ${side}`}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-caption uppercase text-cream-dim">
-                  Нет фото
-                </div>
-              )}
-            </div>
-            <p
-              className="px-3 py-2 text-caption"
-              style={{
-                color: previews[i] ? "var(--white)" : "var(--dim)",
-              }}
-            >
-              {previews[i] ? "✓ " : ""}
-              {side}
-            </p>
-          </li>
-        ))}
-      </ul>
+      {preview && (
+        <div className="mt-5 overflow-hidden rounded-xl border border-line bg-surface">
+          <div className="aspect-[3/2] w-full bg-bg">
+            {/* Object URL выбранного файла: next/image потребовал бы loader
+                для blob: и ничего здесь не дал бы. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={preview}
+              alt="Загруженное фото дома"
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <p className="px-3 py-2 text-left text-caption text-white">
+            ✓ {file?.name}
+          </p>
+        </div>
+      )}
 
       {error && (
         <p className="mt-4 text-body-s text-error" role="alert">
@@ -118,19 +100,12 @@ export function UploadStep() {
 
       <button
         type="button"
-        disabled={files.length !== REQUIRED_PHOTOS || isGenerating}
-        onClick={() => generateFromPhotos(files)}
+        disabled={!file || isGenerating}
+        onClick={() => file && generateFromPhotos([file])}
         className="mt-8 inline-flex items-center justify-center self-center rounded-full bg-accent px-8 py-3.5 text-ui font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 disabled:opacity-40"
       >
         {isGenerating ? "Открываем проект…" : "Перейти к размерам"}
       </button>
-
-      {isGenerating && (
-        <p className="mt-4 text-body-s text-cream-dim" aria-live="polite">
-          Обычно это занимает несколько секунд — не закрывайте страницу.
-        </p>
-      )}
-
     </div>
   );
 }

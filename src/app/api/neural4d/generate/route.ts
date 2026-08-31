@@ -22,7 +22,17 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const REQUIRED_PHOTOS = 4;
+/**
+ * Сколько снимков нужно.
+ *
+ * Один. Раньше требовалось четыре — по стороне дома, — и это имело смысл,
+ * пока предполагалось, что вендор восстановит постройку по всем четырём.
+ * Он этого не делает: принимает ровно одно изображение в поле `image`, а
+ * размеры вводит человек. Три остальных снимка не участвовали ни в чём —
+ * их никто не спрашивал, и требовать их значило просто не пускать людей в
+ * проект.
+ */
+const REQUIRED_PHOTOS = 1;
 const PROMPT = "exterior of a residential house, photorealistic, full building";
 const MAX_BYTES_PER_PHOTO = 20 * 1024 * 1024; // 20 МБ, как обещает интерфейс
 const VENDOR_TIMEOUT_MS = 120_000;
@@ -65,13 +75,9 @@ export async function POST(request: Request) {
 
   const photos = form.getAll("photos").filter((v): v is File => v instanceof File);
 
-  // Ровно четыре стороны. По двум-трём снимкам реконструкция достроит
-  // недостающие стены догадкой, а смета посчитает их как настоящие.
-  if (photos.length !== REQUIRED_PHOTOS) {
+  if (photos.length < REQUIRED_PHOTOS) {
     return NextResponse.json(
-      {
-        error: `Нужно ровно ${REQUIRED_PHOTOS} фотографии — по одной с каждой стороны дома. Сейчас: ${photos.length}.`,
-      },
+      { error: "Нужна фотография дома." },
       { status: 400 },
     );
   }
@@ -90,10 +96,13 @@ export async function POST(request: Request) {
     }
   }
 
-  // Вендор принимает одно изображение в поле `image` — это подтверждено его
-  // же ответом: 400 «Image file is required, path: image». Четыре стороны он
-  // не принимает вовсе, поэтому уходит фасад, снятый первым; остальные три
-  // снимка остаются у нас и нужны обмерам, а не вендору.
+  // Вендор принимает одно изображение в поле `image` — подтверждено его же
+  // ответом: 400 «Image file is required, path: image».
+  //
+  // Число вариантов от этого не зависит: на один-единственный файл он всё
+  // равно вернул четыре номера заданий. Четыре модели — его поведение по
+  // умолчанию, а не следствие числа снимков, и управляется оно параметром,
+  // имя которого нам пока неизвестно (см. neural4d-config.ts).
   const upstream = new FormData();
   upstream.append("image", photos[0], photos[0].name);
   upstream.append("prompt", PROMPT);

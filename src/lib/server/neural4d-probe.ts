@@ -2,6 +2,7 @@
 // ломать сборку, а не тихо уносить ключ в браузерный бандл.
 import "server-only";
 
+import type { ProbeResult } from "../neural4d-probe-result";
 import { getNeural4DConfig, neural4dAuthHeaders } from "./neural4d-config";
 
 /**
@@ -26,19 +27,9 @@ import { getNeural4DConfig, neural4dAuthHeaders } from "./neural4d-config";
 const TIMEOUT_MS = 20_000;
 const BODY_LIMIT = 1200;
 
-export interface ProbeResult {
-  /** Полный адрес, по которому ушёл запрос. Секретов в нём нет. */
-  url: string;
-  /** Зачем этот адрес в списке — читается вместе с ответом. */
-  note: string;
-  /** null, если до ответа дело не дошло (DNS, TLS, таймаут). */
-  status: number | null;
-  statusText: string;
-  /** Начало тела ответа либо текст сетевой ошибки. */
-  body: string;
-  /** Тип содержимого — по нему видно, HTML это от прокси или JSON вендора. */
-  contentType: string;
-}
+// Форма ответа объявлена в отдельном модуле без `server-only`: её должен
+// знать и клиентский компонент, который рисует результат.
+export type { ProbeResult };
 
 export interface ProbeReport {
   /** Есть ли ключ в окружении. Само значение не возвращается никогда. */
@@ -52,6 +43,99 @@ export interface ProbeReport {
   /** Когда проба выполнялась — на планшете вкладку легко перепутать со старой. */
   ranAt: string;
 }
+
+/**
+ * Настоящая генерация — с настоящим файлом и настоящими баллами.
+ *
+ * Отделена от проб выше сознательно: те намеренно неполные и ничего не
+ * стоят, а эта тратит баланс. Вызывается только по явному нажатию, никогда
+ * при открытии страницы.
+ */
+export async function runLiveGeneration(
+  image: File,
+  prompt: string,
+): Promise<ProbeResult> {
+  const config = getNeural4DConfig();
+  if (!config) {
+    return offline("(генерация)", "ключ не задан — обращаться некуда");
+  }
+
+  const body = new FormData();
+  body.append("image", image, image.name || "photo.jpg");
+  body.append("prompt", prompt);
+
+  return rawCall(
+    `${config.apiOrigin}${config.generatePath}`,
+    { method: "POST", headers: neural4dAuthHeaders(config), body },
+    "настоящая генерация: фотография в поле image",
+    // Загрузка снимка с телефона по мобильной сети бывает медленной, и
+    // двадцати секунд на неё не хватает.
+    60_000,
+  );
+}
+
+/** Опрос готовности по номеру задания. */
+export async function runRetrieve(uuid: string): Promise<ProbeResult> {
+  const config = getNeural4DConfig();
+  if (!config) {
+    return offline("(опрос)", "ключ не задан — обращаться некуда");
+  }
+
+  return rawCall(
+    `${config.apiOrigin}${config.retrievePath}`,
+    {
+      method: "POST",
+      headers: { ...neural4dAuthHeaders(config), "content-type": "application/json" },
+      body: JSON.stringify({ uuid }),
+    },
+    "опрос готовности по номеру задания",
+  );
+}
+
+/**
+ * Ответ вендора целиком, без разбора.
+ *
+ * Разбирать здесь нечего: имена полей у готовой модели мы как раз и хотим
+ * увидеть. Обрезка длиннее обычной — ссылка на меш может стоять в конце
+ * длинного объекта, и потерять её было бы обидно.
+ */
+async function rawCall(
+  url: string,
+  init: RequestInit,
+  note: string,
+  timeoutMs = TIMEOUT_MS,
+): Promise<ProbeResult> {
+  try {
+    const response = await fetch(url, {
+      ...init,
+      signal: AbortSignal.timeout(timeoutMs),
+      cache: "no-store",
+    });
+    const text = await response.text();
+    return {
+      url,
+      note,
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get("content-type") ?? "(не указан)",
+      body: text
+        ? text.length > LIVE_BODY_LIMIT
+          ? `${text.slice(0, LIVE_BODY_LIMIT)}…`
+          : text
+        : "(пустое тело)",
+    };
+  } catch (error) {
+    const name = error instanceof Error ? error.name : "Error";
+    const message = error instanceof Error ? error.message : String(error);
+    return offline(url, `запрос не выполнен — ${name}: ${message}`, note);
+  }
+}
+
+function offline(url: string, body: string, note = ""): ProbeResult {
+  return { url, note, status: null, statusText: "", contentType: "", body };
+}
+
+const LIVE_BODY_LIMIT = 4000;
 
 /**
  * Что проверяется.

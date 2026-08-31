@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { probeNeural4DThrottled } from "@/lib/server/neural4d-probe";
+import { LiveGeneration } from "./LiveGeneration";
 
 /**
  * ВРЕМЕННАЯ ДИАГНОСТИКА — удалить вместе с `src/lib/server/neural4d-probe.ts`,
@@ -84,6 +85,8 @@ export default async function Neural4DProbePage() {
           </pre>
         </section>
       ))}
+
+      <LiveGeneration />
 
       <p className="mt-8 max-w-prose text-caption text-dim">
         Как читать: 401 или 403 — ключ не принят; 404 — такого адреса у вендора

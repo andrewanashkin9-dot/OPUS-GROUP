@@ -451,10 +451,24 @@ function Roof({
 }
 
 /** Where an opening sits in world space, and which way it faces. */
+/**
+ * Куда встаёт проём на фасаде.
+ *
+ * Начало группы кладётся ровно на внешнюю грань стены, а не в двух
+ * сантиметрах перед ней, как было. Смещение казалось безобидным, но именно
+ * оно всё и ломало: стекло стояло в группе на −0.02, то есть в мировых
+ * координатах ровно на плоскости стены. Две поверхности с одинаковой
+ * глубиной — и кто из них ближе, решает уже не геометрия, а округление
+ * чисел с плавающей точкой, которое меняется вместе с матрицей вида. Отсюда
+ * рябь, переползающая с окна на окно при вращении камеры.
+ *
+ * С нулём здесь глубины ниже читаются как «на сколько эта деталь выступает
+ * из стены», и совпадение плоскостей видно прямо в коде.
+ */
 function openingTransform(model: SceneModel, opening: Opening) {
   const { widthM, depthM } = model.dimensions;
   const y = opening.sillM + opening.heightM / 2;
-  const out = 0.02;
+  const out = 0;
   switch (opening.facade) {
     case "front":
       return {
@@ -479,6 +493,23 @@ function openingTransform(model: SceneModel, opening: Opening) {
   }
 }
 
+/**
+ * Лестница глубин окна, от плоскости стены наружу.
+ *
+ * Числа стоят рядом именно для того, чтобы совпадение плоскостей было видно
+ * глазом. Ни одна пара параллельных граней здесь не делит координату: ниша
+ * [4…24 мм], стекло 32 мм, средник [40…78 мм], бруски рамы [18…88 мм].
+ * Стена — ноль, и до ближайшей детали от неё четыре миллиметра.
+ */
+const REVEAL_Z = 0.014;
+const REVEAL_D = 0.02;
+const GLASS_Z = 0.032;
+const MULLION_Z = 0.058;
+const MULLION_D = 0.04;
+/** Бруски рамы: центр и толщина по глубине. */
+const BAR_Z = 0.053;
+const BAR_D = 0.07;
+
 function WindowUnit({
   opening,
   node,
@@ -501,14 +532,22 @@ function WindowUnit({
 
   return (
     <group position={position} rotation={rotation} onClick={onClick}>
-      {/* Reveal: the dark opening behind the glass. */}
-      <mesh position={[0, 0, -0.06]}>
-        <boxGeometry args={[w, h, 0.02]} />
+      {/* Тёмная ниша за стеклом. Раньше она стояла на −0.06, то есть целиком
+          внутри стены, и её не было видно вовсе — сквозь стекло просвечивал
+          кирпич. Теперь она выступает наружу и делает свою работу: стеклу
+          есть на чём читаться. Уже проёма по ширине, чтобы её боковые грани
+          прятались внутри рамы, а не совпадали с ними плоскостями. */}
+      <mesh position={[0, 0, REVEAL_Z]}>
+        <boxGeometry args={[w - frame, h - frame, REVEAL_D]} />
         <meshStandardMaterial color="#0a0a0a" roughness={1} />
       </mesh>
 
-      {/* Glass, tinted and slightly reflective. */}
-      <mesh position={[0, 0, -0.02]}>
+      {/* Стекло. depthWrite выключен намеренно: прозрачные поверхности
+          рисуются отсортированными по расстоянию, и два стекла на равном
+          удалении меняются местами от кадра к кадру. Пока стекло не пишет
+          глубину, перестановка ничего не меняет — проверку глубины она не
+          отменяет, поэтому переплёт по-прежнему закрывает стекло. */}
+      <mesh position={[0, 0, GLASS_Z]} renderOrder={1}>
         <planeGeometry args={[w - frame * 2, h - frame * 2]} />
         <meshStandardMaterial
           color="#7f95a3"
@@ -516,24 +555,25 @@ function WindowUnit({
           metalness={0.55}
           transparent
           opacity={0.85}
+          depthWrite={false}
         />
       </mesh>
 
-      {/* Frame: four bars plus a central mullion. */}
+      {/* Рама и средник. */}
       <FrameBars w={w} h={h} thickness={frame} color={frameColor} />
-      <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[frame * 0.7, h - frame * 2, 0.05]} />
+      <mesh position={[0, 0, MULLION_Z]}>
+        <boxGeometry args={[frame * 0.7, h - frame * 2, MULLION_D]} />
         <meshStandardMaterial color={frameColor} roughness={0.5} />
       </mesh>
 
-      {/* Sill */}
-      <mesh position={[0, -h / 2 - 0.04, 0.04]}>
-        <boxGeometry args={[w + 0.16, 0.06, 0.16]} />
+      {/* Отлив */}
+      <mesh position={[0, -h / 2 - 0.04, 0.06]}>
+        <boxGeometry args={[w + 0.16, 0.06, 0.18]} />
         <meshStandardMaterial color={frameColor} roughness={0.6} />
       </mesh>
 
       {selected && (
-        <lineSegments position={[0, 0, 0.03]}>
+        <lineSegments position={[0, 0, 0.11]}>
           <edgesGeometry args={[new THREE.PlaneGeometry(w + 0.12, h + 0.12)]} />
           <lineBasicMaterial color={SELECTED} />
         </lineSegments>
@@ -555,10 +595,10 @@ function FrameBars({
 }) {
   const bars: { pos: [number, number, number]; size: [number, number, number] }[] =
     [
-      { pos: [0, h / 2 - thickness / 2, 0], size: [w, thickness, 0.07] },
-      { pos: [0, -h / 2 + thickness / 2, 0], size: [w, thickness, 0.07] },
-      { pos: [-w / 2 + thickness / 2, 0, 0], size: [thickness, h, 0.07] },
-      { pos: [w / 2 - thickness / 2, 0, 0], size: [thickness, h, 0.07] },
+      { pos: [0, h / 2 - thickness / 2, BAR_Z], size: [w, thickness, BAR_D] },
+      { pos: [0, -h / 2 + thickness / 2, BAR_Z], size: [w, thickness, BAR_D] },
+      { pos: [-w / 2 + thickness / 2, 0, BAR_Z], size: [thickness, h, BAR_D] },
+      { pos: [w / 2 - thickness / 2, 0, BAR_Z], size: [thickness, h, BAR_D] },
     ];
   return (
     <>
@@ -594,31 +634,33 @@ function DoorUnit({
 
   return (
     <group position={position} rotation={rotation} onClick={onClick}>
-      {/* Door leaf */}
-      <mesh position={[0, 0, -0.02]} material={material}>
+      {/* Полотно двери. Отсчёт теперь от плоскости стены, поэтому глубины
+          читаются как вынос наружу. */}
+      <mesh position={[0, 0, 0.07]} material={material}>
         <boxGeometry args={[w, h, 0.09]} />
       </mesh>
 
-      {/* Surround */}
-      <mesh position={[0, 0, -0.06]}>
+      {/* Наличник. Раньше стоял на −0.06 и целиком тонул в стене — его не
+          было видно ни с одного угла. */}
+      <mesh position={[0, 0, 0.02]}>
         <boxGeometry args={[w + 0.16, h + 0.1, 0.06]} />
         <meshStandardMaterial color="#1a1a1a" roughness={0.9} />
       </mesh>
 
       {/* Handle */}
-      <mesh position={[w / 2 - 0.16, 0, 0.05]}>
+      <mesh position={[w / 2 - 0.16, 0, 0.14]}>
         <boxGeometry args={[0.05, 0.28, 0.05]} />
         <meshStandardMaterial color="#C9C4BA" roughness={0.3} metalness={0.7} />
       </mesh>
 
       {/* Threshold step */}
-      <mesh position={[0, -h / 2 - 0.09, 0.22]}>
+      <mesh position={[0, -h / 2 - 0.09, 0.26]}>
         <boxGeometry args={[w + 0.7, 0.18, 0.6]} />
         <meshStandardMaterial color="#6B6660" roughness={0.9} />
       </mesh>
 
       {selected && (
-        <lineSegments position={[0, 0, 0.06]}>
+        <lineSegments position={[0, 0, 0.14]}>
           <edgesGeometry args={[new THREE.PlaneGeometry(w + 0.2, h + 0.16)]} />
           <lineBasicMaterial color={SELECTED} />
         </lineSegments>

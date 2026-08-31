@@ -140,7 +140,13 @@ interface AppState {
   setStyle: (style: HouseStyle) => Promise<void>;
   /** Габариты дома в плане. Их задаёт человек — вендор их не измеряет. */
   setFootprint: (footprint: Footprint) => Promise<void>;
-  /** Заказывает у вендора внешний вид дома. Тратит баллы, поэтому по кнопке. */
+  /**
+   * Заказывает у вендора внешний вид дома.
+   *
+   * Вызывается сама сразу после загрузки фотографии — это основной путь, а
+   * не дополнение. Кнопка в панели остаётся для повторной попытки, если
+   * вендор отказал.
+   */
   requestHouseMesh: () => Promise<void>;
   resetProject: () => void;
   showEducationCard: (cardId: string) => void;
@@ -450,12 +456,19 @@ export const useAppStore = create<AppState>()(
             // Снимки остаются в памяти вкладки: по ним человек сможет
             // заказать внешний вид дома, когда сам этого захочет.
             housePhotos: photos,
-            vendorMesh: { status: "idle" },
+            vendorMesh: { status: "queued" },
           });
 
-          // Вендор здесь не вызывается намеренно: одна генерация стоит 120
-          // баллов, и покупать её на каждую загрузку фотографий — сжигать
-          // счёт. Заказ делает человек кнопкой в панели.
+          // Настоящая генерация — основной путь, а не дополнение. Дом-схема
+          // существует, чтобы человеку было что смотреть и править, пока
+          // вендор строит модель (это минуты), и чтобы проект работал, если
+          // вендор недоступен. Раньше генерацию надо было запускать кнопкой,
+          // и по умолчанию человек всегда оставался со схемой — на экране это
+          // выглядело так, будто сервис 3D не работает вовсе.
+          //
+          // Тратить на это баллы теперь не страшно: запрос просит одну
+          // модель, а не четыре.
+          void get().requestHouseMesh();
         } catch (err) {
           set({
             status: "error",
@@ -467,9 +480,9 @@ export const useAppStore = create<AppState>()(
 
       requestHouseMesh: async () => {
         const { housePhotos, vendorMesh } = get();
-        // Повторное нажатие во время работы не должно ставить второе
-        // задание: это ещё 120 баллов за ту же картинку.
-        if (vendorMesh.status === "queued" || vendorMesh.status === "ready") return;
+        // Одно задание на один дом. Повторный вызов, пока задание уже стоит
+        // или модель готова, — это ещё одно списание за ту же картинку.
+        if (vendorMesh.uuid || vendorMesh.status === "ready") return;
         if (housePhotos.length === 0) {
           set({
             vendorMesh: {
@@ -1010,12 +1023,31 @@ export const useAppStore = create<AppState>()(
         room: state.room,
         roomStep: state.roomStep,
         selectedSurfaceId: state.selectedSurfaceId,
+        // Номер задания переживает перезагрузку намеренно: модель строится
+        // минутами, и человек за это время успевает обновить вкладку. Без
+        // сохранённого номера оплаченная генерация теряется — и он платит
+        // второй раз за то же самое. Сами фотографии не сохраняются, но для
+        // опроса готовности они и не нужны.
+        vendorMesh: state.vendorMesh,
         // roomPhotos сознательно не сохраняются: они живут только в этой
         // вкладке, и обещание «фото остаются у вас» держится именно тем,
         // что их некуда записать.
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
+        // Вкладку перезагрузили, пока вендор строил модель. Ожидание живёт
+        // в браузере и перезагрузку не пережило — продолжаем опрос по
+        // сохранённому номеру, вместо того чтобы заказывать заново.
+        if (state.vendorMesh?.status === "queued" && state.vendorMesh.uuid) {
+          const uuid = state.vendorMesh.uuid;
+          queueMicrotask(() => {
+            void waitForMesh(
+              useAppStore.setState,
+              useAppStore.getState,
+              uuid,
+            );
+          });
+        }
         // A room saved before there was furniture has none, and every piece
         // of code downstream expects an array. Seeding beats a version bump
         // that would throw the reader's measurements away over scenery.

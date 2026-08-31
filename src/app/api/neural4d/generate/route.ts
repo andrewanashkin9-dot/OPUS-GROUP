@@ -34,6 +34,15 @@ export const dynamic = "force-dynamic";
  */
 const REQUIRED_PHOTOS = 1;
 const PROMPT = "exterior of a residential house, photorealistic, full building";
+
+/**
+ * Сколько моделей строить за запрос.
+ *
+ * Одну. Вендор умеет до четырёх и по умолчанию делает именно четыре,
+ * списывая за каждую отдельно. Человеку здесь выбор из вариантов не нужен:
+ * он загружает свой дом, а не подбирает понравившийся.
+ */
+const MODEL_COUNT = 1;
 const MAX_BYTES_PER_PHOTO = 20 * 1024 * 1024; // 20 МБ, как обещает интерфейс
 const VENDOR_TIMEOUT_MS = 120_000;
 
@@ -98,14 +107,14 @@ export async function POST(request: Request) {
 
   // Вендор принимает одно изображение в поле `image` — подтверждено его же
   // ответом: 400 «Image file is required, path: image».
-  //
-  // Число вариантов от этого не зависит: на один-единственный файл он всё
-  // равно вернул четыре номера заданий. Четыре модели — его поведение по
-  // умолчанию, а не следствие числа снимков, и управляется оно параметром,
-  // имя которого нам пока неизвестно (см. neural4d-config.ts).
   const upstream = new FormData();
   upstream.append("image", photos[0], photos[0].name);
   upstream.append("prompt", PROMPT);
+  // Ровно одна модель. Без этого поля вендор строит четыре варианта — так он
+  // устроен по умолчанию — и списывает вчетверо больше: наблюдали 120 баллов
+  // и четыре номера заданий на один-единственный снимок. Нам нужен один дом,
+  // а не выбор из четырёх.
+  upstream.append("modelCount", String(MODEL_COUNT));
 
   const endpoint = `${config.apiOrigin}${config.generatePath}`;
 
@@ -160,8 +169,16 @@ export async function POST(request: Request) {
     // считается не отсюда, а по габаритам, которые вводит человек.
     const uuids = jobUuids(payload);
     if (uuids.length > 0) {
+      // Списание и число заданий — в журнал. Это единственная запись, по
+      // которой видно, что одно действие человека стоило одну модель: если
+      // здесь снова окажется четыре задания, значит `modelCount` вендор не
+      // принял, и это надо увидеть сразу, а не по счёту в конце месяца.
+      const spent = pointsDeducted(payload);
+      console.info(
+        `[neural4d] задание принято: моделей ${uuids.length}, списано ${spent ?? "?"} баллов`,
+      );
       return NextResponse.json(
-        { uuid: uuids[0], uuids },
+        { uuid: uuids[0], uuids, pointsDeducted: spent },
         { status: 200, headers: { "Cache-Control": "no-store" } },
       );
     }
@@ -235,6 +252,13 @@ async function peek(response: Response, limit = 400): Promise<string> {
  * наружу уходят все номера — какой из вариантов показывать, решать не
  * здесь.
  */
+/** Сколько баллов вендор списал за этот запрос. */
+function pointsDeducted(payload: unknown): number | null {
+  if (!payload || typeof payload !== "object") return null;
+  const raw = (payload as { pointsDeducted?: unknown }).pointsDeducted;
+  return typeof raw === "number" ? raw : null;
+}
+
 function jobUuids(payload: unknown): string[] {
   if (!payload || typeof payload !== "object") return [];
   const source = payload as Record<string, unknown>;

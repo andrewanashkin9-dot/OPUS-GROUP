@@ -24,8 +24,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Не указан номер задания." }, { status: 400 });
   }
 
-  const config = getNeural4DConfig();
-  if (!config) {
+  if (!getNeural4DConfig()) {
     return NextResponse.json({ error: "Сервис 3D не подключён." }, { status: 503 });
   }
 
@@ -37,7 +36,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const upstream = await fetchModelFile(state.url, config);
+  const upstream = await fetchModelFile(state.url);
   if (!upstream.ok || !upstream.body) {
     console.error(`[neural4d] файл модели не отдан: ${upstream.status}`);
     return NextResponse.json({ error: "Не удалось получить файл модели." }, { status: 502 });

@@ -1,10 +1,6 @@
 import "server-only";
 
-import {
-  getNeural4DConfig,
-  neural4dAuthHeaders,
-  type Neural4DConfig,
-} from "./neural4d-config";
+import { getNeural4DConfig, neural4dAuthHeaders } from "./neural4d-config";
 
 /**
  * Готовность модели у Neural4D и ссылка на неё.
@@ -62,7 +58,7 @@ export async function fetchModelState(uuid: string): Promise<ModelState> {
     return { status: "failed", message: messageOf(payload) ?? `код ${code}` };
   }
 
-  const url = findModelUrl(payload);
+  const url = modelUrlField(payload) ?? findModelUrl(payload);
   if (!url) {
     // Не догадка о схеме, а честный отказ: модель готова, но ссылки в ответе
     // не нашлось. Полное тело — в журнал, оттуда видно, как её назвали.
@@ -83,10 +79,17 @@ export async function fetchModelState(uuid: string): Promise<ModelState> {
  * падала бы на CORS. Во-вторых, ссылка вендора подписана и живёт своей
  * жизнью — отдавать её в браузер значит отдавать наружу кусок нашего
  * доступа к его хранилищу.
+ *
+ * Без заголовка авторизации, и это исправление, а не небрежность. Ссылка
+ * приходит уже подписанной — в ней есть `?sign=…`, ровно как у
+ * `uploadedImageUrl` в ответе на генерацию. Хранилища, раздающие такие
+ * ссылки, считают подпись в адресе и заголовок Authorization двумя разными
+ * способами представиться и на запрос с обоими отвечают отказом. Мы клали
+ * туда наш ключ — и файл не скачивался, а на экране просто не появлялась
+ * модель.
  */
-export async function fetchModelFile(url: string, config: Neural4DConfig) {
+export async function fetchModelFile(url: string) {
   return fetch(url, {
-    headers: neural4dAuthHeaders(config),
     signal: AbortSignal.timeout(60_000),
     cache: "no-store",
   });
@@ -104,17 +107,29 @@ function messageOf(payload: unknown): string | null {
   return typeof raw === "string" ? raw : null;
 }
 
+/**
+ * Ссылка из документированного поля `modelUrl`.
+ *
+ * Читается первой: так написано в описании retrieveModel у вендора —
+ * дождаться `codeStatus == 0` и взять `modelUrl` с файлом .glb. Поиск ниже
+ * остаётся страховкой на случай, если поле переименуют или завернут глубже.
+ */
+function modelUrlField(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const raw = (payload as { modelUrl?: unknown }).modelUrl;
+  return typeof raw === "string" && /^https?:\/\//i.test(raw) ? raw : null;
+}
+
 /** Расширения, по которым узнаётся трёхмерная модель. glb — первый выбор. */
 const MODEL_EXTENSIONS = [".glb", ".gltf", ".fbx", ".obj", ".usdz", ".ply"];
 
 /**
  * Ищет ссылку на модель, обходя ответ целиком.
  *
- * Именно поиск, а не чтение известного поля, и это осознанно: как поле
- * называется, мы не знаем — живой ответ готовой модели ещё не видели, а
- * подставить выдуманное имя мы уже пробовали на `/reconstruct` и потеряли
- * на этом время. Зато сам адрес узнаётся надёжно: это строка, которая
- * начинается с http и оканчивается расширением трёхмерного формата.
+ * Страховка к `modelUrl` выше: документированное поле читается первым, а
+ * этот обход срабатывает, если ответ окажется вложенным или поле назовут
+ * иначе. Адрес узнаётся по себе: строка, начинающаяся с http и несущая
+ * расширение трёхмерного формата — в пути или в имени файла внутри подписи.
  *
  * Так разбор переживает и переименование поля, и вложенность, и появление
  * рядом обложки в png — картинка под условие не подходит.
@@ -147,7 +162,13 @@ export function findModelUrl(payload: unknown): string | null {
 
 function looksLikeModelUrl(value: string): boolean {
   if (!/^https?:\/\//i.test(value)) return false;
-  return MODEL_EXTENSIONS.includes(extensionOf(value));
+  if (MODEL_EXTENSIONS.includes(extensionOf(value))) return true;
+  // Расширения в пути может не быть вовсе: подписанные ссылки часто прячут
+  // имя файла в `response-content-disposition=…filename=дом.glb`. Проверять
+  // только хвост пути значило бы не найти готовую модель там, где она есть.
+  return MODEL_EXTENSIONS.some((ext) =>
+    new RegExp(`filename[^&]*\\${ext}(?:["']|&|$)`, "i").test(value),
+  );
 }
 
 /** Расширение без учёта подписи в query: ссылки вендора приходят с `?sign=…`. */

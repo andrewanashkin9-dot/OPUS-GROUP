@@ -12,19 +12,23 @@ import { styleDef } from "./styles";
 import type {
   BomLine,
   HouseConfig,
+  ModelSource,
   NodeKind,
   Opening,
   SceneModel,
   SceneNode,
 } from "./types";
+import { DEFAULT_FOOTPRINT } from "./types";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const FOOTPRINT = { widthM: 9.5, depthM: 8.2 };
-
-const DEFAULT_CONFIG: HouseConfig = { floors: 2, style: "european" };
+const DEFAULT_CONFIG: HouseConfig = {
+  floors: 2,
+  style: "european",
+  footprint: DEFAULT_FOOTPRINT,
+};
 
 interface NodeSeed {
   id: string;
@@ -58,17 +62,18 @@ const FACADE_OF: Record<string, "front" | "back" | "left" | "right"> = {
  * style is allowed to reset them, since choosing a style *is* choosing its
  * materials.
  */
-function buildHouse(
+export function buildHouse(
   config: HouseConfig,
   photoCount: number,
   carryOver?: Map<string, string>,
+  source: ModelSource = "demo",
 ): SceneModel {
   const style = styleDef(config.style);
   const dimensions = {
-    ...FOOTPRINT,
+    ...config.footprint,
     heightM: wallHeightM(config.floors),
   };
-  const openings = buildOpenings(FOOTPRINT, config);
+  const openings = buildOpenings(config.footprint, config);
 
   const nodes: SceneNode[] = NODE_SEEDS.map((seed) => {
     const accent = style.accents?.[seed.id];
@@ -103,10 +108,10 @@ function buildHouse(
   });
 
   return withRecalculatedQuantities({
-    id: "house-demo-1",
-    name: "Демо-дом (образец)",
+    id: source === "photos" ? "house-1" : "house-demo-1",
+    name: source === "photos" ? "Ваш дом" : "Демо-дом (образец)",
     createdAt: new Date().toISOString(),
-    source: "demo",
+    source,
     sourcePhotoCount: photoCount,
     dimensions,
     floors: config.floors,
@@ -178,10 +183,14 @@ export class MockModel3DProvider implements Model3DProvider {
         ? new Map(previous.nodes.map((n) => [n.id, n.materialId]))
         : undefined;
 
+    // Источник переносится с предыдущей модели: смена этажности или габаритов
+    // не превращает дом человека в образец, а без этого пометка «это образец»
+    // появлялась бы над его собственным проектом от первого же клика.
     const model = buildHouse(
       config,
       previous?.sourcePhotoCount ?? 4,
       carryOver,
+      previous?.source ?? "demo",
     );
     this.currentModel = model;
     return model;

@@ -1,7 +1,7 @@
-import { MockModel3DProvider } from "./mock-provider";
+import { MockModel3DProvider, buildHouse } from "./mock-provider";
 import type { Model3DProvider } from "./provider";
-import { validateSceneModel } from "./scene-model-schema";
 import type { BomLine, HouseConfig, SceneModel } from "./types";
+import { DEFAULT_FOOTPRINT } from "./types";
 
 /**
  * Провайдер, работающий через собственный backend.
@@ -11,66 +11,111 @@ import type { BomLine, HouseConfig, SceneModel } from "./types";
  * Единственный адрес, который он вызывает, — наш собственный маршрут; ключ
  * добавляется на сервере.
  *
- * Пока ключ не задан, маршрут отвечает 503 с reason "not_configured", и
- * провайдер прозрачно продолжает работу на mock. Поэтому пустой .env не
- * ломает ни разработку, ни демонстрацию: приложение ведёт себя ровно так же,
- * как сейчас, а с появлением ключа само начинает ходить к вендору.
+ * Разделение обязанностей, к которому пришли после трассировки вендора:
+ *
+ *   размеры  — от человека. Neural4D их не измеряет: он генеративный, из
+ *              одной фотографии рисует правдоподобный дом, а не обмеряет
+ *              настоящий. Метров, этажей и площадей в его ответе нет вовсе,
+ *              и смету из него собрать нельзя;
+ *   внешний вид — от Neural4D. Меш приходит асинхронно: сначала задание,
+ *              потом опрос готовности. Он ни на одну цифру в смете не
+ *              влияет, поэтому редактор не ждёт его и работает сразу.
+ *
+ * Отсюда главное свойство: генерация модели больше не может «не работать».
+ * Дом строится по габаритам мгновенно и локально, а всё, что происходит у
+ * вендора, — необязательное улучшение картинки.
  */
 
 /** Наш маршрут, не вендорский. */
 const GENERATE_ENDPOINT = "/api/neural4d/generate";
 
+/**
+ * Чем закончилась просьба к вендору нарисовать дом.
+ *
+ * "queued"       — задание принято, меш строится;
+ * "out_of_points" — на счёте вендора кончились баллы;
+ * "unavailable"  — вендор не ответил или отказал по другой причине;
+ * "not_configured" — ключа нет, вендор не подключён.
+ */
+export type VendorPreviewStatus =
+  | "queued"
+  | "out_of_points"
+  | "unavailable"
+  | "not_configured";
+
+export interface VendorPreview {
+  status: VendorPreviewStatus;
+  /** Номер задания — есть только у "queued". */
+  uuid?: string;
+  /** Текст от нашего маршрута, если он есть: его показывают человеку. */
+  message?: string;
+}
+
+/**
+ * Просит вендора построить внешний вид дома по фотографии.
+ *
+ * Отдельная функция, а не метод провайдера, и это принципиально: результат
+ * не влияет ни на модель, ни на смету. Провайдер отвечает за дом, который
+ * можно редактировать; эта функция — за картинку, которой может и не быть.
+ */
+export async function requestVendorPreview(photos: File[]): Promise<VendorPreview> {
+  const body = new FormData();
+  for (const photo of photos) body.append("photos", photo, photo.name);
+
+  let response: Response;
+  try {
+    response = await fetch(GENERATE_ENDPOINT, { method: "POST", body });
+  } catch {
+    return { status: "unavailable" };
+  }
+
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    return { status: "unavailable" };
+  }
+
+  const data = (payload ?? {}) as {
+    uuid?: unknown;
+    error?: unknown;
+    configured?: unknown;
+    reason?: unknown;
+  };
+
+  if (data.configured === false) return { status: "not_configured" };
+
+  if (response.ok && typeof data.uuid === "string") {
+    return { status: "queued", uuid: data.uuid };
+  }
+
+  const message = typeof data.error === "string" ? data.error : undefined;
+  return {
+    status: data.reason === "out_of_points" ? "out_of_points" : "unavailable",
+    message,
+  };
+}
+
 export class Neural4DModel3DProvider implements Model3DProvider {
   /**
-   * Не только запасной вариант: смена материала, этажности и расчёт сметы —
-   * операции над уже полученной моделью, они не требуют обращения к вендору.
+   * Не только запасной вариант: смена материала, этажности, габаритов и
+   * расчёт сметы — операции над уже полученной моделью, они не требуют
+   * обращения к вендору.
    */
   private readonly local = new MockModel3DProvider();
 
   async generateFromPhotos(photos: File[]): Promise<SceneModel> {
-    const body = new FormData();
-    for (const photo of photos) body.append("photos", photo, photo.name);
-
-    let response: Response;
-    try {
-      response = await fetch(GENERATE_ENDPOINT, { method: "POST", body });
-    } catch {
-      throw new Error(
-        "Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.",
-      );
-    }
-
-    if (!response.ok) {
-      throw new Error(
-        (await safeMessage(response)) ??
-          "Не удалось построить модель. Попробуйте ещё раз.",
-      );
-    }
-
-    const payload: unknown = await response.json();
-
-    // Ключ ещё не вписан — показываем помеченный образец. Приходит как
-    // обычный успешный ответ, поэтому в консоли нет ложной ошибки.
-    if (
-      payload &&
-      typeof payload === "object" &&
-      "configured" in payload &&
-      (payload as { configured: unknown }).configured === false
-    ) {
-      return this.local.generateFromPhotos(photos);
-    }
-
-    // Проверяем и здесь, а не только на сервере: между ними стоит сеть, и
-    // приводить чужой JSON к SceneModel вслепую нельзя.
-    const result = validateSceneModel(payload, "photos");
-    if (!result.ok) {
-      throw new Error(
-        "Модель пришла в неожиданном формате. Попробуйте ещё раз или напишите нам.",
-      );
-    }
-
-    this.local.adoptModel(result.model);
-    return result.model;
+    // Дом собирается первым и без сети. Раньше здесь ждали ответа вендора, и
+    // любой его отказ — неверный адрес, пустой баланс — оставлял человека с
+    // пустым экраном и надписью «не удалось построить модель».
+    const config: HouseConfig = {
+      floors: 2,
+      style: "european",
+      footprint: DEFAULT_FOOTPRINT,
+    };
+    const model = buildHouse(config, photos.length, undefined, "photos");
+    this.local.adoptModel(model);
+    return model;
   }
 
   adoptModel(model: SceneModel): void {
@@ -87,15 +132,5 @@ export class Neural4DModel3DProvider implements Model3DProvider {
 
   getBillOfMaterials(model: SceneModel): BomLine[] {
     return this.local.getBillOfMaterials(model);
-  }
-}
-
-/** Сообщение для пользователя — только то, что сформировал наш маршрут. */
-async function safeMessage(response: Response): Promise<string | null> {
-  try {
-    const data = (await response.json()) as { error?: string };
-    return typeof data.error === "string" ? data.error : null;
-  } catch {
-    return null;
   }
 }

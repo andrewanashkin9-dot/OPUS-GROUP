@@ -3,6 +3,10 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { getModel3DProvider } from "./3d";
 import { withRecalculatedQuantities } from "./3d/metrics";
+import {
+  requestVendorPreview,
+  type VendorPreview,
+} from "./3d/neural4d-provider";
 import { productById, type MarketUnit, type Product } from "./marketplace";
 import {
   DEFAULT_DOOR,
@@ -43,6 +47,7 @@ import {
 import type {
   BomLine,
   FloorCount,
+  Footprint,
   HouseConfig,
   HouseStyle,
   NodeKind,
@@ -51,6 +56,7 @@ import type {
   SceneNode,
   Tier,
 } from "./3d/types";
+import { HOUSE_SIDE_MAX_M, HOUSE_SIDE_MIN_M } from "./3d/types";
 
 /** Шаги конфигуратора комнаты, в том порядке, в каком их проходят. */
 export type RoomStep = "size" | "openings" | "finish" | "estimate";
@@ -89,6 +95,14 @@ interface AppState {
   /** True while the model is being rebuilt for new floors or a new style. */
   rebuilding: boolean;
   /**
+   * Чем закончился запрос внешнего вида у Neural4D.
+   *
+   * Живёт отдельно от `error` намеренно: отказ вендора — не поломка проекта.
+   * Дом построен, смета считается, редактор работает; не хватает только
+   * картинки, и сказать об этом надо, не выдавая за сбой.
+   */
+  vendorPreview: VendorPreview | null;
+  /**
    * Products added from the market, by id. They share the cart with the
    * model's own bill of materials: one basket, one total, one delivery — the
    * reader is buying for one building, not shopping in two places.
@@ -120,6 +134,8 @@ interface AppState {
   setRoofPitch: (pitchDeg: number) => void;
   setFloors: (floors: FloorCount) => Promise<void>;
   setStyle: (style: HouseStyle) => Promise<void>;
+  /** Габариты дома в плане. Их задаёт человек — вендор их не измеряет. */
+  setFootprint: (footprint: Footprint) => Promise<void>;
   resetProject: () => void;
   showEducationCard: (cardId: string) => void;
   dismissEducationCard: (cardId: string) => void;
@@ -184,6 +200,35 @@ function updateRoof(
 type SetState = (
   partial: Partial<AppState> | ((state: AppState) => Partial<AppState>),
 ) => void;
+
+/**
+ * Параметры постройки, восстановленные из модели.
+ *
+ * Раньше каждый вызов собирал их вручную, и стоило добавить к постройке
+ * ещё один параметр — габариты, — как забытое поле молча возвращало бы дом
+ * к значению по умолчанию.
+ */
+function configOf(model: SceneModel): HouseConfig {
+  return {
+    floors: model.floors,
+    style: model.style,
+    footprint: {
+      widthM: model.dimensions.widthM,
+      depthM: model.dimensions.depthM,
+    },
+  };
+}
+
+/**
+ * Число из поля ввода — это ещё не длина: там бывает пусто, «12,5», минус и
+ * просто мусор. Отбрасываем всё, что не похоже на сторону частного дома, и
+ * оставляем прежнее значение — молча подставленный ноль обнулил бы смету.
+ */
+function clampSide(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  const clamped = Math.min(HOUSE_SIDE_MAX_M, Math.max(HOUSE_SIDE_MIN_M, value));
+  return Math.round(clamped * 10) / 10;
+}
 
 /**
  * Rebuilds the model for a new storey count or style. Both change the
@@ -308,6 +353,7 @@ export const useAppStore = create<AppState>()(
       quantityOverrides: {},
       colorOverrides: {},
       rebuilding: false,
+      vendorPreview: null,
       marketItems: {},
 
       room: null,
@@ -339,7 +385,7 @@ export const useAppStore = create<AppState>()(
           });
           return;
         }
-        set({ status: "generating", error: null });
+        set({ status: "generating", error: null, vendorPreview: null });
         try {
           const model = await getModel3DProvider().generateFromPhotos(photos);
           await getUsageLimitBackend().add(model.id);
@@ -349,6 +395,14 @@ export const useAppStore = create<AppState>()(
             selectedNodeId: model.nodes[0]?.id ?? null,
             usage: await readUsage(get().tier),
           });
+
+          // Внешний вид у вендора запрашивается после того, как проект уже
+          // открыт, и его отказ проектом не считается: смета не зависит от
+          // меша ни одной цифрой. Раньше здесь ждали вендора первым, и любая
+          // его ошибка оставляла человека с пустым экраном вместо дома.
+          void requestVendorPreview(photos).then((vendorPreview) =>
+            set({ vendorPreview }),
+          );
         } catch (err) {
           set({
             status: "error",
@@ -395,13 +449,14 @@ export const useAppStore = create<AppState>()(
           selectedNodeId: null,
           quantityOverrides: {},
           colorOverrides: {},
+          vendorPreview: null,
         });
       },
 
       setFloors: async (floors) => {
         const { model } = get();
         if (!model || model.floors === floors) return;
-        await reconfigure(set, { floors, style: model.style });
+        await reconfigure(set, { ...configOf(model), floors });
       },
 
       setStyle: async (style) => {
@@ -409,7 +464,23 @@ export const useAppStore = create<AppState>()(
         if (!model || model.style === style) return;
         // A style carries its own materials and colours, so any colour the
         // user had pinned on top of the previous style is cleared with it.
-        await reconfigure(set, { floors: model.floors, style }, true);
+        await reconfigure(set, { ...configOf(model), style }, true);
+      },
+
+      setFootprint: async (footprint) => {
+        const { model } = get();
+        if (!model) return;
+        const next = {
+          widthM: clampSide(footprint.widthM, model.dimensions.widthM),
+          depthM: clampSide(footprint.depthM, model.dimensions.depthM),
+        };
+        if (
+          next.widthM === model.dimensions.widthM &&
+          next.depthM === model.dimensions.depthM
+        ) {
+          return;
+        }
+        await reconfigure(set, { ...configOf(model), footprint: next });
       },
 
       setRoofShape: (shape) => set(updateRoof((roof) => ({ ...roof, shape }))),

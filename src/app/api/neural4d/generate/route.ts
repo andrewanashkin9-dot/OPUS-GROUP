@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { validateSceneModel } from "@/lib/3d/scene-model-schema";
 import {
   getNeural4DConfig,
   isNeural4DEnabled,
@@ -125,9 +124,10 @@ export async function POST(request: Request) {
       const outOfPoints = response.status === 403 && /insufficient points/i.test(body);
       return NextResponse.json(
         {
+          reason: outOfPoints ? "out_of_points" : "unavailable",
           error: outOfPoints
-            ? "На счёте сервиса 3D закончились баллы — генерация недоступна, пока баланс не пополнят."
-            : "Сервис 3D-реконструкции временно недоступен. Попробуйте позже.",
+            ? "На счёте сервиса 3D закончились баллы — внешний вид дома не построить, пока баланс не пополнят."
+            : "Сервис 3D временно недоступен — дом показан схемой.",
         },
         { status: 502 },
       );
@@ -145,48 +145,25 @@ export async function POST(request: Request) {
     }
 
     // Успешный ответ Neural4D — не модель, а номер задания: генерация у него
-    // асинхронная, готовность потом опрашивают через retrieveModel. Это
-    // распознаётся отдельно, иначе ниже сработала бы проверка схемы и в
-    // журнал уехало бы «нет id, нет dimensions, нет nodes» — список
-    // недостающих полей вместо настоящей причины.
-    if (isJobTicket(payload)) {
-      console.error(
-        `[neural4d] ${endpoint} принял задание и вернул uuid: генерация асинхронная` +
-          " и отдаёт меш, а не обмеры (размеры, этажи, площади). Смету из такого" +
-          " ответа собрать нельзя — нужно решение по продукту.",
-      );
+    // асинхронная, готовность потом опрашивают через retrieveModel. И это
+    // всё, что от него приходит: меш, то есть внешний вид. Ни метров, ни
+    // этажей, ни площадей поверхностей в ответе нет вовсе, поэтому смета
+    // считается не отсюда, а по габаритам, которые вводит человек.
+    const uuid = jobUuid(payload);
+    if (uuid) {
       return NextResponse.json(
-        {
-          error:
-            "Сервис строит внешний вид дома, но не его размеры — смету по такой модели посчитать нельзя.",
-        },
-        { status: 502 },
+        { uuid },
+        { status: 200, headers: { "Cache-Control": "no-store" } },
       );
     }
 
-    // Ответ вендора приводится к нашей модели и проверяется, а не берётся на
-    // веру: расхождение формата иначе доехало бы до сметы в виде NaN и
-    // несуществующих поверхностей.
-    const result = validateSceneModel(mapVendorPayload(payload), "photos");
-    if (!result.ok) {
-      // Список полей — в лог, наружу общее сообщение: он описывает наш
-      // внутренний формат, и посетителю от него пользы нет.
-      console.error(
-        `[neural4d] ответ не соответствует модели: ${result.problems.join("; ")}`,
-      );
-      return NextResponse.json(
-        {
-          error:
-            "Модель пришла в неожиданном формате, мы не смогли её принять. Попробуйте ещё раз позже.",
-        },
-        { status: 502 },
-      );
-    }
-
-    return NextResponse.json(result.model, {
-      status: 200,
-      headers: { "Cache-Control": "no-store" },
-    });
+    console.error(
+      `[neural4d] ${endpoint} ответил 200, но без номера задания: ${JSON.stringify(payload).slice(0, 400)}`,
+    );
+    return NextResponse.json(
+      { error: "Сервис вернул неожиданный ответ. Мы уже разбираемся." },
+      { status: 502 },
+    );
   } catch (error) {
     const timedOut = error instanceof Error && error.name === "TimeoutError";
     // Причина сетевого отказа — DNS, отказ в соединении, TLS — тоже в журнал:
@@ -231,14 +208,17 @@ async function peek(response: Response, limit = 400): Promise<string> {
  * иначе, правка нужна ровно здесь — остальной код трогать не придётся, а до
  * правки запрос честно завершится ошибкой, а не тихо испорченной сметой.
  */
-/** Ответ вида `{ uuid: [...] }` или `{ uuid: "..." }` — это номер задания. */
-function isJobTicket(payload: unknown): boolean {
-  return Boolean(payload && typeof payload === "object" && "uuid" in payload);
-}
-
-function mapVendorPayload(payload: unknown): unknown {
-  if (payload && typeof payload === "object" && "model" in payload) {
-    return (payload as { model: unknown }).model;
-  }
-  return payload;
+/**
+ * Номер задания из ответа вендора.
+ *
+ * Он приходит и строкой, и массивом из одной строки — форма зависит от
+ * эндпоинта, поэтому разбираются обе, а всё остальное считается «номера
+ * нет», а не «номер, наверное, где-то тут».
+ */
+function jobUuid(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object" || !("uuid" in payload)) return null;
+  const raw = (payload as { uuid: unknown }).uuid;
+  if (typeof raw === "string" && raw) return raw;
+  if (Array.isArray(raw) && typeof raw[0] === "string" && raw[0]) return raw[0];
+  return null;
 }

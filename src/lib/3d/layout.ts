@@ -1,5 +1,5 @@
 import { styleDef } from "./styles";
-import type { Facade, FloorCount, HouseConfig, Opening } from "./types";
+import type { Facade, FloorCount, Footprint, HouseConfig, Opening } from "./types";
 import { FLOOR_HEIGHT_M } from "./types";
 
 /**
@@ -9,10 +9,9 @@ import { FLOOR_HEIGHT_M } from "./types";
  * facade reads as noise.
  */
 
-export interface Footprint {
-  widthM: number;
-  depthM: number;
-}
+// Живёт в types.ts вместе с остальной моделью; здесь только переэкспорт,
+// чтобы не переписывать импорты по всему проекту.
+export type { Footprint };
 
 /** Evenly spaced offsets across a facade, centred on zero. */
 function spread(count: number, span: number): number[] {

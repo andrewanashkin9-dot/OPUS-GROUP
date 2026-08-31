@@ -46,7 +46,8 @@ export function UploadStep() {
       </h1>
       <p className="prose-measure mx-auto mt-4 text-body-l text-cream-dim">
         Снимите четыре стороны дома с телефона — спереди, сзади и с боков.
-        По ним Neural4D соберёт 3D-модель именно вашего дома.
+        По ним сервис нарисует внешний вид. Размеры вы зададите сами на
+        следующем шаге: именно по ним считается смета.
       </p>
 
       <label
@@ -121,7 +122,7 @@ export function UploadStep() {
         onClick={() => generateFromPhotos(files)}
         className="mt-8 inline-flex items-center justify-center self-center rounded-full bg-accent px-8 py-3.5 text-ui font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 disabled:opacity-40"
       >
-        {isGenerating ? "Строим 3D-модель…" : "Построить 3D-модель"}
+        {isGenerating ? "Открываем проект…" : "Перейти к размерам"}
       </button>
 
       {isGenerating && (

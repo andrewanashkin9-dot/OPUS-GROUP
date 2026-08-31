@@ -11,11 +11,14 @@ import { CameraRig } from "./CameraRig";
 import { GroundShadow } from "./GroundShadow";
 import { HouseScene } from "./HouseScene";
 import { VendorMesh } from "./VendorMesh";
+import type { MeshPart } from "@/lib/3d/mesh-segmentation";
 
 interface EditorCanvasProps {
   model: SceneModel;
   /** Адрес меша от вендора. Есть — показываем его вместо дома-схемы. */
   meshUrl?: string;
+  /** Материалы, выбранные для частей меша. Пусто — всё как на фотографии. */
+  meshMaterials?: Partial<Record<MeshPart, string>>;
   selectedNodeId: string | null;
   colorOverrides: Record<string, string>;
   onSelect: (nodeId: string) => void;
@@ -67,6 +70,7 @@ function Building({
 export function EditorCanvas({
   model,
   meshUrl,
+  meshMaterials,
   selectedNodeId,
   colorOverrides,
   onSelect,
@@ -162,7 +166,12 @@ export function EditorCanvas({
           одной точке дают мерцание пересекающихся поверхностей. Схема
           возвращается, как только человек снимает показ. */}
       {meshUrl ? (
-        <VendorMesh url={meshUrl} widthM={widthM} depthM={depthM} />
+        <VendorMesh
+          url={meshUrl}
+          widthM={widthM}
+          depthM={depthM}
+          materials={meshMaterials ?? {}}
+        />
       ) : (
         <Building
           model={model}

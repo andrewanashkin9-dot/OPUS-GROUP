@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { getModel3DProvider } from "./3d";
 import { withRecalculatedQuantities } from "./3d/metrics";
+import type { MeshPart } from "./3d/mesh-segmentation";
 import {
   pollVendorMesh,
   startVendorMesh,
@@ -107,6 +108,15 @@ interface AppState {
   /** Внешний вид дома от Neural4D: необязательная картинка поверх сметы. */
   vendorMesh: VendorMesh;
   /**
+   * Материалы, выбранные для частей сгенерированной модели.
+   *
+   * Часть, которой здесь нет, сохраняет материал вендора — тот, что построен
+   * по фотографии. Заменяется только выбранное: иначе первое же прикосновение
+   * к материалам стирало бы похожесть на настоящий дом, ради которой модель и
+   * заказывали.
+   */
+  meshMaterials: Partial<Record<MeshPart, string>>;
+  /**
    * Products added from the market, by id. They share the cart with the
    * model's own bill of materials: one basket, one total, one delivery — the
    * reader is buying for one building, not shopping in two places.
@@ -148,6 +158,8 @@ interface AppState {
    * вендор отказал.
    */
   requestHouseMesh: () => Promise<void>;
+  /** Материал для части модели. null — вернуть материал вендора. */
+  setMeshMaterial: (part: MeshPart, materialId: string | null) => void;
   resetProject: () => void;
   showEducationCard: (cardId: string) => void;
   dismissEducationCard: (cardId: string) => void;
@@ -413,6 +425,7 @@ export const useAppStore = create<AppState>()(
       rebuilding: false,
       housePhotos: [],
       vendorMesh: { status: "idle" },
+      meshMaterials: {},
       marketItems: {},
 
       room: null,
@@ -457,6 +470,7 @@ export const useAppStore = create<AppState>()(
             // заказать внешний вид дома, когда сам этого захочет.
             housePhotos: photos,
             vendorMesh: { status: "queued" },
+            meshMaterials: {},
           });
 
           // Настоящая генерация — основной путь, а не дополнение. Дом-схема
@@ -500,6 +514,14 @@ export const useAppStore = create<AppState>()(
           void waitForMesh(set, get, started.uuid);
         }
       },
+
+      setMeshMaterial: (part, materialId) =>
+        set((state) => {
+          const next = { ...state.meshMaterials };
+          if (materialId) next[part] = materialId;
+          else delete next[part];
+          return { meshMaterials: next };
+        }),
 
       selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
 
@@ -1029,6 +1051,7 @@ export const useAppStore = create<AppState>()(
         // второй раз за то же самое. Сами фотографии не сохраняются, но для
         // опроса готовности они и не нужны.
         vendorMesh: state.vendorMesh,
+        meshMaterials: state.meshMaterials,
         // roomPhotos сознательно не сохраняются: они живут только в этой
         // вкладке, и обещание «фото остаются у вас» держится именно тем,
         // что их некуда записать.

@@ -9,8 +9,10 @@ import { ColorPicker } from "./ColorPicker";
 import { EditorCanvas } from "./EditorCanvas";
 import { EducationCardPanel } from "./EducationCardPanel";
 import { FootprintControls } from "./FootprintControls";
+import { GenerationProgress } from "./GenerationProgress";
 import { HouseControls } from "./HouseControls";
 import { MeshControls } from "./MeshControls";
+import { MeshMaterials } from "./MeshMaterials";
 import { MaterialsPalette } from "./MaterialsPalette";
 import { RoofControls } from "./RoofControls";
 import { Toolbar } from "./Toolbar";
@@ -20,6 +22,7 @@ import { UploadStep } from "./UploadStep";
 export function EditorShell() {
   const model = useAppStore((s) => s.model);
   const vendorMesh = useAppStore((s) => s.vendorMesh);
+  const meshMaterials = useAppStore((s) => s.meshMaterials);
   // Показ модели вендора — состояние взгляда, а не проекта: оно не меняет
   // ни одной цифры и не должно переживать перезагрузку вместе со сметой.
   const [showMesh, setShowMesh] = useState(true);
@@ -59,11 +62,13 @@ export function EditorShell() {
             meshUrl={
               showMesh && vendorMesh.status === "ready" ? vendorMesh.url : undefined
             }
+            meshMaterials={meshMaterials}
             selectedNodeId={selectedNode.id}
             colorOverrides={colorOverrides}
             onSelect={selectNode}
             interactive
           />
+          <GenerationProgress />
           <Toolbar model={model} selectedNodeId={selectedNode.id} onSelectKind={selectNode} />
 
           {/* The штамп, now carrying the reader's own house. Same block as the
@@ -95,6 +100,9 @@ export function EditorShell() {
         <aside className="hidden w-96 shrink-0 flex-col gap-8 overflow-y-auto border-l border-[var(--plate-edge)] bg-[var(--rail)] p-6 backdrop-blur-sm lg:flex">
           <FootprintControls model={model} />
           <MeshControls showMesh={showMesh} onToggle={setShowMesh} />
+          {/* Материалы на модели показываются только когда она на экране:
+              менять кровлю у того, чего не видно, — обещание без результата. */}
+          {showMesh && vendorMesh.status === "ready" && <MeshMaterials />}
           <HouseControls model={model} />
           <MaterialsPalette node={selectedNode} />
           <ColorPicker node={selectedNode} />

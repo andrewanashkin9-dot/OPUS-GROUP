@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import type { ProbeResult } from "@/lib/neural4d-probe-result";
 import { generateAction, retrieveAction } from "./actions";
 
@@ -37,6 +37,33 @@ export function LiveGeneration() {
   }
 
   const allUuids = generated ? allUuidsIn(generated.body) : [];
+
+  // Модель строится долго — на стенде она была не готова и через семь минут.
+  // Поэтому опрос умеет ждать сам: человек нажимает один раз и уходит, а не
+  // сидит над кнопкой. Останавливается, как только вендор перестаёт отвечать
+  // «в процессе».
+  const [auto, setAuto] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [, startPoll] = useTransition();
+  const inProgress = retrieved !== null && isInProgress(retrieved.body);
+
+  useEffect(() => {
+    if (!auto || !uuid) return;
+    // Первый ответ ещё не пришёл — ждём его, повторять нечего.
+    if (retrieved !== null && !inProgress) return;
+
+    const timer = setTimeout(() => {
+      const form = new FormData();
+      form.set("uuid", uuid);
+      startPoll(() => {
+        setAttempts((n) => n + 1);
+        retrieve(form);
+      });
+    }, POLL_MS);
+    return () => clearTimeout(timer);
+    // `retrieved` в зависимостях намеренно: каждый новый ответ заводит
+    // следующее ожидание, и получается цепочка, а не параллельные таймеры.
+  }, [auto, uuid, retrieved, inProgress, retrieve]);
 
   return (
     <section className="mt-10 rounded-2xl border border-line p-4">
@@ -106,13 +133,30 @@ export function LiveGeneration() {
           placeholder="Номер задания (uuid) из ответа выше"
           className="mt-2 block w-full rounded-xl border border-line bg-transparent px-3 py-2 font-mono text-body-s tracking-normal"
         />
-        <button
-          type="submit"
-          disabled={retrieving}
-          className="mt-3 rounded-full border border-line px-5 py-2.5 text-ui font-medium text-white disabled:opacity-40"
-        >
-          {retrieving ? "Спрашиваем…" : "Проверить готовность"}
-        </button>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={retrieving}
+            className="rounded-full border border-line px-5 py-2.5 text-ui font-medium text-white disabled:opacity-40"
+          >
+            {retrieving ? "Спрашиваем…" : "Проверить готовность"}
+          </button>
+          <label className="flex items-center gap-2 text-body-s text-dim">
+            <input
+              type="checkbox"
+              checked={auto}
+              onChange={(e) => setAuto(e.target.checked)}
+            />
+            Спрашивать самому каждые {POLL_MS / 1000} с
+          </label>
+        </div>
+        {auto && (
+          <p className="mt-2 text-caption text-dim" aria-live="polite">
+            {inProgress || retrieved === null
+              ? `Ждём готовности. Повторов: ${attempts}. Можно свернуть вкладку и вернуться позже — но не закрывать её.`
+              : `Готово, повторы остановлены. Всего повторов: ${attempts}.`}
+          </p>
+        )}
       </form>
 
       <Result title="Ответ на опрос готовности" result={retrieved} />
@@ -133,6 +177,20 @@ export function LiveGeneration() {
 function firstUuid(body: string): string | null {
   const match = /"uuids?"\s*:\s*(?:\[\s*)?"([^"]+)"/.exec(body);
   return match ? match[1] : null;
+}
+
+/**
+ * Пауза между повторами.
+ *
+ * Двадцать секунд — не из осторожности перед лимитами: опрос готовности
+ * баллов не тратит. Просто модель строится минутами, и чаще спрашивать
+ * бессмысленно.
+ */
+const POLL_MS = 20_000;
+
+/** Вендор отвечает «строится» кодом 1 — по нему и решаем, ждать ли дальше. */
+function isInProgress(body: string): boolean {
+  return /"codeStatus"\s*:\s*1\b/.test(body);
 }
 
 /** Все номера из массива `uuids` — их четыре, и любой может оказаться готов. */

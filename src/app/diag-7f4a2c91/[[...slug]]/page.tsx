@@ -9,6 +9,11 @@ import { probeNeural4DThrottled } from "@/lib/server/neural4d-probe";
  * там, где стоит ключ — на боевом стенде, с планшета. Поэтому проба живёт
  * по неочевидному адресу, не появляется в навигации и закрыта от индексации.
  *
+ * Почему необязательный catch-all, а не обычная папка: адрес набирают руками
+ * с планшета, и первая же попытка оборвалась на `/diag-7f4a2c91/n` — 404 вместо
+ * пробы. Теперь открывается и сам `/diag-7f4a2c91`, и что угодно под ним, так
+ * что опечатка в хвосте больше не выглядит как отсутствующая страница.
+ *
  * Что здесь не показывается ни при каких условиях: сам ключ. В выводе только
  * его длина — этого хватает, чтобы отличить пустую строку от значения.
  *
@@ -51,6 +56,8 @@ export default async function Neural4DProbePage() {
         <dd className="break-all">{report.reconstructPath}</dd>
         <dt className="text-dim">Проба выполнена</dt>
         <dd className="tabular-nums">{report.ranAt}</dd>
+        <dt className="text-dim">Сборка</dt>
+        <dd className="break-all tabular-nums">{deployStamp()}</dd>
       </dl>
 
       {!report.keyConfigured && (
@@ -85,4 +92,18 @@ export default async function Neural4DProbePage() {
       </p>
     </main>
   );
+}
+
+/**
+ * Из какой сборки эта страница.
+ *
+ * Нужно, чтобы отличить «вендор отвечает так» от «на стенде ещё старый код».
+ * Переменные Vercel подставляются при сборке, поэтому короткий хеш коммита
+ * здесь — это ровно то, что задеплоено. Секретов в них нет.
+ */
+function deployStamp(): string {
+  const sha = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7);
+  const env = process.env.VERCEL_ENV;
+  if (!sha) return "локальная сборка (вне Vercel)";
+  return env ? `${sha} · ${env}` : sha;
 }

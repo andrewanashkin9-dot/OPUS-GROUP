@@ -15,18 +15,28 @@ import "server-only";
  *    в текст ошибки — наружу уходит только факт «настроен / не настроен».
  */
 
-const DEFAULT_API_URL = "https://api.neural4d.com/v1";
+const DEFAULT_API_URL = "https://api.neural4d.com";
 
 /**
- * Путь, по которому мы стучимся за моделью.
+ * Эндпоинты вендора. Больше не догадки — проверены живыми запросами со
+ * стенда (см. историю страницы-пробы):
  *
- * Написан до появления документации вендора и, как показала трассировка,
- * не существует — на него приходит 404, и именно поэтому генерация «не
- * работала при живом ключе». Оставлен значением по умолчанию, чтобы
- * поведение не изменилось молча, и вынесен в переменную окружения, чтобы
- * правильный адрес можно было подставить, не пересобирая приложение.
+ *   POST https://api.neural4d.com/v1/reconstruct
+ *        → 404 «Cannot POST /v1/reconstruct» — такого адреса нет вовсе,
+ *          и это и есть причина, по которой генерация не работала при
+ *          живом ключе;
+ *   POST https://api.neural4d.com/api/generateModelWithImage
+ *        → 400 {"errors":[{"msg":"Image file is required","path":"image"}]}
+ *          — адрес существует, ключ принят, ждёт файл в поле `image`;
+ *   POST https://api.neural4d.com/api/retrieveModel
+ *        → 200 {"codeStatus":-2,"message":"This UUID does not exist."}
+ *          — адрес существует, отвечает штатно.
+ *
+ * Отсюда два вывода, зашитых ниже: сегмента `/v1` у этих адресов нет, и
+ * генерация асинхронная — сначала задание, потом опрос готовности.
  */
-const DEFAULT_RECONSTRUCT_PATH = "/reconstruct";
+const DEFAULT_GENERATE_PATH = "/api/generateModelWithImage";
+const DEFAULT_RETRIEVE_PATH = "/api/retrieveModel";
 
 /** Ведущий слэш обязателен, хвостовой — нет: иначе получится `//` в URL. */
 function normalizePath(path: string): string {
@@ -36,20 +46,20 @@ function normalizePath(path: string): string {
 
 export interface Neural4DConfig {
   apiKey: string;
-  apiUrl: string;
   /**
-   * Путь до эндпоинта реконструкции, относительно apiUrl.
+   * Только схема и хост, без пути.
    *
-   * Вынесен в окружение не для гибкости, а потому что мы его не знаем.
-   * Значение по умолчанию — `/reconstruct` — было написано до того, как у
-   * вендора появилась документация, и оно неверно: такого адреса нет, на
-   * него приходит 404. Настоящие адреса Neural4D выглядят иначе
-   * (`/api/generateModelWithImage`, `/api/retrieveModel`), и до тех пор пока
-   * контракт не подтверждён живым запросом, менять его правкой кода значило
-   * бы заменить одну догадку другой. Проверить, какой путь отвечает,
-   * помогает `npm run neural4d:check`.
+   * Берётся именно origin, а не значение переменной целиком, и это
+   * сознательно: в окружении стенда стоит `https://api.neural4d.com/v1`,
+   * а эндпоинты вендора живут в корне. Склейка с этим `/v1` и давала
+   * `Cannot POST /v1/...`. Отрезая путь здесь, мы чиним адрес и там, где
+   * переменную уже прописали с хвостом, — без похода в настройки Vercel.
    */
-  reconstructPath: string;
+  apiOrigin: string;
+  /** Постановка задания: multipart с файлом в поле `image`. */
+  generatePath: string;
+  /** Опрос готовности по uuid, выданному генерацией. */
+  retrievePath: string;
 }
 
 /**
@@ -65,12 +75,27 @@ export function getNeural4DConfig(): Neural4DConfig | null {
   // Адрес вендора берётся только из окружения. Если бы его присылал клиент,
   // эндпоинт стал бы открытым прокси — можно было бы заставить сервер ходить
   // во внутреннюю сеть и приложить к запросу наш ключ (SSRF).
-  const apiUrl = (process.env.NEURAL4D_API_URL?.trim() || DEFAULT_API_URL).replace(/\/+$/, "");
-  const reconstructPath = normalizePath(
-    process.env.NEURAL4D_RECONSTRUCT_PATH?.trim() || DEFAULT_RECONSTRUCT_PATH,
-  );
+  const raw = process.env.NEURAL4D_API_URL?.trim() || DEFAULT_API_URL;
 
-  return { apiKey, apiUrl, reconstructPath };
+  return {
+    apiKey,
+    apiOrigin: originOf(raw) ?? DEFAULT_API_URL,
+    generatePath: normalizePath(
+      process.env.NEURAL4D_GENERATE_PATH?.trim() || DEFAULT_GENERATE_PATH,
+    ),
+    retrievePath: normalizePath(
+      process.env.NEURAL4D_RETRIEVE_PATH?.trim() || DEFAULT_RETRIEVE_PATH,
+    ),
+  };
+}
+
+/** Опечатка в переменной окружения не должна ронять приложение целиком. */
+function originOf(url: string): string | null {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -24,6 +24,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const REQUIRED_PHOTOS = 4;
+const PROMPT = "exterior of a residential house, photorealistic, full building";
 const MAX_BYTES_PER_PHOTO = 20 * 1024 * 1024; // 20 МБ, как обещает интерфейс
 const VENDOR_TIMEOUT_MS = 120_000;
 
@@ -90,10 +91,15 @@ export async function POST(request: Request) {
     }
   }
 
+  // Вендор принимает одно изображение в поле `image` — это подтверждено его
+  // же ответом: 400 «Image file is required, path: image». Четыре стороны он
+  // не принимает вовсе, поэтому уходит фасад, снятый первым; остальные три
+  // снимка остаются у нас и нужны обмерам, а не вендору.
   const upstream = new FormData();
-  for (const photo of photos) upstream.append("photos", photo, photo.name);
+  upstream.append("image", photos[0], photos[0].name);
+  upstream.append("prompt", PROMPT);
 
-  const endpoint = `${config.apiUrl}${config.reconstructPath}`;
+  const endpoint = `${config.apiOrigin}${config.generatePath}`;
 
   try {
     const response = await fetch(endpoint, {
@@ -110,11 +116,19 @@ export async function POST(request: Request) {
       // упавший сервис, а именно это и нужно знать первым делом. Теперь
       // пишется ещё и путь, и начало ответа: там лежит текст ошибки вендора.
       // Ключа в этой строке нет — он живёт только в заголовке запроса.
+      const body = await peek(response);
       console.error(
-        `[neural4d] POST ${endpoint} -> ${response.status} ${response.statusText}; ${await peek(response)}`,
+        `[neural4d] POST ${endpoint} -> ${response.status} ${response.statusText}; ${body}`,
       );
+      // Исчерпанный баланс — не поломка сервиса, и предлагать «попробуйте
+      // позже» тут значит врать: само по себе позже оно не заработает.
+      const outOfPoints = response.status === 403 && /insufficient points/i.test(body);
       return NextResponse.json(
-        { error: "Сервис 3D-реконструкции временно недоступен. Попробуйте позже." },
+        {
+          error: outOfPoints
+            ? "На счёте сервиса 3D закончились баллы — генерация недоступна, пока баланс не пополнят."
+            : "Сервис 3D-реконструкции временно недоступен. Попробуйте позже.",
+        },
         { status: 502 },
       );
     }
@@ -126,6 +140,26 @@ export async function POST(request: Request) {
       console.error(`[neural4d] ответ ${endpoint} не является JSON`);
       return NextResponse.json(
         { error: "Сервис вернул неожиданный ответ. Мы уже разбираемся." },
+        { status: 502 },
+      );
+    }
+
+    // Успешный ответ Neural4D — не модель, а номер задания: генерация у него
+    // асинхронная, готовность потом опрашивают через retrieveModel. Это
+    // распознаётся отдельно, иначе ниже сработала бы проверка схемы и в
+    // журнал уехало бы «нет id, нет dimensions, нет nodes» — список
+    // недостающих полей вместо настоящей причины.
+    if (isJobTicket(payload)) {
+      console.error(
+        `[neural4d] ${endpoint} принял задание и вернул uuid: генерация асинхронная` +
+          " и отдаёт меш, а не обмеры (размеры, этажи, площади). Смету из такого" +
+          " ответа собрать нельзя — нужно решение по продукту.",
+      );
+      return NextResponse.json(
+        {
+          error:
+            "Сервис строит внешний вид дома, но не его размеры — смету по такой модели посчитать нельзя.",
+        },
         { status: 502 },
       );
     }
@@ -197,6 +231,11 @@ async function peek(response: Response, limit = 400): Promise<string> {
  * иначе, правка нужна ровно здесь — остальной код трогать не придётся, а до
  * правки запрос честно завершится ошибкой, а не тихо испорченной сметой.
  */
+/** Ответ вида `{ uuid: [...] }` или `{ uuid: "..." }` — это номер задания. */
+function isJobTicket(payload: unknown): boolean {
+  return Boolean(payload && typeof payload === "object" && "uuid" in payload);
+}
+
 function mapVendorPayload(payload: unknown): unknown {
   if (payload && typeof payload === "object" && "model" in payload) {
     return (payload as { model: unknown }).model;

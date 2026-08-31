@@ -44,42 +44,37 @@ export interface ProbeReport {
   /** Есть ли ключ в окружении. Само значение не возвращается никогда. */
   keyConfigured: boolean;
   keyLength: number;
-  /** База и путь, которыми пользуется приложение прямо сейчас. */
-  apiUrl: string;
-  reconstructPath: string;
+  /** Адреса, которыми пользуется приложение прямо сейчас. */
+  apiOrigin: string;
+  generatePath: string;
+  retrievePath: string;
   results: ProbeResult[];
   /** Когда проба выполнялась — на планшете вкладку легко перепутать со старой. */
   ranAt: string;
 }
 
 /**
- * Адреса-кандидаты.
+ * Что проверяется.
  *
- * Первый — тот, которым пользуется приложение: он в списке, чтобы
- * подтвердить или опровергнуть, что дело именно в нём. Остальные — из
- * документации вендора, где генерация асинхронная: в ответ приходит не
- * модель, а uuid, по которому потом опрашивают retrieveModel.
+ * Раньше здесь перебирались восемь вариантов адреса — надо было выяснить,
+ * какой из них существует. Выяснили: сегмента `/v1` у вендора нет, работают
+ * `/api/generateModelWithImage` и `/api/retrieveModel`. Поэтому список
+ * сократился до двух адресов, которыми приложение теперь и пользуется, и
+ * страница отвечает на другой вопрос — «отвечают ли они сейчас».
+ *
+ * Тела намеренно неполные: без файла настоящий эндпоинт отвечает отказом по
+ * валидации и не запускает платную генерацию.
  */
-const CANDIDATES: { path: string; body: unknown; note: string }[] = [
+const CANDIDATES: { path: "generate" | "retrieve"; body: unknown; note: string }[] = [
   {
-    path: "",
-    body: null,
-    note: "путь из настроек приложения — тот самый запрос, который делает генерация",
-  },
-  {
-    path: "/api/generateModelWithImage",
+    path: "generate",
     body: { prompt: "house exterior" },
-    note: "из документации вендора: изображение → 3D",
+    note: "постановка задания — сюда уходит фото при генерации",
   },
   {
-    path: "/api/generateModelWithText",
-    body: { prompt: "house exterior" },
-    note: "из документации вендора: текст → 3D",
-  },
-  {
-    path: "/api/retrieveModel",
+    path: "retrieve",
     body: { uuid: "probe" },
-    note: "из документации вендора: опрос готовности",
+    note: "опрос готовности по номеру задания",
   },
 ];
 
@@ -110,28 +105,19 @@ export async function probeNeural4D(): Promise<ProbeReport> {
     return {
       keyConfigured: false,
       keyLength: 0,
-      apiUrl: process.env.NEURAL4D_API_URL?.trim() ?? "(не задан)",
-      reconstructPath: process.env.NEURAL4D_RECONSTRUCT_PATH?.trim() ?? "(не задан)",
+      apiOrigin: process.env.NEURAL4D_API_URL?.trim() ?? "(не задан)",
+      generatePath: "(нет ключа)",
+      retrievePath: "(нет ключа)",
       results: [],
       ranAt: new Date().toISOString(),
     };
   }
 
-  // База в документации — `https://api.neural4d.com/v1`, а пути начинаются
-  // с `/api/...`. Склеить их можно двумя способами, и гадать не нужно:
-  // неправильный ответит 404, правильный — чем-нибудь другим.
-  const origin = safeOrigin(config.apiUrl);
-  const bases = origin && origin !== config.apiUrl ? [config.apiUrl, origin] : [config.apiUrl];
-
-  const targets = CANDIDATES.flatMap(({ path, body, note }) =>
-    // Путь приложения проверяется только на своей базе: он и есть «как
-    // настроено», вторая сборка адреса для него бессмысленна.
-    (path === "" ? [config.apiUrl] : bases).map((base) => ({
-      url: `${base}${path === "" ? config.reconstructPath : path}`,
-      body,
-      note,
-    })),
-  );
+  const targets = CANDIDATES.map(({ path, body, note }) => ({
+    url: `${config.apiOrigin}${path === "generate" ? config.generatePath : config.retrievePath}`,
+    body,
+    note,
+  }));
 
   const results: ProbeResult[] = [];
   for (const target of targets) {
@@ -141,8 +127,9 @@ export async function probeNeural4D(): Promise<ProbeReport> {
   return {
     keyConfigured: true,
     keyLength: config.apiKey.length,
-    apiUrl: config.apiUrl,
-    reconstructPath: config.reconstructPath,
+    apiOrigin: config.apiOrigin,
+    generatePath: config.generatePath,
+    retrievePath: config.retrievePath,
     results,
     ranAt: new Date().toISOString(),
   };
@@ -195,14 +182,5 @@ async function peek(response: Response): Promise<string> {
     return text.length > BODY_LIMIT ? `${text.slice(0, BODY_LIMIT)}…` : text;
   } catch {
     return "(тело прочитать не удалось)";
-  }
-}
-
-/** URL из окружения может быть написан с опечаткой — это не повод падать. */
-function safeOrigin(url: string): string | null {
-  try {
-    return new URL(url).origin;
-  } catch {
-    return null;
   }
 }

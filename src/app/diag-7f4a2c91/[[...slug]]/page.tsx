@@ -50,10 +50,12 @@ export default async function Neural4DProbePage() {
             ? `задан, длина ${report.keyLength} символов`
             : "НЕ ЗАДАН — переменной NEURAL4D_API_KEY нет в окружении"}
         </dd>
-        <dt className="text-dim">База (NEURAL4D_API_URL)</dt>
-        <dd className="break-all">{report.apiUrl}</dd>
-        <dt className="text-dim">Путь (NEURAL4D_RECONSTRUCT_PATH)</dt>
-        <dd className="break-all">{report.reconstructPath}</dd>
+        <dt className="text-dim">Хост</dt>
+        <dd className="break-all">{report.apiOrigin}</dd>
+        <dt className="text-dim">Генерация</dt>
+        <dd className="break-all">{report.generatePath}</dd>
+        <dt className="text-dim">Опрос готовности</dt>
+        <dd className="break-all">{report.retrievePath}</dd>
         <dt className="text-dim">Проба выполнена</dt>
         <dd className="tabular-nums">{report.ranAt}</dd>
         <dt className="text-dim">Сборка</dt>

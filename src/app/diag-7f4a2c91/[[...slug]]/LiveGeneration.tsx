@@ -36,6 +36,8 @@ export function LiveGeneration() {
     if (found) setUuid(found);
   }
 
+  const allUuids = generated ? allUuidsIn(generated.body) : [];
+
   return (
     <section className="mt-10 rounded-2xl border border-line p-4">
       <h2 className="text-ui font-medium">Настоящая генерация</h2>
@@ -76,6 +78,26 @@ export function LiveGeneration() {
         <p className="text-caption font-medium uppercase text-dim">
           Шаг 2 — спросить, готова ли модель
         </p>
+        {/* Вендор ставит четыре задания за один запрос — строит несколько
+            вариантов модели. Готовы они не одновременно, поэтому номера
+            вынесены кнопками: перебивать их руками с планшета мучительно. */}
+        {allUuids.length > 1 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {allUuids.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setUuid(id)}
+                aria-pressed={id === uuid}
+                className={`rounded-lg border px-2 py-1 font-mono text-caption tracking-normal ${
+                  id === uuid ? "border-accent text-white" : "border-line text-dim"
+                }`}
+              >
+                {id.slice(0, 8)}
+              </button>
+            ))}
+          </div>
+        )}
         <input
           type="text"
           name="uuid"
@@ -99,14 +121,28 @@ export function LiveGeneration() {
 }
 
 /**
- * Номер задания из сырого ответа.
+ * Первый номер задания из сырого ответа.
  *
- * Ищется по тексту, а не разбором JSON: форма ответа у вендора плавает —
- * uuid приходил и строкой, и массивом, — а нам нужен сам номер, не схема.
+ * Ищется по тексту, а не разбором JSON: нам нужен сам номер, не схема.
+ *
+ * Вопросительный знак после `uuid` — не мелочь, а починка: настоящий ответ
+ * называет поле `uuids`, во множественном числе, и выражение без него не
+ * находило ничего. Именно поэтому номер не подставился с первого раза, и
+ * шаг 2 остался с пустым полем.
  */
 function firstUuid(body: string): string | null {
-  const match = /"uuid"\s*:\s*(?:\[\s*)?"([^"]+)"/.exec(body);
+  const match = /"uuids?"\s*:\s*(?:\[\s*)?"([^"]+)"/.exec(body);
   return match ? match[1] : null;
+}
+
+/** Все номера из массива `uuids` — их четыре, и любой может оказаться готов. */
+function allUuidsIn(body: string): string[] {
+  const block = /"uuids?"\s*:\s*\[([^\]]*)\]/.exec(body);
+  if (!block) {
+    const single = firstUuid(body);
+    return single ? [single] : [];
+  }
+  return Array.from(block[1].matchAll(/"([^"]+)"/g), (m) => m[1]);
 }
 
 function Result({ title, result }: { title: string; result: ProbeResult | null }) {

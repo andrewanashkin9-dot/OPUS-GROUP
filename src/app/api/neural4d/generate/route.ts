@@ -149,10 +149,10 @@ export async function POST(request: Request) {
     // всё, что от него приходит: меш, то есть внешний вид. Ни метров, ни
     // этажей, ни площадей поверхностей в ответе нет вовсе, поэтому смета
     // считается не отсюда, а по габаритам, которые вводит человек.
-    const uuid = jobUuid(payload);
-    if (uuid) {
+    const uuids = jobUuids(payload);
+    if (uuids.length > 0) {
       return NextResponse.json(
-        { uuid },
+        { uuid: uuids[0], uuids },
         { status: 200, headers: { "Cache-Control": "no-store" } },
       );
     }
@@ -209,16 +209,30 @@ async function peek(response: Response, limit = 400): Promise<string> {
  * правки запрос честно завершится ошибкой, а не тихо испорченной сметой.
  */
 /**
- * Номер задания из ответа вендора.
+ * Номера заданий из ответа вендора.
  *
- * Он приходит и строкой, и массивом из одной строки — форма зависит от
- * эндпоинта, поэтому разбираются обе, а всё остальное считается «номера
- * нет», а не «номер, наверное, где-то тут».
+ * Настоящий ответ на генерацию выглядит так:
+ *
+ *   {"type":"sys","message":"Generating",
+ *    "uuids":["c656bb84-…","e88426c9-…","8bcab94b-…","cfe542fb-…"],
+ *    "uploadedImageUrl":"https://s3.neural4d.com/…",
+ *    "pointsDeducted":120,"generationConfig":{…}}
+ *
+ * Отсюда две вещи, на которых легко ошибиться, и я ошибся на обеих.
+ * Поле называется `uuids`, во множественном числе — код, искавший `uuid`,
+ * не находил ничего и объявлял живой ответ неожиданным. И заданий за один
+ * запрос ставится не одно, а четыре: вендор строит несколько вариантов
+ * модели. Поэтому разбираются обе формы имени и обе формы значения, а
+ * наружу уходят все номера — какой из вариантов показывать, решать не
+ * здесь.
  */
-function jobUuid(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object" || !("uuid" in payload)) return null;
-  const raw = (payload as { uuid: unknown }).uuid;
-  if (typeof raw === "string" && raw) return raw;
-  if (Array.isArray(raw) && typeof raw[0] === "string" && raw[0]) return raw[0];
-  return null;
+function jobUuids(payload: unknown): string[] {
+  if (!payload || typeof payload !== "object") return [];
+  const source = payload as Record<string, unknown>;
+  const raw = "uuids" in source ? source.uuids : source.uuid;
+  if (typeof raw === "string" && raw) return [raw];
+  if (Array.isArray(raw)) {
+    return raw.filter((v): v is string => typeof v === "string" && v.length > 0);
+  }
+  return [];
 }

@@ -6,11 +6,15 @@ import * as THREE from "three";
 import { materialById } from "@/lib/3d/materials";
 import {
   MESH_PARTS,
+  projectMetreUv,
   segmentHouse,
   type MeshPart,
   type SegmentationStats,
 } from "@/lib/3d/mesh-segmentation";
-import { createSurfaceTexture } from "@/lib/3d/textures";
+import {
+  createSurfaceMaterial,
+  disposeSurfaceMaterial,
+} from "@/lib/3d/surface-material";
 
 /**
  * Модель дома, построенная Neural4D.
@@ -78,7 +82,7 @@ function FittedModel({
   // Клон, а не сам загруженный граф: useGLTF кеширует его по адресу, и
   // разбор на части менял бы модель для любого следующего показа —
   // включая повторное открытие того же проекта.
-  const { model, stats, originals, scale, offset, hasUv } = useMemo(() => {
+  const { model, stats, originals, scale, offset } = useMemo(() => {
     const model = scene.clone(true);
     const stats = segmentHouse(model);
 
@@ -100,12 +104,19 @@ function FittedModel({
     const footprint = Math.max(size.x, size.z);
     const scale = footprint > 0 ? Math.max(widthM, depthM) / footprint : 1;
 
-    // Есть ли у модели развёртка — решается один раз здесь: от неё зависит,
-    // можно ли вообще класть текстуру.
-    let hasUv = false;
+    // Вторая развёртка — в метрах сцены. По ней ложатся наши материалы:
+    // родная развёртка вендора сделана под его фотографию и наш кирпич
+    // растянула бы как попало.
+    projectMetreUv(model, scale);
+
+    // Дом отбрасывает и принимает тень наравне со схемой: без этого модель
+    // висит в воздухе, а рядом лежит контактная тень от несуществующего
+    // объекта.
     model.traverse((object) => {
       const mesh = object as THREE.Mesh;
-      if (mesh.isMesh && mesh.geometry.getAttribute("uv")) hasUv = true;
+      if (!mesh.isMesh) return;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
     });
 
     return {
@@ -113,7 +124,6 @@ function FittedModel({
       stats,
       originals,
       scale,
-      hasUv,
       offset: new THREE.Vector3(-center.x * scale, -box.min.y * scale, -center.z * scale),
     };
   }, [scene, widthM, depthM]);
@@ -121,40 +131,32 @@ function FittedModel({
   // Материалы собираются здесь, а не в памоизации выше: выбор меняется
   // чаще, чем загружается модель, и пересобирать разбор ради смены цвета
   // кровли значило бы каждый раз заново обходить десятки тысяч треугольников.
-  const built = useMemo(() => {
-    const made: (THREE.Material | null)[] = MESH_PARTS.map((part) => {
-      const id = materials[part];
-      const option = id ? materialById(id) : undefined;
-      if (!option) return null;
-      const span = Math.max(widthM, depthM);
-      // Текстура кладётся только если у меша есть развёртка. У чужого файла
-      // её может не быть вовсе, и тогда карта сэмплится в одну точку —
-      // поверхность становится равномерным пятном непредсказуемого цвета.
-      // Без развёртки честнее показать чистый цвет материала.
-      const texture = hasUv
-        ? createSurfaceTexture(option.textureId, option.colorHex, span, span)
-        : null;
-      return new THREE.MeshStandardMaterial({
-        map: texture,
-        color: option.colorHex,
-        roughness: 0.82,
-        metalness: 0,
-      });
-    });
-    return made;
-  }, [materials, widthM, depthM, hasUv]);
+  const built = useMemo(
+    () =>
+      MESH_PARTS.map((part) => {
+        const id = materials[part];
+        const option = id ? materialById(id) : undefined;
+        if (!option) return null;
+        // Тот же материал, что носит дом-схема: с рельефом и собственной
+        // шершавостью, а не плоской картой цвета. По второй развёртке, где
+        // координата — метр, поэтому кирпич везде одного размера.
+        return createSurfaceMaterial(
+          option.textureId,
+          option.colorHex,
+          widthM,
+          depthM,
+          { uvChannel: 1, metresUv: true, doubleSided: true },
+        );
+      }),
+    [materials, widthM, depthM],
+  );
 
   // Текстуры и материалы держат память видеокарты, и сборщик мусора о ней
   // не знает: без явного освобождения каждая смена материала оставляла бы
   // после себя предыдущий.
   useEffect(
     () => () => {
-      for (const material of built) {
-        if (!material) continue;
-        const map = (material as THREE.MeshStandardMaterial).map;
-        map?.dispose();
-        material.dispose();
-      }
+      for (const material of built) disposeSurfaceMaterial(material);
     },
     [built],
   );

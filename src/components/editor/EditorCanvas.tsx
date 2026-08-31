@@ -92,6 +92,13 @@ export function EditorCanvas({
         alpha: true,
         antialias: true,
         toneMapping: THREE.ACESFilmicToneMapping,
+        // Приглушено, как в конфигураторе комнаты. При полной экспозиции
+        // окружение, ключевой свет и небо складывались, светлые отделки
+        // выбивало в белое, и рисунок на них переставал быть виден вовсе:
+        // кирпич читался как штукатурка. Недодержать здесь — единственное,
+        // что оставляет материал, который человек только что выбрал,
+        // различимым.
+        toneMappingExposure: 0.78,
         outputColorSpace: THREE.SRGBColorSpace,
       }}
       shadows={{ type: THREE.PCFSoftShadowMap }}

@@ -351,3 +351,67 @@ function regroup(geometry: THREE.BufferGeometry, partOf: MeshPart[]): void {
     start += count * 3;
   });
 }
+
+/**
+ * Вторая развёртка — проекцией по осям, с координатой в метрах.
+ *
+ * Своя развёртка у чужого меша есть, но она сделана под текстуру вендора:
+ * фотография дома, натянутая на модель. Наш кирпич по ней лёг бы растянутым
+ * в одном месте и сплюснутым в другом — узор жил бы своей жизнью, и смена
+ * материала читалась бы как смена цвета, а не как другой материал.
+ *
+ * Поэтому строится вторая: каждый треугольник проецируется на ту плоскость,
+ * к которой он ближе всего лежит — стена на вертикальную, кровля на
+ * горизонтальную. Координата равна метру сцены, поэтому кирпич везде одного
+ * размера, независимо от того, какую поверхность им кроют.
+ *
+ * Записывается в `uv1`, а не поверх `uv`: исходная развёртка нужна тем
+ * частям, которые человек не трогал — они остаются с материалом вендора.
+ */
+export function projectMetreUv(root: THREE.Object3D, scale: number): void {
+  root.updateWorldMatrix(true, true);
+
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh) return;
+
+    const geometry = mesh.geometry;
+    const position = geometry.getAttribute("position");
+    if (!position) return;
+
+    const matrix = mesh.matrixWorld;
+    const uv = new Float32Array((position.count / 3) * 3 * 2);
+    const a = new THREE.Vector3();
+    const b = new THREE.Vector3();
+    const c = new THREE.Vector3();
+    const ab = new THREE.Vector3();
+    const ac = new THREE.Vector3();
+    const normal = new THREE.Vector3();
+    const corner = new THREE.Vector3();
+
+    for (let t = 0; t < position.count / 3; t++) {
+      a.fromBufferAttribute(position, t * 3).applyMatrix4(matrix);
+      b.fromBufferAttribute(position, t * 3 + 1).applyMatrix4(matrix);
+      c.fromBufferAttribute(position, t * 3 + 2).applyMatrix4(matrix);
+      normal.crossVectors(ab.subVectors(b, a), ac.subVectors(c, a)).normalize();
+
+      // Ось, вдоль которой поверхность «смотрит» сильнее всего: по ней и
+      // выбирается плоскость проекции. Для стены это X или Z, для кровли Y.
+      const ax = Math.abs(normal.x);
+      const ay = Math.abs(normal.y);
+      const az = Math.abs(normal.z);
+      const axis = ay >= ax && ay >= az ? 1 : ax >= az ? 0 : 2;
+
+      for (let i = 0; i < 3; i++) {
+        corner.fromBufferAttribute(position, t * 3 + i).applyMatrix4(matrix);
+        corner.multiplyScalar(scale);
+        const u = axis === 0 ? corner.z : corner.x;
+        const v = axis === 1 ? corner.z : corner.y;
+        uv[(t * 3 + i) * 2] = u;
+        uv[(t * 3 + i) * 2 + 1] = v;
+      }
+    }
+
+    geometry.setAttribute("uv1", new THREE.BufferAttribute(uv, 2));
+  });
+}

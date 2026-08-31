@@ -36,6 +36,11 @@ const TILE_METRES: Record<TextureId, number> = {
   "steel-door": 1.2,
 };
 
+/** Сколько метров занимает один повтор узора. Нужно для развёртки в метрах. */
+export function tileMetresOf(textureId: TextureId): number {
+  return TILE_METRES[textureId];
+}
+
 function shade(hex: string, amount: number): string {
   const c = new THREE.Color(hex);
   const hsl = { h: 0, s: 0, l: 0 };

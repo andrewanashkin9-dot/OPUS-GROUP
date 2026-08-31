@@ -14,7 +14,10 @@ import {
   endWallProfile,
   roofDimensions,
 } from "@/lib/3d/roof-geometry";
-import { createSurfaceTexture } from "@/lib/3d/textures";
+import {
+  createSurfaceMaterial,
+  disposeSurfaceMaterial,
+} from "@/lib/3d/surface-material";
 import { materialById } from "@/lib/3d/materials";
 import type {
   Facade,
@@ -187,19 +190,27 @@ export function HouseScene({
   );
 }
 
-/** Builds and disposes a canvas texture sized to the surface it covers. */
-function useSurfaceTexture(
+/**
+ * Материал поверхности, живущий ровно столько, сколько нужен.
+ *
+ * Раньше здесь строилась одна карта цвета, и все поверхности отражали свет
+ * одинаково — смена материала читалась как смена оттенка. Теперь материал
+ * собирается целиком: цвет, рельеф и своя шершавость на каждый вид отделки
+ * (см. surface-material.ts).
+ */
+function useSurfaceMaterial(
   textureId: TextureId,
   color: string,
   widthM: number,
   heightM: number,
+  doubleSided = false,
 ) {
-  const texture = useMemo(
-    () => createSurfaceTexture(textureId, color, widthM, heightM),
-    [textureId, color, widthM, heightM],
+  const material = useMemo(
+    () => createSurfaceMaterial(textureId, color, widthM, heightM, { doubleSided }),
+    [textureId, color, widthM, heightM, doubleSided],
   );
-  useEffect(() => () => texture.dispose(), [texture]);
-  return texture;
+  useEffect(() => () => disposeSurfaceMaterial(material), [material]);
+  return material;
 }
 
 function textureOf(node: SceneNode): TextureId {
@@ -226,11 +237,10 @@ function TexturedBox({
   rotation?: [number, number, number];
 }) {
   const color = effectiveColor(node, colorOverrides);
-  const map = useSurfaceTexture(textureOf(node), color, surface[0], surface[1]);
+  const material = useSurfaceMaterial(textureOf(node), color, surface[0], surface[1]);
   return (
-    <mesh position={position} rotation={rotation} onClick={onClick}>
+    <mesh position={position} rotation={rotation} onClick={onClick} material={material}>
       <boxGeometry args={size} />
-      <meshStandardMaterial map={map} roughness={0.85} />
       {selected && <SelectionEdges size={size} />}
     </mesh>
   );
@@ -384,12 +394,8 @@ function GableEndMesh({
   surface: [number, number];
 }) {
   const color = effectiveColor(node, colorOverrides);
-  const map = useSurfaceTexture(textureOf(node), color, surface[0], surface[1]);
-  return (
-    <mesh geometry={geometry} position={position}>
-      <meshStandardMaterial map={map} roughness={0.85} />
-    </mesh>
-  );
+  const material = useSurfaceMaterial(textureOf(node), color, surface[0], surface[1]);
+  return <mesh geometry={geometry} position={position} material={material} />;
 }
 
 function Roof({
@@ -421,22 +427,19 @@ function Roof({
 
   const color = effectiveColor(node, colorOverrides);
   const slopeLength = Math.hypot(dims.halfDepth, dims.rise) * 2;
-  const map = useSurfaceTexture(
+  const material = useSurfaceMaterial(
     textureOf(node),
     color,
     dims.halfWidth * 2,
     slopeLength,
+    // Скат — открытая плоскость без толщины, и снизу, из-под свеса, на неё
+    // смотрят с изнанки.
+    true,
   );
 
   return (
     <group position={[0, heightM, 0]}>
-      <mesh geometry={geometry} onClick={onClick}>
-        <meshStandardMaterial
-          map={map}
-          roughness={0.7}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+      <mesh geometry={geometry} onClick={onClick} material={material} />
       {selected && (
         <lineSegments>
           <edgesGeometry args={[geometry]} />
@@ -587,14 +590,13 @@ function DoorUnit({
   const { position, rotation } = openingTransform(model, opening);
   const color = effectiveColor(node, colorOverrides);
   const { widthM: w, heightM: h } = opening;
-  const map = useSurfaceTexture(textureOf(node), color, w, h);
+  const material = useSurfaceMaterial(textureOf(node), color, w, h);
 
   return (
     <group position={position} rotation={rotation} onClick={onClick}>
       {/* Door leaf */}
-      <mesh position={[0, 0, -0.02]}>
+      <mesh position={[0, 0, -0.02]} material={material}>
         <boxGeometry args={[w, h, 0.09]} />
-        <meshStandardMaterial map={map} roughness={0.6} />
       </mesh>
 
       {/* Surround */}
@@ -642,22 +644,20 @@ function FenceRing({
 }) {
   const color = effectiveColor(node, colorOverrides);
   const h = FENCE_HEIGHT_M;
-  const long = useSurfaceTexture(textureOf(node), color, width, h);
-  const short = useSurfaceTexture(textureOf(node), color, depth, h);
+  const long = useSurfaceMaterial(textureOf(node), color, width, h);
+  const short = useSurfaceMaterial(textureOf(node), color, depth, h);
 
   return (
     <group>
       {[depth / 2, -depth / 2].map((z, i) => (
-        <mesh key={`h-${i}`} position={[0, h / 2 - 0.5, z]} onClick={onClick}>
+        <mesh key={`h-${i}`} position={[0, h / 2 - 0.5, z]} onClick={onClick} material={long}>
           <boxGeometry args={[width, h, 0.08]} />
-          <meshStandardMaterial map={long} roughness={0.9} />
           {selected && <SelectionEdges size={[width, h, 0.08]} />}
         </mesh>
       ))}
       {[width / 2, -width / 2].map((x, i) => (
-        <mesh key={`v-${i}`} position={[x, h / 2 - 0.5, 0]} onClick={onClick}>
+        <mesh key={`v-${i}`} position={[x, h / 2 - 0.5, 0]} onClick={onClick} material={short}>
           <boxGeometry args={[0.08, h, depth]} />
-          <meshStandardMaterial map={short} roughness={0.9} />
           {selected && <SelectionEdges size={[0.08, h, depth]} />}
         </mesh>
       ))}

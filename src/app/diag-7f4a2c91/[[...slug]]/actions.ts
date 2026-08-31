@@ -1,10 +1,6 @@
 "use server";
 
-import {
-  probeVariantParam,
-  runLiveGeneration,
-  runRetrieve,
-} from "@/lib/server/neural4d-probe";
+import { runLiveGeneration, runRetrieve } from "@/lib/server/neural4d-probe";
 import type { ProbeResult } from "@/lib/neural4d-probe-result";
 
 /**
@@ -46,15 +42,6 @@ export async function retrieveAction(
   const uuid = String(form.get("uuid") ?? "").trim();
   if (!uuid) return note("Впишите номер задания из ответа генерации.");
   return runRetrieve(uuid);
-}
-
-/**
- * Подбор имени параметра «сколько вариантов».
- *
- * Баллов не тратит: запрос уходит без файла и отбивается валидацией.
- */
-export async function variantParamAction(): Promise<ProbeResult> {
-  return probeVariantParam();
 }
 
 /** Отказ на нашей стороне: до вендора дело не дошло, баллы не потрачены. */

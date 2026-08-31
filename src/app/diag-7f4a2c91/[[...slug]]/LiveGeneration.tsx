@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState, useTransition } from "react";
 import type { ProbeResult } from "@/lib/neural4d-probe-result";
-import { generateAction, retrieveAction, variantParamAction } from "./actions";
+import { generateAction, retrieveAction } from "./actions";
 
 /**
  * ВРЕМЕННО — удаляется вместе со страницей `/diag-7f4a2c91`.
@@ -21,7 +21,6 @@ import { generateAction, retrieveAction, variantParamAction } from "./actions";
 export function LiveGeneration() {
   const [generated, generate, generating] = useActionState(generateAction, null);
   const [retrieved, retrieve, retrieving] = useActionState(retrieveAction, null);
-  const [probed, probeParam, probing] = useActionState(variantParamAction, null);
 
   // Поле номера держится в состоянии, а не в разметке формы: после отправки
   // форма сбрасывается, и неуправляемый input стирал номер после каждого
@@ -162,27 +161,6 @@ export function LiveGeneration() {
 
       <Result title="Ответ на опрос готовности" result={retrieved} />
 
-      <form action={probeParam} className="mt-8 border-t border-line pt-4">
-        <p className="text-caption font-medium uppercase text-dim">
-          Шаг 3 — как заказать один вариант
-        </p>
-        <p className="mt-1 max-w-prose text-caption text-dim">
-          Вендор по умолчанию делает четыре модели за запрос и списывает 120
-          баллов. Эта кнопка выясняет, каким полем просить одну. Баллов не
-          тратит: запрос уходит без фотографии и отбивается проверкой полей.
-          В ответе нужны имена в <code>path</code> — это и есть поля, которые
-          вендор знает.
-        </p>
-        <button
-          type="submit"
-          disabled={probing}
-          className="mt-3 rounded-full border border-line px-5 py-2.5 text-ui font-medium text-white disabled:opacity-40"
-        >
-          {probing ? "Спрашиваем…" : "Подобрать имя параметра"}
-        </button>
-      </form>
-
-      <Result title="Ответ на подбор параметра" result={probed} />
     </section>
   );
 }

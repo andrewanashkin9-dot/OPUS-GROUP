@@ -166,7 +166,7 @@ export function EstimateStep({ room }: { room: RoomModel }) {
           type="button"
           onClick={addRoomToCart}
           disabled={estimate.purchases.length === 0}
-          className="flex-1 rounded-full bg-accent px-5 py-3 text-ui font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 disabled:opacity-40"
+          className="min-h-11 flex-1 rounded-full bg-accent px-5 py-3 text-ui font-bold text-deep shadow-[var(--lift-1)] transition-[filter] hover:brightness-108 disabled:opacity-40"
         >
           Перенести в смету
         </button>

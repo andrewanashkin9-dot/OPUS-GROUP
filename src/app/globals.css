@@ -577,13 +577,17 @@ h3,
    one way a colour nobody chose could enter the palette.
 --------------------------------------------------------------------------- */
 
+/* Полоса ползунка рисуется в 2 px — это красиво и совершенно непопадаемо
+   пальцем. Поэтому сам элемент теперь высотой 44 px и прозрачный, а видимая
+   линия рисуется фоном по центру: на глаз всё та же волосяная линия, а
+   хватать её можно всей подушечкой. */
 .market-range {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 2px;
-  border-radius: 999px;
-  background: var(--plate-edge-hi);
+  height: 44px;
+  background: linear-gradient(var(--plate-edge-hi), var(--plate-edge-hi)) center / 100% 2px
+    no-repeat;
   outline-offset: 6px;
 }
 

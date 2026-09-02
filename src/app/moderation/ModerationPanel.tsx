@@ -183,7 +183,7 @@ export function ModerationPanel({
               setFilter(f.id);
               void load(f.id, search);
             }}
-            className={`rounded-full border px-4 py-2 text-ui transition-colors ${
+            className={`inline-flex min-h-11 items-center rounded-full border px-4 text-ui transition-colors ${
               filter === f.id ? "border-cream text-cream-bright" : "border-line text-cream-dim"
             }`}
           >

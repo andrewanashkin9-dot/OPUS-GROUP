@@ -88,9 +88,13 @@ export function NavBar({ locale = DEFAULT_LOCALE }: { locale?: Locale } = {}) {
             пиксель: на 320 px шестнадцатипиксельная надпись вместе с кнопками
             не помещалась в строку и растягивала документ на 3 px — экран
             начинал ездить вбок. */}
+        {/* self-stretch и py-3: надпись высотой 10-14 px давала ссылку в
+            12 px — по такой на телефоне не попасть, палец накрывает около
+            сорока. Растягиваем саму ссылку на высоту шапки, не трогая
+            размер знака: видно то же самое, нажимается вся полоса. */}
         <Link
           href="/"
-          className="flex shrink-0 items-center"
+          className="flex shrink-0 items-center self-stretch py-3"
           onClick={() => setOpen(false)}
         >
           {/* Три высоты, потому что пропорция 16:1 наказывает за каждый
@@ -201,7 +205,7 @@ export function NavBar({ locale = DEFAULT_LOCALE }: { locale?: Locale } = {}) {
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
             aria-controls="mobile-nav"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)] sm:h-10 sm:w-10 min-[1440px]:hidden"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)] min-[1440px]:hidden"
           >
             <span className="sr-only">
               {open ? t.closeMenu : t.openMenu}
@@ -268,7 +272,7 @@ export function NavBar({ locale = DEFAULT_LOCALE }: { locale?: Locale } = {}) {
           <Link
             href="/start"
             onClick={() => setOpen(false)}
-            className="mt-4 flex items-center justify-center rounded-full bg-accent px-5 py-3 text-ui font-bold text-deep"
+            className="mt-4 flex min-h-11 items-center justify-center rounded-full bg-accent px-5 py-3 text-ui font-bold text-deep"
           >
             {t.startFree}
           </Link>

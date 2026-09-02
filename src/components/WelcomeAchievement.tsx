@@ -130,7 +130,10 @@ export function WelcomeAchievement() {
           type="button"
           onClick={close}
           aria-label="Закрыть приветствие"
-          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-dim transition-colors hover:bg-[var(--blue-lift)] hover:text-white"
+          // h-10 w-10 вместо h-7 w-7: крестик 28x28 — это меньше подушечки
+          // пальца, и промах закрывал не карточку, а то, что под ней.
+          // Значок внутри прежнего размера, выросла только область нажатия.
+          className="absolute right-1.5 top-1.5 flex h-10 w-10 items-center justify-center rounded-full text-dim transition-colors hover:bg-[var(--blue-lift)] hover:text-white"
         >
           <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
             <path d="M5 5l10 10M15 5L5 15" />

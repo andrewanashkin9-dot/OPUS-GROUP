@@ -149,7 +149,7 @@ export function MarketFilters({
           <button
             type="button"
             onClick={() => setAllBrands(true)}
-            className="rounded-full px-3.5 py-1.5 text-body-s font-medium text-cream underline underline-offset-2 transition-colors hover:text-cream-bright"
+            className="inline-flex min-h-10 items-center rounded-full px-3.5 text-body-s font-medium text-cream underline underline-offset-2 transition-colors hover:text-cream-bright"
           >
             {t.more(BRANDS.length - brands.length)}
           </button>
@@ -334,12 +334,15 @@ function Chip({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  // min-h-10 — сорок пикселей высоты: столько накрывает подушечка пальца.
+  // Внешне «таблетка» почти не изменилась (было 35), но мимо неё теперь не
+  // промахнуться.
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`rounded-full border px-3.5 py-1.5 text-body-s font-medium transition-colors ${
+      className={`inline-flex min-h-10 items-center rounded-full border px-3.5 text-body-s font-medium transition-colors ${
         active
           ? "border-accent bg-accent text-deep"
           : "border-[var(--plate-edge)] text-cream-dim hover:border-cream-dim hover:text-cream-bright"

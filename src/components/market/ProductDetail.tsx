@@ -45,10 +45,13 @@ export function ProductDetail({
     <>
       <NavBar locale={locale} />
       <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <nav aria-label="Хлебные крошки" className="text-body-s text-cream-dim">
+        {/* -ml-2 с боковыми отступами: ссылка «назад в магазин» была высотой
+            в строку текста, 19 px. Отрицательный отступ ставит надпись на
+            прежнее место, так что на глаз крошки не сдвинулись. */}
+        <nav aria-label="Хлебные крошки" className="flex items-center text-body-s text-cream-dim">
           <Link
             href={localePath(locale, "/market")}
-            className="transition-colors hover:text-cream-bright"
+            className="-ml-2 inline-flex min-h-11 items-center px-2 transition-colors hover:text-cream-bright"
           >
             {t.breadcrumb}
           </Link>

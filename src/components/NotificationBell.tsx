@@ -63,7 +63,7 @@ export function NotificationBell() {
         }}
         aria-expanded={open}
         aria-label={unread > 0 ? `Уведомления, непрочитанных: ${unread}` : "Уведомления"}
-        className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)] sm:h-10 sm:w-10"
+        className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)]"
       >
         <svg
           viewBox="0 0 20 20"

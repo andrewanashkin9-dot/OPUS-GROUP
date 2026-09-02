@@ -88,7 +88,7 @@ function FilterChip({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`rounded-full border px-4 py-2 text-body-s font-medium transition-colors ${
+      className={`inline-flex min-h-11 items-center rounded-full border px-4 text-body-s font-medium transition-colors ${
         active
           ? "border-accent bg-accent text-deep"
           : "border-[var(--plate-edge)] text-cream-dim hover:border-cream-dim hover:text-cream-bright"

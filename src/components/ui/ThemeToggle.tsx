@@ -44,7 +44,7 @@ export function ThemeToggle({
       // which one it moves to rather than leaving a bare icon to be guessed at.
       aria-label={label}
       title={next === "blue" ? t.blue : t.black}
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)] hover:text-accent sm:h-10 sm:w-10 ${className}`}
+      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--plate-edge)] text-white transition-colors hover:border-[var(--plate-edge-hi)] hover:text-accent ${className}`}
     >
       <span className="sr-only">{label}</span>
       {/* Two overlapping sheets: the front one filled in the theme's own

@@ -221,7 +221,7 @@ export function Chat({
           <button
             type="submit"
             disabled={sending || draft.trim().length === 0}
-            className="mt-2 rounded-full bg-accent px-5 py-2.5 text-ui font-bold text-deep transition-[filter] hover:brightness-108 disabled:opacity-50"
+            className="mt-2 inline-flex min-h-11 items-center rounded-full bg-accent px-5 text-ui font-bold text-deep transition-[filter] hover:brightness-108 disabled:opacity-50"
           >
             {sending ? "Отправляем…" : "Отправить"}
           </button>

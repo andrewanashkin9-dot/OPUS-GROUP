@@ -34,8 +34,12 @@ const variantClasses: Record<Variant, string> = {
   ghost: "text-dim hover:text-white",
 };
 
+// min-h-11 — сорок четыре пикселя, общепринятый минимум для пальца.
+// Отступов хватало ровно на 39, и главные кнопки сайта — «Начать расчёт»,
+// «Войти», «Оформить подписку» — оказывались чуть ниже комфортного.
+// Разница почти не видна глазом, но промахов по ним больше нет.
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-ui font-bold transition-[background-color,border-color,color,filter,transform,box-shadow] disabled:opacity-40 disabled:pointer-events-none";
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-6 py-3 text-ui font-bold transition-[background-color,border-color,color,filter,transform,box-shadow] disabled:opacity-40 disabled:pointer-events-none";
 
 interface CommonProps {
   variant?: Variant;

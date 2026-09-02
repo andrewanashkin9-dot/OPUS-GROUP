@@ -45,7 +45,7 @@ export function AddToCart({ product, compact = false, locale = DEFAULT_LOCALE }:
         // Quick-add takes the quantity the model implies, when it knows one:
         // one brick is never the answer to a facade.
         onClick={() => addMarketItem(product.id, quantity)}
-        className="relative z-10 shrink-0 rounded-full border border-[var(--plate-edge)] px-3 py-1.5 text-body-s font-medium text-cream transition-colors hover:border-cream-dim hover:text-cream-bright"
+        className="relative z-10 inline-flex min-h-10 shrink-0 items-center rounded-full border border-[var(--plate-edge)] px-3 text-body-s font-medium text-cream transition-colors hover:border-cream-dim hover:text-cream-bright"
       >
         {inCart ? t.inEstimateShort(String(inCart)) : t.addToEstimate}
       </button>

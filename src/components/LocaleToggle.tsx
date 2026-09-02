@@ -69,7 +69,11 @@ export function LocaleToggle({
             hrefLang={value}
             aria-current={active ? "true" : undefined}
             aria-label={active ? undefined : dict.langSwitch.to(LOCALE_LABELS[value])}
-            className={`relative z-10 grid h-7 w-9 place-items-center text-caption font-extrabold tracking-wide transition-colors ${
+            // -my-2 py-2 растит область нажатия с 28 до 44 px, не трогая
+            // высоту самой «таблетки»: отрицательный отступ снаружи гасит
+            // внутренний, поэтому переключатель выглядит ровно как прежде,
+            // а палец попадает по нему целиком.
+            className={`relative z-10 -my-2 grid w-9 place-items-center py-2 text-caption font-extrabold leading-7 tracking-wide transition-colors ${
               active ? "text-deep" : "text-dim hover:text-cream"
             }`}
           >

@@ -81,7 +81,7 @@ export function DemoModeCorner() {
           type="button"
           onClick={() => setHidden(true)}
           aria-label="Скрыть переключатель до перезагрузки"
-          className="text-caption text-dim transition-colors hover:text-white"
+          className="-m-2 flex h-10 w-10 items-center justify-center p-2 text-caption text-dim transition-colors hover:text-white"
         >
           ✕
         </button>
@@ -132,7 +132,7 @@ function Chip({
       // а выключенная кнопка ещё и показывает, где ты сейчас.
       disabled={active || disabled}
       aria-pressed={active}
-      className={`rounded-full border px-3 py-1.5 text-body-s font-medium transition-colors disabled:cursor-default ${
+      className={`inline-flex min-h-10 items-center rounded-full border px-3 text-body-s font-medium transition-colors disabled:cursor-default ${
         active
           ? "border-accent text-accent"
           : "border-[var(--plate-edge)] text-cream hover:border-cream-dim disabled:opacity-50"

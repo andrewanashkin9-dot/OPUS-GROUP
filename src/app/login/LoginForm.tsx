@@ -97,7 +97,7 @@ export function LoginForm() {
               setMode(value);
               setError(null);
             }}
-            className={`flex-1 rounded-full px-4 py-2 text-ui font-bold transition-colors ${
+            className={`inline-flex min-h-11 flex-1 items-center justify-center rounded-full px-4 text-ui font-bold transition-colors ${
               mode === value ? "bg-cream text-bg" : "text-cream-dim hover:text-cream-bright"
             }`}
           >
@@ -189,7 +189,10 @@ export function LoginForm() {
 
         {!isRegister && (
           <p className="text-center text-body-s">
-            <Link href="/reset-password" className="text-cream-dim underline underline-offset-2 hover:text-cream-bright">
+            <Link
+              href="/reset-password"
+              className="inline-flex min-h-11 items-center text-cream-dim underline underline-offset-2 hover:text-cream-bright"
+            >
               Забыли пароль?
             </Link>
           </p>

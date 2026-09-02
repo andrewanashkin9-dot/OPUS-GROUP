@@ -81,7 +81,14 @@ export default async function RequestPage({
     <>
       <NavBar />
       <main className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
-        <Link href="/cabinet" className="text-body-s text-cream-dim hover:text-cream-bright">
+        {/* -ml-2 с отступами: ссылка «назад» была высотой в строку текста,
+            19 px. Это единственный выход со страницы, и промахиваться по
+            нему нельзя. Отрицательный отступ слева возвращает надпись на
+            прежнее место — на глаз ничего не сдвинулось. */}
+        <Link
+          href="/cabinet"
+          className="-ml-2 inline-flex min-h-11 items-center px-2 text-body-s text-cream-dim hover:text-cream-bright"
+        >
           ← В кабинет
         </Link>
 
@@ -119,14 +126,14 @@ export default async function RequestPage({
         <nav className="mt-10 flex flex-wrap gap-2 border-b border-line pb-3">
           <a
             href="#responses"
-            className="rounded-full border border-line px-4 py-1.5 text-body-s text-cream transition-colors hover:border-cream-dim"
+            className="inline-flex min-h-11 items-center rounded-full border border-line px-4 text-body-s text-cream transition-colors hover:border-cream-dim"
           >
             {isOwner ? `Отклики (${responses.length})` : "Мой отклик"}
           </a>
           {thread.canRead && (
             <a
               href="#chat"
-              className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-body-s transition-colors ${
+              className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-body-s transition-colors ${
                 unread > 0
                   ? "border-[var(--accent-line)] text-accent"
                   : "border-line text-cream hover:border-cream-dim"

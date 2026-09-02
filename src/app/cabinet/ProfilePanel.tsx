@@ -115,7 +115,7 @@ export function ProfilePanel({
                   active ? prev.filter((k) => k !== kind.id) : [...prev, kind.id],
                 )
               }
-              className={`rounded-full border px-4 py-2 text-ui transition-colors ${
+              className={`inline-flex min-h-11 items-center rounded-full border px-4 text-ui transition-colors ${
                 active ? "border-cream text-cream-bright" : "border-line text-cream-dim"
               }`}
             >

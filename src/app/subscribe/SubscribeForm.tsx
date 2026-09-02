@@ -75,7 +75,7 @@ export function SubscribeForm({
         <Features />
         <Link
           href="/login?next=/subscribe"
-          className="btn-gold mt-8 flex w-full items-center justify-center rounded-full bg-accent px-5 py-3 text-ui font-bold text-deep"
+          className="btn-gold mt-8 flex min-h-11 w-full items-center justify-center rounded-full bg-accent px-5 py-3 text-ui font-bold text-deep"
         >
           Войти и оформить
         </Link>

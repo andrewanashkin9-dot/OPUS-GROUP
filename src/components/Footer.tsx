@@ -70,14 +70,20 @@ function FooterColumn({
   return (
     <div>
       <h3 className="text-caption font-medium uppercase text-dim">{title}</h3>
-      <ul className="mt-4 space-y-3">
+      {/* space-y-1 вместо space-y-3: промежуток переехал внутрь самих
+          ссылок. Раньше строка была высотой 19 px, а между строками пустовало
+          12 — палец шириной около сорока накрывал сразу и ссылку, и пустоту
+          под ней, и попадал через раз. Теперь те же пиксели принадлежат
+          ссылке: на глаз подвал не изменился, но каждая строка нажимается
+          целиком. */}
+      <ul className="mt-3 space-y-1">
         {links.map((link) => (
           <li key={link.href}>
             <Link
               // localePath пропускает mailto: и tel: насквозь — иначе
               // почтовая ссылка превратилась бы в /en/mailto:…
               href={localePath(locale, link.href)}
-              className="text-body-s text-soft transition-colors hover:text-white"
+              className="inline-flex min-h-11 items-center text-body-s text-soft transition-colors hover:text-white"
             >
               {link.label}
             </Link>
